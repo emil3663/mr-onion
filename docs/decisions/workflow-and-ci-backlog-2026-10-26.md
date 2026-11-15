@@ -1720,12 +1720,31 @@ Moved word for word from [`docs/test-plan/GEN.md`](../test-plan/GEN.md) by TFP-2
   against `0fe8ffe`: 8 of 172 differ, each only by the helper and one
   `tfReadOnlyWrap` line per guarded test that navigates first (8 of 8).
   The baseline waits for the owner's acceptance. Full unit suite 844 of
-  844, 0 skipped. **[for Emil]** The fresh-context review found two paths
-  kept from TFP-284, outside #35's saved references. First, a `Request`
-  made in another frame fails `instanceof Request`, so a keepalive POST
-  built that way passes through the armed wrapper. Second, the page can
-  write `__tfGuard.armed`, so a hostile page could switch the guard off.
-  Fix them here, or as a ticket of their own?
+  844, 0 skipped. The fresh-context review found two paths kept from
+  TFP-284: a `Request` made in another frame, and the page writing
+  `__tfGuard.armed`.
+- **Owner rulings (2026-11-15):** fix both in this ticket, red first; test
+  a fresh `about:blank` iframe's `fetch` under the guard, and if it gets
+  through, make it a known limitation with an issue, without widening the
+  ticket; list the load-queued `fetchLater` as a known limitation; show
+  the template check again, and stop for verification before the
+  baseline moves.
+- **Built against the rulings (2026-11-15), to verify:**
+  - The method, keepalive and url are read from any Request-like object.
+  - The armed flag is the wrappers' own. The page can reach only
+    `__tfGuardArm`, a one-way switch it can't replace or remove.
+  - Red first at the server on `6756fb9`: `cross-fetch`, `cross-later`,
+    `unarmed-fetch` and `unarmed-later` all arrived. With the fix, none
+    does, and both `fetchLater` POSTs are named as breaches.
+  - The `about:blank` iframe's `fetch` is the wrapper (Playwright runs
+    init scripts in that frame), and its POST doesn't arrive. So there
+    is no limitation and no issue.
+  - The load-queued `fetchLater` was measured reaching the server. It is
+    known limitation 12, pinned by the test.
+  - The TFP-287 tests moved to `read-only-guard.saved.test.ts`, for the
+    500-line limit.
+  - The template check against `0fe8ffe` is unchanged from before: 8 of
+    172 differ, each only by the helper and the wrap lines.
 - **Phase:** None
 - **Priority:** P2
 - **Suggested labels:** `bug`, `security`
