@@ -381,6 +381,36 @@ Each of these has a line in `deferred-work-register.md`.
 
 ### TFP-218 — The confirmation, stored per site, and its API
 
+- **Status:** Built (2026-11-15), to verify.
+  - **The store:** `src/lib/ownership/confirmation.ts` writes
+    `<data>/site-suites/<site>/ownership.json` as `{ current, history }`.
+  - **The API:** `GET` and `POST /api/site-ownership`, and
+    `POST /api/site-ownership/withdraw`.
+  - **Docs and cases:** `docs/SITE_OWNERSHIP.md`, and RUN-56 to RUN-60.
+  - **Nothing reads it yet** but its API. TFP-219 and TFP-220 do.
+- **Built against the record, as Claude Code read it.** Two readings, each
+  in its code and docs, for the owner to keep or change:
+  - **Wording (Decisions 1 and 12):** each basis has one fixed text,
+    which includes the practice-site rule. A POST must send that text
+    unchanged, or it is refused. That keeps the stored "exact wording"
+    the text the tester was shown.
+  - **"A host the site's crawl or target address uses" (Decision 2):**
+    the host of the site's address, plus the page hosts and request
+    hosts (from the dependency map) in the page data of the site's saved
+    suites. Hosts the site only links to don't count.
+- **Found by the fresh-context review and fixed before commit, each
+  red first:**
+  - A malformed confirmation file read as `valid`: a confirmation with
+    a missing field, or an expiry that isn't a date, which was never
+    reached. It now reads as `missing`.
+  - Two saves at the same moment lost one from the history, or failed
+    on a shared temporary file. Writes are now serialised in the server
+    process.
+  - The 1-year limit from 29 February landed on 1 March.
+  - An expiry with no zone was read in local time, and free text such
+    as `Nov 20 2026` was accepted.
+  - A request host recorded with no sample address was ignored.
+  - A non-text host was refused as "empty".
 - **Phase:** 43 · **Priority:** P1 · **Labels:** `enhancement`, `security`, `api`
 - **Problem it solves:** the confirmation Phase 35 decided doesn't exist.
   Saved with each run, it would be asked for on every run.
