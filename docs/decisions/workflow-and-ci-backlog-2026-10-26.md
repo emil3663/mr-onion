@@ -1708,7 +1708,14 @@ Moved word for word from [`docs/test-plan/GEN.md`](../test-plan/GEN.md) by TFP-2
 
 ### TFP-287 - The read-only guard covers references a page saves at load (added 2026-11-14)
 
-- **Status:** Built (2026-11-15), to verify. `tfGuardFrame` wraps
+- **Status:** Done 2026-11-15: `6756fb9`, `7ba7399` and `ecb9fd4`, on
+  `main` by fast-forward (PR #39). Every check passed on its head
+  `ecb9fd4`: PR Validation, CodeQL and its alert check, and Release Image.
+  The nightly dispatched on the branch was green on `ecb9fd4` (run
+  43668391841), with its template check against the new baseline
+  `7ba7399`. #35 was closed by `6756fb9` and known limitation 12 replaced.
+  Verified by a planning session (2026-11-15).
+- **Built (2026-11-15).** `tfGuardFrame` wraps
   `sendBeacon`, `fetch` and `fetchLater` once per frame, dormant; the
   guard switches the wrappers on. Generated tests that navigate before the
   guard call `tfReadOnlyWrap(page)` first: the guarded control checks, and
