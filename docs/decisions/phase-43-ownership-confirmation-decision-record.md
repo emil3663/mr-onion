@@ -381,7 +381,11 @@ Each of these has a line in `deferred-work-register.md`.
 
 ### TFP-218 — The confirmation, stored per site, and its API
 
-- **Status:** Built (2026-11-15), to verify.
+- **Status:** Done 2026-11-15: `dc64412` and `4c2d4f9`, on `main` by
+  fast-forward (PR #40). Every check passed on its head `4c2d4f9`: PR
+  Validation, CodeQL and its alert check, and Release Image. Verified by a
+  planning session (2026-11-15). Both readings below stand (the owner).
+- **Built (2026-11-15).**
   - **The store:** `src/lib/ownership/confirmation.ts` writes
     `<data>/site-suites/<site>/ownership.json` as `{ current, history }`.
   - **The API:** `GET` and `POST /api/site-ownership`, and
