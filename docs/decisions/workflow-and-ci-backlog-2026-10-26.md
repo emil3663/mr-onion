@@ -1708,7 +1708,24 @@ Moved word for word from [`docs/test-plan/GEN.md`](../test-plan/GEN.md) by TFP-2
 
 ### TFP-287 - The read-only guard covers references a page saves at load (added 2026-11-14)
 
-- **Status:** Open.
+- **Status:** Built (2026-11-15), to verify. `tfGuardFrame` wraps
+  `sendBeacon`, `fetch` and `fetchLater` once per frame, dormant; the
+  guard switches the wrappers on. Generated tests that navigate before the
+  guard call `tfReadOnlyWrap(page)` first: the guarded control checks, and
+  the link tests that load their target under the guard. Gap and candidate
+  tests navigate only inside the guard, whose own init script wraps each
+  new document already switched on. Red first at the server on TFP-284's
+  guard: the three guarded POSTs arrived. With the wrapper, only the six
+  load-time POSTs arrive, with or without it. `check:template-unchanged`
+  against `0fe8ffe`: 8 of 172 differ, each only by the helper and one
+  `tfReadOnlyWrap` line per guarded test that navigates first (8 of 8).
+  The baseline waits for the owner's acceptance. Full unit suite 844 of
+  844, 0 skipped. **[for Emil]** The fresh-context review found two paths
+  kept from TFP-284, outside #35's saved references. First, a `Request`
+  made in another frame fails `instanceof Request`, so a keepalive POST
+  built that way passes through the armed wrapper. Second, the page can
+  write `__tfGuard.armed`, so a hostile page could switch the guard off.
+  Fix them here, or as a ticket of their own?
 - **Phase:** None
 - **Priority:** P2
 - **Suggested labels:** `bug`, `security`
