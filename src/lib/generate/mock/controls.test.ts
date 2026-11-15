@@ -45,6 +45,18 @@ async function runSuite(code: string, label: string): Promise<ExecutionRecord[]>
 const page = (path: string, actionableElements: unknown[]) => ({ path, url: path, title: "", metaDescription: "", headings: [], buttons: [], links: [], visibleTextSnippets: [], actionableElements });
 const element = (elementType: string, text: string, inputType = "", role: string | null = null) => ({ text, url: null, category: "action", elementType, containerLabel: "", expectedStatus: null, isVisible: true, ariaPressed: null, ariaSelected: null, ariaChecked: null, ariaExpanded: null, groupId: null, locator: { role, name: "", label: "", placeholder: "", id: "", inputType } });
 
+test("TFP-287: each guarded check installs the guard's dormant wrapper before its first navigation, and the unguarded option-list check doesn't", () => {
+    const profile = {
+        scannedAt: "", baseUrl: "http://example.test",
+        pages: [page("/", [element("select", "Name (A - Z)Name (Z - A)Price (Low - High)"), element("input", "", "checkbox", "checkbox"), element("input", "1", "number", "spinbutton")])],
+    } as unknown as ContentProfile;
+    const tests = buildControlTests(profile).tests;
+    const guarded = tests.filter((source) => source.includes("tfReadOnlyGuarded("));
+    assert.ok(guarded.length >= 4, `sort, filters, steppers and nav links: ${guarded.length}`);
+    for (const source of guarded) assert.match(source, /\n    await tfReadOnlyWrap\(page\);\n    await page\.goto\(/, source.split("\n")[0]);
+    for (const source of tests.filter((source) => !source.includes("tfReadOnlyGuarded("))) assert.ok(!source.includes("tfReadOnlyWrap"), source.split("\n")[0]);
+});
+
 test("which pages get which check, from what inspection recorded (decision table)", () => {
     const profile = {
         scannedAt: "", baseUrl: "http://example.test",

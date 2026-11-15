@@ -328,7 +328,8 @@ ${body}
 }
 
 function guardedCheck(check: string, escapedPath: string, nothing: string) {
-    return `    await page.goto('${escapedPath}');
+    return `    await tfReadOnlyWrap(page);
+    await page.goto('${escapedPath}');
     let result = { problems: [] as string[], checked: 0 };
     await tfReadOnlyGuarded(page, async () => { result = await ${check}(page, '${escapedPath}'); });
     test.skip(result.checked === 0, '${nothing} on ${escapedPath}');

@@ -46,6 +46,19 @@
  * the same day: `fetchLater()` too (its request is sent at the latest as
  * the page is left), with the same methods.
  *
+ * TFP-287 (owner ruling, 2026-11-14, closing #35): the stub replaced those
+ * functions when the guard armed, after the page had loaded, so a page
+ * script that saved its own reference at load called the original, and its
+ * request reached the server. Now they are wrapped once per frame, dormant
+ * (every call passes through), and the guard switches the wrappers on. A
+ * test whose first navigation comes before the guard calls tfReadOnlyWrap
+ * first: an init script, so every frame of every page it loads is wrapped
+ * before the page's own scripts run, and what the page saves is the wrapper.
+ * Loading stays unjudged: nothing changes until the guard arms. A test that
+ * navigates only inside the guard needs no call (the guard's own init
+ * script wraps each new document, switched on), and a frame without the
+ * wrappers when the guard arms gets them switched on, as TFP-284's stub did.
+ *
  * Generated code, kept as a raw string like the passive security helpers, so
  * it reaches the generated file exactly as written here.
  */
@@ -72,6 +85,64 @@ async function tfSettle(page: import('@playwright/test').Page, quietMs = 500, ma
 // TFP-199: analytics paths whose beacons a site sends with ordinary fetch or XHR. Cloudflare's first (measured).
 const TF_BEACON_PATHS = ['/cdn-cgi/rum'];
 
+// TFP-287: in a frame, wraps sendBeacon, fetch and fetchLater once, dormant: every call passes through. arm switches
+// the frame's wrappers on (TFP-284's stub: sendBeacon, and a keepalive fetch or fetchLater with a method but GET,
+// HEAD and QUERY, stopped and handed to the guard) and stops form submissions. Run before the page's own scripts,
+// what a page saves at load is the wrapper, so the guard reaches it too.
+const tfGuardFrame = (arm: boolean) => {
+  type Later = (input: RequestInfo | URL, init?: RequestInit) => { activated: boolean };
+  const scope = window as unknown as { __tfGuardBreach?: (what: string) => void; __tfGuardRequest?: (method: string, url: string, type: string) => void; __tfGuard?: { armed: boolean }; fetchLater?: Later };
+  if (!scope.__tfGuard) {
+    const state = { armed: false };
+    Object.defineProperty(scope, '__tfGuard', { value: state });
+    const safe = (method: string) => ['GET', 'HEAD', 'QUERY'].includes(method);
+    const stopped = (method: string, url: string, type: string) => scope.__tfGuardRequest?.(method, new URL(url, location.href).href, type);
+    const beacon = Navigator.prototype.sendBeacon;
+    Navigator.prototype.sendBeacon = function (this: Navigator, url: string | URL, data?: BodyInit | null) {
+      if (!state.armed) return beacon.call(this, url, data);
+      stopped('POST', String(url), 'ping');
+      return true;
+    };
+    const send = window.fetch;
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input instanceof Request ? input : null;
+      const method = String(init?.method ?? request?.method ?? 'GET').toUpperCase();
+      if (state.armed && (init?.keepalive ?? request?.keepalive) && !safe(method)) {
+        stopped(method, request ? request.url : String(input), 'fetch');
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }
+      return send.call(window, input, init);
+    };
+    const later = scope.fetchLater;
+    if (later) scope.fetchLater = (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input instanceof Request ? input : null;
+      const method = String(init?.method ?? request?.method ?? 'GET').toUpperCase();
+      if (!state.armed || safe(method)) return later.call(window, input, init);
+      stopped(method, request ? request.url : String(input), 'fetchLater');
+      return { activated: false };
+    };
+  }
+  if (!arm || scope.__tfGuard!.armed) return;
+  scope.__tfGuard!.armed = true;
+  const name = (form: HTMLFormElement) => {
+    const label = form.getAttribute('aria-label') || form.id || form.getAttribute('name') || '';
+    const method = (form.getAttribute('method') || 'get').toUpperCase();
+    return 'form submission' + (label ? ' "' + label + '"' : '') + ' (' + method + ' ' + new URL(form.getAttribute('action') || location.href, location.href).href + ')';
+  };
+  window.addEventListener('submit', (event) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    scope.__tfGuardBreach?.(name(event.target as HTMLFormElement));
+  }, true);
+  HTMLFormElement.prototype.submit = function (this: HTMLFormElement) { scope.__tfGuardBreach?.(name(this)); };
+};
+
+// TFP-287: a read-only test that interacts calls this before its first navigation, so every frame of every page it
+// loads gets the dormant wrappers before the page's own scripts run. Nothing changes until tfReadOnlyGuarded arms.
+async function tfReadOnlyWrap(page: import('@playwright/test').Page) {
+  await page.addInitScript(tfGuardFrame, false);
+}
+
 // TFP-181 (Phase 41 Decision 3): a read-only test that interacts runs its
 // interaction here. Any request but a safe one (GET, HEAD, QUERY) is aborted, and any form
 // submission stopped, and either fails the test as a guard breach, named. TFP-199: a site's
@@ -92,45 +163,11 @@ async function tfReadOnlyGuarded(page: import('@playwright/test').Page, interact
     judge(request.method(), request.url(), request.resourceType());
     await route.abort('blockedbyclient');
   });
-  const armFrame = () => {
-    const scope = window as unknown as { __tfGuardBreach?: (what: string) => void; __tfGuardRequest?: (method: string, url: string, type: string) => void; __tfGuardArmed?: boolean; fetchLater?: (input: RequestInfo | URL, init?: RequestInit) => { activated: boolean } };
-    if (scope.__tfGuardArmed) return;
-    scope.__tfGuardArmed = true;
-    const stopped = (method: string, url: string, type: string) => scope.__tfGuardRequest?.(method, new URL(url, location.href).href, type);
-    Navigator.prototype.sendBeacon = function (url: string | URL) { stopped('POST', String(url), 'ping'); return true; };
-    const send = window.fetch;
-    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      const request = input instanceof Request ? input : null;
-      const method = String(init?.method ?? request?.method ?? 'GET').toUpperCase();
-      if ((init?.keepalive ?? request?.keepalive) && !['GET', 'HEAD', 'QUERY'].includes(method)) {
-        stopped(method, request ? request.url : String(input), 'fetch');
-        return Promise.reject(new TypeError('Failed to fetch'));
-      }
-      return send.call(window, input, init);
-    };
-    const later = scope.fetchLater;
-    if (later) scope.fetchLater = (input: RequestInfo | URL, init?: RequestInit) => {
-      const request = input instanceof Request ? input : null;
-      const method = String(init?.method ?? request?.method ?? 'GET').toUpperCase();
-      if (['GET', 'HEAD', 'QUERY'].includes(method)) return later.call(window, input, init);
-      stopped(method, request ? request.url : String(input), 'fetchLater');
-      return { activated: false };
-    };
-    const name = (form: HTMLFormElement) => {
-      const label = form.getAttribute('aria-label') || form.id || form.getAttribute('name') || '';
-      const method = (form.getAttribute('method') || 'get').toUpperCase();
-      return 'form submission' + (label ? ' "' + label + '"' : '') + ' (' + method + ' ' + new URL(form.getAttribute('action') || location.href, location.href).href + ')';
-    };
-    window.addEventListener('submit', (event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      scope.__tfGuardBreach?.(name(event.target as HTMLFormElement));
-    }, true);
-    HTMLFormElement.prototype.submit = function (this: HTMLFormElement) { scope.__tfGuardBreach?.(name(this)); };
-  };
-  await page.addInitScript(armFrame);
-  await page.evaluate(armFrame);
-  for (const frame of page.frames().slice(1)) await frame.evaluate(armFrame).catch(() => undefined); // a frame gone since
+  // TFP-287: switches on the wrappers tfReadOnlyWrap installed, or installs them switched on in a frame without them
+  // (a test that didn't call it, or a frame loaded before it), as TFP-284's stub did.
+  await page.addInitScript(tfGuardFrame, true);
+  await page.evaluate(tfGuardFrame, true);
+  for (const frame of page.frames().slice(1)) await frame.evaluate(tfGuardFrame, true).catch(() => undefined); // a frame gone since
   let failure: unknown = null;
   try {
     await interact();

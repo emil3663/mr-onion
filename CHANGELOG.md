@@ -28,8 +28,10 @@ the report and the CI command are declared stable, after Phase 47.
   guard now also stops `navigator.sendBeacon`, a keepalive `fetch` and
   `fetchLater()` in the page, in every frame. A site's beacons are still
   noted, not a failure, and any other such write still fails the test as a
-  guard breach. One path it can't stop yet is a known limitation:
-  [#35](https://github.com/emil3663/mr-onion/issues/35) (TFP-284).
+  guard breach (TFP-284). That holds when a page saved its own reference to
+  one of them at load, as an analytics script can: they are wrapped before
+  the page's scripts run, and the wrappers change nothing until the guard
+  arms ([#35](https://github.com/emil3663/mr-onion/issues/35), TFP-287).
 
 ## [0.4.0] — 2026-11-13
 

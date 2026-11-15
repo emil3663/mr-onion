@@ -139,6 +139,12 @@ test("in a real browser: a link no other check loads is loaded by its own test -
     // As if no site-wide check loaded the targets, with room for 2 loads.
     const built = buildLinkInventoryTests(inspected, undefined, { loadCap: 2, reused: (link) => (link.linkType === "external" ? "external: its href only, no request" : null) });
     assert.equal(built.usesGuard, true);
+    // TFP-287: a test that loads its target inside the guard installs the guard's dormant wrapper before its first
+    // navigation; one that loads nothing under the guard doesn't.
+    const guarded = built.tests.filter((source) => source.includes("tfReadOnlyGuarded("));
+    assert.equal(guarded.length, 2, "Working and Broken take the 2 loads");
+    for (const source of guarded) assert.match(source, /=> \{\n    await tfReadOnlyWrap\(page\);\n    await page\.goto\(/, source.split("\n")[0]);
+    for (const source of built.tests.filter((source) => !source.includes("tfReadOnlyGuarded("))) assert.ok(!source.includes("tfReadOnlyWrap"), source.split("\n")[0]);
     const code = `import { test, expect } from '@playwright/test';\n\ntest.use({ baseURL: '${origin}' });\n\n${READ_ONLY_GUARD_HELPER}\n\ntest.describe('Functional', () => {\n${built.tests.join("\n\n")}\n});\n`;
     assert.deepEqual(findTypeErrors(code), []);
     otherRequests.length = 0;

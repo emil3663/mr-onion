@@ -110,6 +110,12 @@ export function reusedTargetLoad(link: LinkDetail, pageHasRouteCheck: boolean): 
     return null;
 }
 
+// TFP-287: a test that loads its target inside the request guard installs the guard's dormant wrapper before its
+// first navigation, so what the page saves at load is the wrapper.
+function withWrap(lines: string[]) {
+    return lines.some((line) => line.includes("tfReadOnlyGuarded(")) ? ["    await tfReadOnlyWrap(page);", ...lines] : lines;
+}
+
 function hrefLocator(link: LinkDetail) {
     return `page.locator(${quoteSelector(`a[href="${escapeForDoubleQuotedSelector(link.rawHref || link.url)}"]`)}).first()`;
 }
@@ -200,7 +206,7 @@ export function buildLinkInventoryTests(
                         ...targetLines(group.first, pageHasRouteCheck, `the first card to ${pattern}`, "    ")
                     );
                     tests.push(`  test('cards linking to ${pattern} on ${path}: each on the page${group.visible ? ", named" : ""}, with a valid href', { annotation: [{ type: 'gate', description: 'read-only' }, { type: 'page', description: '${path}' }] }, async ({ page }) => {
-${lines.join("\n")}
+${withWrap(lines).join("\n")}
   });`);
                 }
                 continue;
@@ -229,7 +235,7 @@ ${lines.join("\n")}
             );
             lines.push(...targetLines(link, pageHasRouteCheck, quoted, "    "));
             tests.push(`  test('link ${escapeForSingleQuotedString(`"${name}"${repeated(link) ? ` to ${link.rawHref || link.url}` : ""}`)} on ${path}: on the page, named, with a valid href', { annotation: [{ type: 'gate', description: 'read-only' }, { type: 'page', description: '${path}' }] }, async ({ page }) => {
-${lines.join("\n")}
+${withWrap(lines).join("\n")}
   });`);
         }
     }
