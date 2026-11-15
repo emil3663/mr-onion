@@ -101,7 +101,7 @@ Windows; `MRONION_DATA_DIR` overrides), never in the repo.
       ▼
  Next.js API routes (src/app/api/*)          one Node process, loopback only
   crawl · introspect · generate · run · runs · runs/diff · candidates
-  site-settings · save-suite · health
+  site-settings · site-ownership · save-suite · health
       │
       ├─ src/lib/introspect, selection   crawl, page types, inspection (Playwright)
       ├─ src/lib/generate                 template generator, Comprehensive sets

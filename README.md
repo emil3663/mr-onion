@@ -113,6 +113,14 @@ tests and candidates included, gets only the environment Playwright needs,
 plus the proxy settings when set: no keys, tokens or Mr Onion settings. This
 is not a sandbox.
 
+**Ownership confirmation (Phase 43, in progress).** A site you own or may
+test can be confirmed once, through `/api/site-ownership`: the hosts it
+covers, typed in full, plus who confirmed it, a 90-day expiry (at most 1 year)
+and ticks for active tests and load testing. It is kept in the local data
+folder and can be withdrawn. It unlocks nothing yet. The active gate and the
+lifted caps come next in Phase 43. See
+[docs/SITE_OWNERSHIP.md](docs/SITE_OWNERSHIP.md).
+
 Each saved gap test is also generalised to its component's pattern and
 kept in the candidate pool (`candidates/` in the data folder). On a
 Comprehensive run of any site, a candidate whose pattern matches an
