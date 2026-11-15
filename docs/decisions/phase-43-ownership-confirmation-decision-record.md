@@ -68,6 +68,13 @@ The design stands. These amendments apply; each says who decided it.
    not run and with-bugs 481 / 84 / 20. TFP-221 is a measurement session:
    ask the owner first, and batch it overnight (the register's standing
    rules).
+   **The base is Action Gate's runs (owner decision, 2026-11-15), not a
+   local measurement session.** Action Gate was dispatched on `main` at
+   `202a17a` just before TFP-219, as run 43672714248. Its clean and
+   with-bugs `report.json` files are committed under
+   `benchmarks/2026-11-15-phase-43-base/`: clean 470 planned / 406 passed
+   / 46 failed / 18 not run, and with-bugs 481 / 377 / 84 / 20. Both equal
+   0.4.0's.
 7. **Still true:** today's `ACTIVE_GATE_REASON` ("not built yet"),
    `closedGates()` in `src/lib/run/test-gates.ts`, and the confirmation
    stub `src/lib/run/ownership.ts` that `hostLimitsFor` reads in the
