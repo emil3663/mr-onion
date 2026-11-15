@@ -24,6 +24,57 @@ Status: **Locked (Emil, 2026-10-19). Not started.**
 Order: first after Phase 39 and R4 (the triage's build order, item 1).
 Tickets TFP-218 to TFP-221.
 
+## Review before building (planning session, 2026-11-14)
+
+This record was locked before Phase 47 (Mr Onion in CI), Phase 48 (the
+rename) and TFP-284 (Chromium 151). Checked against `main` at `bc09f98`.
+The design stands. These amendments apply; each says who decided it.
+
+1. **Names (Phase 48, mechanical).** Read every setting by its new name:
+   the run switch is `MRONION_ACTIVE`, the interactive switch
+   `MRONION_INTERACTIVE`, the data folder's setting `MRONION_DATA_DIR`, and
+   the product is Mr Onion. A run's child processes get each setting under
+   both names (Phase 48 Decision 8), so this needs no extra work. The
+   generated script-payload test checks the new name.
+2. **The run switch is set from the run's request, never inherited.**
+   (Planning session, following the interactive switch's rule in
+   `src/lib/run/interactive.ts`.) The executor always sets
+   `MRONION_ACTIVE` to "0" or "1" from what the run asked for. A value in
+   the shell or in CI's environment can't open the gate.
+3. **CI (owner decision, 2026-11-14): a confirmation lifts the caps, and
+   nothing else.** The app and the CLI share one pipeline, so the CLI reads
+   a confirmation from its data folder (`--data-dir`) as the app does, and a
+   confirmed deployed host runs uncapped, as Phase 47 Decision 2 foresaw.
+   The CLI and the action get no active switch in this phase, so no
+   attack-shaped test runs in CI until TFP-249 (D31). A CLI run always sets
+   `MRONION_ACTIVE=0`. TFP-220's acceptance adds: a CLI run against a
+   confirmed remote fixture host is uncapped, and its active tests are Not
+   run with the reason "not available in CI yet (TFP-249)". The CI guide
+   gets a short section on carrying a confirmation in the data folder.
+4. **The covered-host guard stops what the route can't (planning
+   session).** Since Chromium 151 a route's abort doesn't stop
+   `sendBeacon`, a keepalive `fetch` or `fetchLater`. Decision 9's guard is
+   built on the read-only guard's page stub (TFP-284) and dormant wrapper
+   (TFP-287), not on the route alone. Acceptance Criterion 3 adds a beacon,
+   a keepalive POST and a `fetchLater` to the uncovered host, each shown
+   not reaching it at the server.
+5. **TFP-287 comes first (owner decision, 2026-11-14).** It's built and
+   verified before TFP-218, so the guard has the full stub from the start.
+6. **TFP-221's comparison base is today's runs, not Phase 39's.** Since
+   Phase 39 the browser (Chromium 151), the guard and the template have
+   moved. "Unchanged with the switch off" is measured against runs of
+   `main` taken just before TFP-219 lands, on both local Toolshop copies.
+   For reference, Action Gate on `f5b8e5c` gave clean 470 / 46 failed / 18
+   not run and with-bugs 481 / 84 / 20. TFP-221 is a measurement session:
+   ask the owner first, and batch it overnight (the register's standing
+   rules).
+7. **Still true:** today's `ACTIVE_GATE_REASON` ("not built yet"),
+   `closedGates()` in `src/lib/run/test-gates.ts`, and the confirmation
+   stub `src/lib/run/ownership.ts` that `hostLimitsFor` reads in the
+   executor (TFP-157). TFP-220 replaces the stub. Acceptance Criterion 6's
+   template difference is measured against the current
+   `TEMPLATE_BASELINE` (`0fe8ffe`).
+
 ## Context
 
 - **Phase 35 Decision 8 (2026-09-30)** decided the confirmation, before any

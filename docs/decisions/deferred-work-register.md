@@ -51,6 +51,10 @@ without renumbering the items below, which the tables' Order columns cite).
   Phase 43.
 
 2. **Phase 43 (D8): the ownership confirmation, once per site.**
+   - **Before it: TFP-287** (owner decision, 2026-11-14), the read-only
+     guard's dormant wrapper, so the covered-host guard is built on it.
+     The record was reviewed against `main` on 2026-11-14; see its
+     "Review before building" section.
    - Saved with the site: exact hosts, contact email, 90-day expiry,
      active and load ticks.
    - It lifts Phase 39's caps.
