@@ -1745,6 +1745,17 @@ Moved word for word from [`docs/test-plan/GEN.md`](../test-plan/GEN.md) by TFP-2
     500-line limit.
   - The template check against `0fe8ffe` is unchanged from before: 8 of
     172 differ, each only by the helper and the wrap lines.
+- **Verified (planning session, 2026-11-15).** The template change is
+  accepted (the owner): the guard helper and the `tfReadOnlyWrap` line
+  only. `TEMPLATE_BASELINE` moves to `7ba7399`.
+- **Accepted limits (owner, 2026-11-15).** Both need a page that targets
+  the guard's own internals:
+  - The page can replace the `__tfGuardRequest` and `__tfGuardBreach`
+    bindings. A request the guard stops is still stopped, but it goes
+    unreported.
+  - If the page calls `__tfGuardArm` first, the guard's form listener
+    is never added in that frame. A GET form submission there goes
+    unreported. POSTs are still stopped and reported, by the route.
 - **Phase:** None
 - **Priority:** P2
 - **Suggested labels:** `bug`, `security`
