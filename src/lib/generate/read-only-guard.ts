@@ -58,6 +58,14 @@
  * navigates only inside the guard needs no call (the guard's own init
  * script wraps each new document, switched on), and a frame without the
  * wrappers when the guard arms gets them switched on, as TFP-284's stub did.
+ * Owner rulings, 2026-11-15, from the ticket's review: a Request made in
+ * another frame isn't an instanceof this frame's Request, so its method,
+ * keepalive and url are read from any Request-like object; and the armed
+ * flag is the wrappers' own, so a page can't switch the guard off: it
+ * reaches only `__tfGuardArm`, a one-way switch it can't replace. A fresh
+ * about:blank iframe's fetch is the wrapper too (measured: Playwright runs
+ * init scripts there). Not covered: a fetchLater the page queues while it
+ * loads, before the guard arms (known limitation 12).
  *
  * Generated code, kept as a raw string like the passive security helpers, so
  * it reaches the generated file exactly as written here.
@@ -91,10 +99,14 @@ const TF_BEACON_PATHS = ['/cdn-cgi/rum'];
 // what a page saves at load is the wrapper, so the guard reaches it too.
 const tfGuardFrame = (arm: boolean) => {
   type Later = (input: RequestInfo | URL, init?: RequestInit) => { activated: boolean };
-  const scope = window as unknown as { __tfGuardBreach?: (what: string) => void; __tfGuardRequest?: (method: string, url: string, type: string) => void; __tfGuard?: { armed: boolean }; fetchLater?: Later };
-  if (!scope.__tfGuard) {
-    const state = { armed: false };
-    Object.defineProperty(scope, '__tfGuard', { value: state });
+  const scope = window as unknown as { __tfGuardBreach?: (what: string) => void; __tfGuardRequest?: (method: string, url: string, type: string) => void; __tfGuardArm?: () => boolean; fetchLater?: Later };
+  if (!scope.__tfGuardArm) {
+    // The armed flag is the wrappers' own: the page reaches only a one-way switch it can't replace or remove.
+    let armed = false;
+    Object.defineProperty(scope, '__tfGuardArm', { value: () => (armed ? false : (armed = true)) });
+    const state = { get armed() { return armed; } };
+    // A Request from any frame: another frame's Request isn't an instanceof this one's, so it is read by its shape.
+    const requestOf = (input: RequestInfo | URL) => (input && typeof input === 'object' && typeof (input as Request).method === 'string' && typeof (input as Request).url === 'string' ? (input as Request) : null);
     const safe = (method: string) => ['GET', 'HEAD', 'QUERY'].includes(method);
     const stopped = (method: string, url: string, type: string) => scope.__tfGuardRequest?.(method, new URL(url, location.href).href, type);
     const beacon = Navigator.prototype.sendBeacon;
@@ -105,7 +117,7 @@ const tfGuardFrame = (arm: boolean) => {
     };
     const send = window.fetch;
     window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      const request = input instanceof Request ? input : null;
+      const request = requestOf(input);
       const method = String(init?.method ?? request?.method ?? 'GET').toUpperCase();
       if (state.armed && (init?.keepalive ?? request?.keepalive) && !safe(method)) {
         stopped(method, request ? request.url : String(input), 'fetch');
@@ -115,15 +127,14 @@ const tfGuardFrame = (arm: boolean) => {
     };
     const later = scope.fetchLater;
     if (later) scope.fetchLater = (input: RequestInfo | URL, init?: RequestInit) => {
-      const request = input instanceof Request ? input : null;
+      const request = requestOf(input);
       const method = String(init?.method ?? request?.method ?? 'GET').toUpperCase();
       if (!state.armed || safe(method)) return later.call(window, input, init);
       stopped(method, request ? request.url : String(input), 'fetchLater');
       return { activated: false };
     };
   }
-  if (!arm || scope.__tfGuard!.armed) return;
-  scope.__tfGuard!.armed = true;
+  if (!arm || !scope.__tfGuardArm!()) return;
   const name = (form: HTMLFormElement) => {
     const label = form.getAttribute('aria-label') || form.id || form.getAttribute('name') || '';
     const method = (form.getAttribute('method') || 'get').toUpperCase();
