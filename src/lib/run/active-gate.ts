@@ -16,7 +16,6 @@ import { ACTIVE_ENV_VAR, ACTIVE_GATE_ENV_VAR, ACTIVE_GATE_OPEN } from "@/lib/run
  * When the gate is closed the run still runs (Decision 8): each active test is Not run with the reason, which says what
  * to do. Nothing prompts mid-run.
  */
-export { ACTIVE_ENV_VAR, ACTIVE_GATE_ENV_VAR, ACTIVE_GATE_OPEN, ACTIVE_GATE_UNSET_REASON } from "@/lib/run/active-gate-names";
 
 export type ActiveGateClosedBy = "not-asked" | ConfirmationStatus | "host-not-covered" | "no-active-tick" | "no-host";
 
