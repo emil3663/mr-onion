@@ -4,6 +4,7 @@ import { groupPagesByAddress } from "@/lib/selection/page-types";
 import type { SiteSuiteRecord } from "@/lib/report/types";
 import { hashOf, loadSiteSuite, saveSiteSuite, unitFileName, type SiteSuiteIdentity, type SiteSuiteInputs, type SiteSuiteManifest, type StoredType, type StoredUnit } from "./store";
 import { READ_ONLY_GUARD_HELPER } from "@/lib/generate/read-only-guard";
+import { ACTIVE_GUARD_HELPER } from "@/lib/generate/active-guard";
 import { ACTIVE_GATE_SKIP } from "@/lib/run/test-gates";
 import { escapeForSingleQuotedString } from "@/lib/generate/mock/format";
 import ts from "typescript";
@@ -73,14 +74,20 @@ function sameType(before: StoredType | undefined, now: StoredType | undefined) {
 }
 
 /**
- * Phase 43 (TFP-219): the static skip every active test had before the active gate could open. A test Mr Onion wrote
- * with it, unedited and reused, gets today's run-time check, so a site suite saved before TFP-219 runs its payload test
- * when the gate is open. A hand-edited test is kept as the person left it, this line too.
+ * Phase 43: the static skip every active test had before the active gate could open (0.4.0's saved suites).
  */
 const OLD_ACTIVE_GATE_SKIP = "test.skip(true, 'attack-shaped input: needs the ownership confirmation, not built yet');";
 
-function withCurrentActiveGate(source: string): string {
-    return source.split(OLD_ACTIVE_GATE_SKIP).join(ACTIVE_GATE_SKIP);
+/**
+ * TFP-220 (Decision 9): an active test Mr Onion wrote before the covered-host guard (the old static skip, or TFP-219's
+ * run-time check alone) isn't reused, even unedited: the fresh test is, which sends its input under the guard. TFP-219
+ * upgraded the old skip to the run-time check in place, which would have run 0.4.0's payload tests unguarded with
+ * the gate open. A hand-edited test is still kept as the person left it: one with the old skip is never run, and
+ * TFP-219's check could only have been saved from `main` between TFP-219 and TFP-220, never from a release (Gate A
+ * ruling 5).
+ */
+function unguardedActiveTest(source: string): boolean {
+    return (source.includes(OLD_ACTIVE_GATE_SKIP) || source.includes(ACTIVE_GATE_SKIP)) && !source.includes("tfActiveGuarded(");
 }
 
 export interface SiteSuiteResult {
@@ -129,8 +136,8 @@ export async function applySiteSuite(fresh: string, profile: ContentProfile | nu
             continue;
         }
         const written = withId(unit.source, unit.id);
-        if (stored && stored.type === type && unchanged(type) && saved!.sources.has(stored.unit)) {
-            replacements.push({ start: unit.start, end: unit.end, text: withId(withCurrentActiveGate(saved!.sources.get(stored.unit)!), unit.id) });
+        if (stored && stored.type === type && unchanged(type) && saved!.sources.has(stored.unit) && !unguardedActiveTest(saved!.sources.get(stored.unit)!)) {
+            replacements.push({ start: unit.start, end: unit.end, text: withId(saved!.sources.get(stored.unit)!, unit.id) });
             kept.push(stored);
             counts.reused++;
             continue;
@@ -227,18 +234,25 @@ export function appendToDescribes(code: string, appended: Map<string, string[]>)
  * a Standard run (found by TFP-203's evidence test). So: a top-level declaration covers every call; otherwise each
  * top-level statement (a describe, a test) that calls it must declare its own.
  */
-function guardOutOfReach(code: string): boolean {
+function guardOutOfReach(code: string, guard: string): boolean {
     const source = ts.createSourceFile("suite.spec.ts", code, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
-    const declares = (node: ts.Node) => ts.isFunctionDeclaration(node) && node.name?.text === "tfReadOnlyGuarded";
+    const declares = (node: ts.Node) => ts.isFunctionDeclaration(node) && node.name?.text === guard;
     if (source.statements.some(declares)) return false;
     const has = (node: ts.Node, found: (inner: ts.Node) => boolean): boolean => found(node) || (ts.forEachChild(node, (child) => has(child, found) || undefined) ?? false);
-    const calls = (node: ts.Node) => ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "tfReadOnlyGuarded";
+    const calls = (node: ts.Node) => ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === guard;
     return source.statements.some((statement) => has(statement, calls) && !has(statement, declares));
 }
 
-/** The request guard's helper, before the first test, when a test calls it out of reach of any copy (shared with TFP-204). */
+/**
+ * Each guard's helper, before the first test, when a test calls it out of reach of any copy (shared with TFP-204): the
+ * request guard's, and TFP-220's covered-host guard's, for a kept active test whose suite no longer writes one.
+ */
 export function withGuardHelper(code: string): string {
-    if (!code.includes("tfReadOnlyGuarded(") || !guardOutOfReach(code)) return code;
-    const firstTest = code.search(/^(test\.describe\(|test\(|\/\/ Kept from the site suite|\/\/ Phase 42 \(TFP-204\))/m);
-    return firstTest > 0 ? `${code.slice(0, firstTest)}${READ_ONLY_GUARD_HELPER}\n\n${code.slice(firstTest)}` : `${code}\n${READ_ONLY_GUARD_HELPER}\n`;
+    let result = code;
+    for (const [guard, helper] of [["tfReadOnlyGuarded", READ_ONLY_GUARD_HELPER], ["tfActiveGuarded", ACTIVE_GUARD_HELPER]] as const) {
+        if (!result.includes(`${guard}(`) || !guardOutOfReach(result, guard)) continue;
+        const firstTest = result.search(/^(test\.describe\(|test\(|\/\/ Kept from the site suite|\/\/ Phase 42 \(TFP-204\))/m);
+        result = firstTest > 0 ? `${result.slice(0, firstTest)}${helper}\n\n${result.slice(firstTest)}` : `${result}\n${helper}\n`;
+    }
+    return result;
 }

@@ -224,7 +224,9 @@ async function runPipeline(config: CliConfig, log: Log, baseline: Baseline | nul
     log(`Running ${practices.join(", ")} (${config.runMode.kind}${config.interactive ? ", interactive on" : ""}) ...`);
     let started;
     try {
-        started = await startRunJob(code, practices, config.auditMode, config.url, [], [], description, normalizeContentProfile(profile), config.interactive, config.login, generation, config.runMode);
+        // Phase 43 review item 3: a CLI run can't ask for active tests yet. A confirmation in its data folder lifts the
+        // caps, and the active tests are Not run, "not available in CI yet (TFP-249)".
+        started = await startRunJob(code, practices, config.auditMode, config.url, [], [], description, normalizeContentProfile(profile), config.interactive, config.login, generation, config.runMode, "ci");
     } catch (error) {
         if (error instanceof RunLoginError) throw new CouldNotRun(error.message);
         throw error;

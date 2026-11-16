@@ -11,9 +11,9 @@ saved with the site and used by every later run, so you aren't asked again on
 each run. It is your statement: Mr Onion records it and can't check it.
 
 > **Status (Phase 43):** the confirmation can be saved, read and withdrawn
-> through the API below (TFP-218). Since TFP-219 it opens the active gate,
-> as [Running active tests](#running-active-tests) says. The lifted request
-> limits come in TFP-220; until then a confirmed remote host is still capped.
+> through the API below (TFP-218). It opens the active gate (TFP-219), as
+> [Running active tests](#running-active-tests) says, and lifts the request
+> limits on the hosts it covers (TFP-220), in the app and in CI.
 
 ---
 
@@ -36,6 +36,21 @@ host, or tick active tests. The run's output and its report say whether the
 gate was open, and the report names the confirmation the run used. It shows
 the hosts, the basis, who confirmed it and when, the expiry and the ticks,
 but never the contact email.
+
+### What an active test may reach
+
+An active test sends its input only to the hosts the gate covers. That is
+the target host when it is local, plus every host of the site's valid
+confirmation with the active tick. Anything it would send elsewhere is
+stopped before it leaves the browser: through a form's `action`, a
+redirect (each hop is checked), a popup, or a page's own beacon,
+`keepalive` fetch or `fetchLater`. A navigation, a redirect, or a write
+(anything but GET, HEAD and QUERY) to another host fails the test as a
+*covered-host guard breach*, naming the host. So if your site posts a form
+to a separate API or payment host, add that host to the confirmation, or
+the test fails there. A read from another host, such as an image or a font,
+is stopped and noted, not failed. The guard can't see a service worker's
+own requests or a WebSocket (known limitation 13).
 
 A test the local model wrote for the security area is never run, gate open
 or not. Untrusted, model-written attack code against a real site is a
@@ -87,8 +102,8 @@ customer subdomain.
 - **Not the interactive gate.** Interactive tests (forms that submit) are
   turned on per run, as before, with no confirmation.
 
-Local hosts (`localhost`, `127.0.0.1`, `[::1]`, `*.localhost`, `*.test`) never
-need a confirmation.
+Local hosts never need a confirmation: `localhost`, `*.localhost`, `*.test`,
+`[::1]`, `0.0.0.0` and any `127.x.x.x` address, all of them this machine.
 
 ---
 

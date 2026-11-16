@@ -50,6 +50,7 @@ commit. Keep this file short: every line here should prevent a real
 mistake. Ticket-specific rulings stay in the decision records.
 
 - "Locked" alone doesn't confirm a record's **[for Emil]** lines: ask, and record only what the owner confirms.
+- Before committing with other work in the tree, check `git diff --cached --stat`: a staged `git rm` rides along (`68b2ce6`).
 
 ## Before reporting a ticket done
 

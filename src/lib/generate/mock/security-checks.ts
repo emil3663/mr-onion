@@ -2,6 +2,7 @@ import { ACTIVE_GATE_SKIP, gateDetails } from "@/lib/run/test-gates";
 import { escapeForSingleQuotedString } from "./format";
 import { checkDetails, passiveSecurityPageTests, passiveSecurityRunTests, PROBE_PAGE } from "../comprehensive-security";
 import { PASSIVE_SECURITY_HELPERS } from "../comprehensive-security-helpers";
+import { ACTIVE_GUARD_HELPER } from "../active-guard";
 import { inspectedPagePaths } from "./suite";
 import { discoverForms, fieldLocator, fieldName, submitButton, type DiscoveredForm } from "./forms";
 import type { ActionableElementDetail, ContentProfile } from "./types";
@@ -83,15 +84,17 @@ function payloadTest(form: PayloadForm) {
     const title = escapeForSingleQuotedString(`script-shaped input is not executed: ${form.fields.map(fieldName).join(", ")} on ${form.path}`);
     const submit = submitButton(form);
     const fill = [
-        ...form.fields.map((field) => `    await ${fieldLocator(field)}.fill(payload);`),
-        ...form.dummyFields.map((field) => `    await ${fieldLocator(field)}.fill('${escapeForSingleQuotedString(DUMMY_VALUES[field.locator.inputType])}');`),
+        ...form.fields.map((field) => `      await ${fieldLocator(field)}.fill(payload);`),
+        ...form.dummyFields.map((field) => `      await ${fieldLocator(field)}.fill('${escapeForSingleQuotedString(DUMMY_VALUES[field.locator.inputType])}');`),
     ].join("\n");
     const submitStep = submit
         ? `await form.getByRole('button', { name: '${escapeForSingleQuotedString(submit.text || submit.locator.name)}' }).first().click();`
         : `await form.evaluate((el) => (el as HTMLFormElement).requestSubmit());`;
 
     // Phase 38 Decisions 3 and 6: attack-shaped input is the active gate. Phase 43 (TFP-219, Decision 10): it runs
-    // when the run's gate is open, and is otherwise Not run with the gate's reason, checked at run time.
+    // when the run's gate is open, and is otherwise Not run with the gate's reason, checked at run time. TFP-220
+    // (Decision 9): from typing the payload to the result page it runs under the covered-host guard, so its input
+    // reaches only the hosts the gate covers. The page loads before it, unjudged, as a read-only test's does.
     return `  test('${title}', ${gateDetails("active")}, async ({ page }) => {
     ${ACTIVE_GATE_SKIP}
 
@@ -101,27 +104,30 @@ function payloadTest(form: PayloadForm) {
       dialogs.push(dialog.message());
       await dialog.dismiss();
     });
+    await tfActiveWrap(page);
     await page.goto('${path}', { waitUntil: 'domcontentloaded' });
+    await tfActiveGuarded(page, async () => {
 ${fill}
-    const form = ${fieldLocator(form.fields[0])}.locator('xpath=ancestor::form').first();
+      const form = ${fieldLocator(form.fields[0])}.locator('xpath=ancestor::form').first();
 
-    // If the browser's own validation would block the submit, nothing gets
-    // tested - say so and skip, rather than pass having checked nothing.
-    const invalid = await form.evaluate((el) =>
-      Array.from((el as HTMLFormElement).elements)
-        .filter((field) => 'checkValidity' in field && !(field as HTMLInputElement).checkValidity())
-        .map((field) => (field as HTMLInputElement).name || (field as HTMLInputElement).id || field.tagName.toLowerCase())
-    );
-    test.skip(invalid.length > 0, 'the form on ${path} would not submit (browser validation rejects: ' + invalid.join(', ') + '), so the payload could not be tested');
+      // If the browser's own validation would block the submit, nothing gets
+      // tested - say so and skip, rather than pass having checked nothing.
+      const invalid = await form.evaluate((el) =>
+        Array.from((el as HTMLFormElement).elements)
+          .filter((field) => 'checkValidity' in field && !(field as HTMLInputElement).checkValidity())
+          .map((field) => (field as HTMLInputElement).name || (field as HTMLInputElement).id || field.tagName.toLowerCase())
+      );
+      test.skip(invalid.length > 0, 'the form on ${path} would not submit (browser validation rejects: ' + invalid.join(', ') + '), so the payload could not be tested');
 
-    const submitted = page
-      .waitForRequest((request) => request.isNavigationRequest() || request.method() !== 'GET', { timeout: 5000 })
-      .then(() => true)
-      .catch(() => false);
-    ${submitStep}
-    test.skip(!(await submitted), 'submitting the form on ${path} sent no request, so the payload never reached the site');
-    await page.waitForLoadState('load').catch(() => {});
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+      const submitted = page
+        .waitForRequest((request) => request.isNavigationRequest() || request.method() !== 'GET', { timeout: 5000 })
+        .then(() => true)
+        .catch(() => false);
+      ${submitStep}
+      test.skip(!(await submitted), 'submitting the form on ${path} sent no request, so the payload never reached the site');
+      await page.waitForLoadState('load').catch(() => {});
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    });
 
     const executed = await page.evaluate(() => (window as unknown as { __mrOnionXss?: number }).__mrOnionXss ?? 0);
     expect(
@@ -153,10 +159,11 @@ export function buildSecurityChecks(baseUrl: string, contentProfile: ContentProf
         ...(isHttps ? [] : ["This target is not HTTPS by default, so deeper transport-security validation should be handled outside this browser suite."]),
         "Security: the passive checks are the Comprehensive run's own, on every inspected page, plus one request to a page that cannot exist. Missing or weak headers, cookie flags and software versions are findings and do not fail a test; a password exposed to plain HTTP or in a URL, an error page showing a stack trace or a server path, and an executed script payload do.",
         forms.length > 0
-            ? "Security: the script-payload tests send attack-shaped input, so they are not run until the site's ownership confirmation exists (not built yet)."
+            ? "Security: the script-payload tests send attack-shaped input, so they run only when the run turns active tests on, on a local host or one the site's ownership confirmation covers with the active tick, and their input reaches only the hosts it covers."
             : contentProfile
               ? "Security: no form with a text field was found on the inspected pages, so no script-payload test was generated."
               : "Security: no page inspection data, so no form was found for a script-payload test. Run introspection first.",
     ];
-    return { tests, notes, preamble: PASSIVE_SECURITY_HELPERS };
+    // TFP-220: the covered-host guard's helper, beside the passive checks', when there is a payload test to call it.
+    return { tests, notes, preamble: forms.length > 0 ? `${PASSIVE_SECURITY_HELPERS}\n\n${ACTIVE_GUARD_HELPER}` : PASSIVE_SECURITY_HELPERS };
 }

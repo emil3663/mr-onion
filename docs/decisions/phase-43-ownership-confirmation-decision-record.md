@@ -513,6 +513,110 @@ Each of these has a line in `deferred-work-register.md`.
 
 ### TFP-220 — Active tests reach only covered hosts; the caps come from the confirmation
 
+- **Status:** Built (2026-11-16). Stopped for independent verification.
+  - **The covered-host guard:** `src/lib/generate/active-guard.ts`. The
+    payload test types its input and submits under `tfActiveGuarded`, on
+    the test's browser context, so a popup is covered too. The run gives
+    its tests `MRONION_ACTIVE_HOSTS`, always set by the executor, never
+    inherited. With the gate open, that is the target host when it is
+    local and every host of a valid confirmation with the active tick.
+  - **Measured before building it (Chromium 151, Playwright 1.62.1, at
+    the server):** the route alone stops a form posting to another host,
+    but not a 307 or 302 from the covered host (the 307 carried the
+    form's body), nor two hops (covered, covered, uncovered), nor
+    `fetchLater`, which is never routed. A redirect's later hops aren't
+    routed at all, and fulfilling a 3xx lets the browser follow it
+    unrouted. So the guard sends each covered request itself with
+    redirects off, checks every hop's `Location`, and follows it. As
+    the read-only guard does (TFP-287), the page's `sendBeacon`,
+    keepalive `fetch` and `fetchLater` are wrapped dormant before the
+    first navigation and stopped once the guard arms.
+  - **The caps:** TFP-157's stub (`src/lib/run/ownership.ts`) is gone. The
+    executor reads the site's confirmation once, for the caps and the
+    gate. A valid one covering the host lifts the caps, whatever its
+    ticks (Decision 3).
+  - **The CLI (review item 3):** it reads the confirmation from its data
+    folder, and asks for no active tests. Its active tests are Not run,
+    "active test: not available in CI yet (TFP-249)".
+  - **Saved suites:** an unedited saved active test without the guard is
+    regenerated, not reused. This replaces TFP-219's in-place upgrade of
+    0.4.0's static skip, which would have run 0.4.0's payload tests
+    unguarded with the gate open. A hand-edited one is kept.
+  - **Docs and cases:** RUN-66 to RUN-69, known limitation 13,
+    `docs/SITE_OWNERSHIP.md` (what an active test may reach; Gate A
+    ruling 3's local hosts), and `docs/CI_INTEGRATION.md` (carrying a
+    confirmation in `data-dir`).
+  - **Also fixed here:** the security suite's note still said the
+    payload tests wait for a confirmation "not built yet".
+- **Built against the record, as Claude Code read it.** Four choices for
+  the owner to keep or change:
+  - **What is a breach.** Decision 9 says every request to an uncovered
+    host is aborted and fails the test. Here every one is aborted, so
+    nothing reaches the host, but only a navigation, a redirect, or a
+    write (any method but GET, HEAD and QUERY) fails the test. A read
+    (an image, a script, a font) and a beacon are noted, as TFP-199 notes
+    the read-only guard's beacons. Failing on every read would fail the
+    payload test on any site whose result page loads a third-party font.
+    A site's analytics that POSTs by `fetch` to a third party after the
+    submit is still a breach; TFP-221 will show whether that happens on
+    the Toolshop copies.
+  - **A local target covers itself only**, by exact host name, not every
+    local host. `localhost` and `127.0.0.1` are different hosts here.
+    Both local Toolshop copies use `localhost` for the pages and the API.
+  - **A redirect inside the covered hosts is followed by the guard**, so
+    the page's address stays the one the form posted to, with the final
+    response's content. Playwright documents that `route.fetch` can't
+    change a request's scheme, so a covered redirect from `http` to
+    `https` should fail the test as one the guard couldn't follow. That
+    is read from the documentation, not measured.
+  - **Beacons, keepalive fetches and `fetchLater` to a covered host are
+    stopped too**, and noted: the guard can't follow their redirects.
+- **Found by the fresh-context review, fixed before commit, each red
+  first:**
+  - A covered image that redirects to an uncovered host (an avatar, a CDN)
+    failed the test as a breach. It is now judged as the request it would
+    become: a read, stopped and noted.
+  - A frame loaded from an uncovered host (a captcha's challenge, an
+    embedded video) failed the test as a navigation. Only a page's own
+    navigation, or a popup's, is now a breach. A popup's first navigation
+    has no frame to read yet, so an unknown frame counts as a page's.
+  - The review also found that `68b2ce6`, the commit marking TFP-219 done,
+    deleted TFP-157's stub by mistake: a staged deletion from this work went
+    with it, and `main` didn't build. `91a627e` restored it on `main`.
+- **Raised by the review, left for the owner** (none sends anything to an
+  uncovered host):
+  - **A third-party write is a breach, a beacon isn't.** Sentry's
+    transport (a keepalive POST) or an analytics POST to another host
+    during the payload test fails it on every run. The tester can't fix
+    that by confirming the third party's host. TFP-221 will show whether
+    the Toolshop copies do it.
+  - **A stopped third-party script can make the payload test pass
+    falsely.** If the result page needs a script from an uncovered host
+    to render the input, the guard stops it. The payload is never
+    rendered, and the test passes with only a note. A stricter choice:
+    Not run, "couldn't be judged", whenever an uncovered script is stopped.
+  - **A redirect the guard follows is fulfilled at the original
+    address.** The page's URL, relative links and history stay on the
+    address the form posted to. A redirect between two covered hosts
+    shows the second host's page under the first's origin, with its
+    cookies. Headers may be forwarded to the second host (not checked).
+  - **Streaming responses on a covered host** (server-sent events, long
+    polls) are buffered by `route.fetch`, so such a request waits until
+    it times out (from how `route.fetch` works, not measured).
+  - **Hosts match by name, not port.** On a local target, a form posting
+    to another port on the same host is allowed through: another service
+    on this machine, such as a dev server. Matching ports would stop
+    both local Toolshop copies, whose pages (`localhost:4200`) post to
+    their API (`localhost:8091`).
+- **The template changes again**, as the guard is in the generated test.
+  Against `acaf56f`, 2 of 172 outputs differ: the two security suites
+  with page data (fast and deep), each 556 to 683 lines. The guard's
+  helper is added before the payload tests, the note's wording is
+  corrected, and the payload test's body, from typing to the result page,
+  moves inside `tfActiveGuarded` with `tfActiveWrap` before its
+  navigation. `TEMPLATE_BASELINE` moves in its own commit once the owner
+  accepts it.
+
 - **Phase:** 43 · **Priority:** P1 · **Labels:** `enhancement`, `security`, `run`
 - **Problem it solves:**
   - attack-shaped input could reach an unconfirmed host through a redirect

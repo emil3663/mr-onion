@@ -175,3 +175,36 @@ test("in real runs: the payload test runs only with the switch on and the host c
     assert.equal(localOff.payload.status, "Not run");
     assert.match(localOff.payload.skipReason ?? "", /^active test: this run didn't turn active tests on$/);
 });
+
+/**
+ * TFP-220 (Decision 9, Acceptance Criterion 3): the generated payload test, in real runs through the executor with the
+ * gate open on a local host (127.0.0.1), on a site whose form sends its input to an uncovered host (localhost, on this
+ * machine, recording what it gets): by the form's action, and by a 307 from the covered host. Each run's payload test
+ * fails as a covered-host guard breach naming the host, and the uncovered host gets nothing.
+ */
+test("in real runs: the payload test's submit to an uncovered host, by a form's action or a redirect, fails as a covered-host guard breach naming the host, and nothing reaches it (TFP-220)", { skip: needsChromium, timeout: 600_000 }, async () => {
+    const reached: string[] = [];
+    const elsewhere = createServer((req, res) => {
+        reached.push(`${req.method} ${req.url}`);
+        res.writeHead(200, { "content-type": "text/html" }).end(html("<h1>Collected</h1>"));
+    });
+    servers.push(elsewhere);
+    await new Promise<void>((resolve) => elsewhere.listen(0, "localhost", resolve));
+    const uncovered = `http://localhost:${(elsewhere.address() as AddressInfo).port}`;
+    const leaky = async (action: string, redirect: boolean) => {
+        const server = createServer((req, res) => {
+            if (req.method === "POST" && redirect) return res.writeHead(307, { location: `${uncovered}/collect` }).end();
+            res.writeHead(200, { "content-type": "text/html" }).end(html(`<h1>Notes</h1><form method="post" action="${action}"><label for="note">Note</label><input id="note" name="note" type="text"><button type="submit">Save</button></form>`));
+        });
+        servers.push(server);
+        await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+        return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    };
+    for (const [label, origin] of [["the form's action", await leaky(`${uncovered}/collect`, false)], ["a 307", await leaky("/", true)]] as const) {
+        const result = await run(origin, true);
+        assert.match(result.job.outputChunks.join(""), /Active gate: open \(a local host/, label);
+        assert.equal(result.payload.status, "Failed", `${label}: ${result.payload.status} ${result.payload.skipReason ?? ""}`);
+        assert.match(result.payload.rawMessage ?? "", /covered-host guard breach, stopped: .*to localhost.*\(an active test reaches only the hosts the site's ownership confirmation covers: 127\.0\.0\.1\)/, label);
+    }
+    assert.deepEqual(reached, [], "no request reached the uncovered host");
+});

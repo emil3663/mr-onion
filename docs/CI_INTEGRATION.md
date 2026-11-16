@@ -135,6 +135,26 @@ If you'd rather review the suite, you can commit the data folder to your
 repository instead. Then every run's changes become a commit someone has
 to make.
 
+### A site you own: carrying its confirmation
+
+A site's ownership confirmation ([`SITE_OWNERSHIP.md`](SITE_OWNERSHIP.md))
+lives in the data folder, at `site-suites/<site>/ownership.json`. The CLI
+and the action read it from `data-dir`, as the app reads it from its own.
+While it is valid, a run against a host it covers isn't held to the limits
+for remote sites (at most 3 workers sharing 5 requests a second). The run's
+`Host limits:` line says which applies.
+
+In CI that is all it does. Active tests stay Not run, "not available in CI
+yet (TFP-249)", whatever the confirmation's ticks say.
+
+To carry one, confirm the site with the app on your own machine. Then copy
+its `ownership.json` into the folder your job uses as `data-dir`, under
+the same site folder: `https_shop.example.com` for `https://shop.example.com`,
+or `http_localhost_3000` for `http://localhost:3000`. It holds the name and
+contact email of whoever confirmed it, so if you commit the data folder,
+anyone who can read the repository can read them. An expired or withdrawn
+confirmation counts as none, and the run is limited again.
+
 ## Logins and secrets
 
 Credentials come only from your pipeline's secrets, as environment
@@ -199,8 +219,11 @@ GitHub hides it only if it came from a secret.
   off in CI, whatever the site's settings say. Candidates and promoted
   library tests still run, because they are committed code, not model
   calls. (Phase 47 Decision 9)
-- **No active security tests.** Attack-shaped tests need a confirmation
-  that you own the site. CI can't give one yet (Phase 43, then TFP-249).
+- **No active security tests.** Attack-shaped tests need a run that asks
+  for them, on a site you've confirmed you own. A confirmation carried in
+  `data-dir` lifts the request limits, but the CLI and the action can't ask
+  for active tests yet, so each is Not run, "not available in CI yet"
+  (TFP-249).
 - **Interactive tests are opt-in.** Tests that submit forms run only with
   `"interactive": true` in the config file. Use it only against a site
   whose data you can reset.

@@ -22,8 +22,7 @@ import { STANDARD_RUN } from "@/lib/comprehensive/run-mode";
 import { splitSuite } from "@/lib/run/split";
 import { hostLimitsFor } from "@/lib/run/host-limits";
 import { currentVersion } from "@/lib/version";
-import { hasOwnershipConfirmation } from "@/lib/run/ownership";
-import { activeGateEnv, confirmationForRun, decideActiveGate, describeActiveGate } from "@/lib/run/active-gate";
+import { activeGateEnv, confirmationCoversHost, confirmationForRun, decideActiveGate, describeActiveGate, type ActiveRequest } from "@/lib/run/active-gate";
 import { requestCapEnv, startRequestCap, withRequestCap, writeRequestCapModule } from "@/lib/run/request-cap";
 import { markCapStarved } from "@/lib/run/cap-starved";
 import type { RequestCap } from "@/lib/run/request-cap";
@@ -104,8 +103,9 @@ export async function startRunJob(
     login: LoginConfig | null = null,
     generation: GenerationRecord | null = null,
     runMode: RunMode = STANDARD_RUN,
-    // Phase 43 (TFP-219, Decision 4): whether the run asks for active tests. Off unless the request says so.
-    enableActive = false
+    // Phase 43 (TFP-219, Decision 4): whether the run asks for active tests. Off unless the request says so; "ci" for a
+    // CLI run, which can't ask yet (review item 3, TFP-249).
+    enableActive: ActiveRequest = false
 ) {
     const browserProjects = ["chromium"];
     const runSelection = buildRunSelection(code, excludedTestTitles, includedTestTitles);
@@ -119,10 +119,12 @@ export async function startRunJob(
     // alike (replacing Phase 35 Decision 2's one worker and Standard's fixed 4 or 2). The data-changing tests run in the
     // serial group, on one worker, after the rest (TFP-156, Decision 9).
     const units = splitSuite(code);
-    const hostLimits = hostLimitsFor(baseUrl, { ownershipConfirmed: await hasOwnershipConfirmation(baseUrl) });
-    // TFP-219 (Decisions 4, 7 and 8): the active gate, decided once as the run starts, from what it asked for and the
-    // site's confirmation as it is now. The run keeps that copy (Decision 1). A closed gate never stops the run.
-    const activeGate = decideActiveGate(enableActive, baseUrl, await confirmationForRun(baseUrl));
+    // TFP-220 (Decision 3): the site's confirmation, read once as the run starts, gives both the host's row (the caps are
+    // lifted on a host it covers while it is valid, replacing TFP-157's stub) and, with TFP-219 (Decisions 4, 7 and 8),
+    // the active gate. The run keeps that copy (Decision 1). A closed gate never stops the run.
+    const confirmation = await confirmationForRun(baseUrl);
+    const hostLimits = hostLimitsFor(baseUrl, { ownershipConfirmed: confirmationCoversHost(confirmation, baseUrl) });
+    const activeGate = decideActiveGate(enableActive, baseUrl, confirmation);
     const workerCount = hostLimits.workers;
     const estimatedExecutions = estimateTestCount(code) * browserProjects.length;
     // Ruling 5 (decided by ruling 4 amended, 2026-10-28; TFP-264): a capped run's budget is 60 minutes, as the cap,

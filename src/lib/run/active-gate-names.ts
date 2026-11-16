@@ -11,3 +11,9 @@ export const ACTIVE_GATE_OPEN = "open";
 
 /** The reason a generated active test gives when it runs outside a Mr Onion run (no gate setting at all). */
 export const ACTIVE_GATE_UNSET_REASON = "active test: runs only in a Mr Onion run that turns active tests on, on a host the site's ownership confirmation covers";
+
+/**
+ * TFP-220 (Decision 9): the hosts an active test may reach, comma-separated, always set by the executor: with the gate
+ * open, the target host when it is local and every host of a valid confirmation with the active tick; otherwise empty.
+ */
+export const ACTIVE_HOSTS_ENV_VAR = "MRONION_ACTIVE_HOSTS";

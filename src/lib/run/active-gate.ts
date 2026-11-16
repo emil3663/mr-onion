@@ -1,6 +1,6 @@
 import { isLocalDevelopmentHost } from "@/lib/comprehensive/run-mode";
 import { confirmationStatus, loadOwnership, originOf, type ConfirmationStatus, type OwnershipConfirmation } from "@/lib/ownership/confirmation";
-import { ACTIVE_ENV_VAR, ACTIVE_GATE_ENV_VAR, ACTIVE_GATE_OPEN } from "@/lib/run/active-gate-names";
+import { ACTIVE_ENV_VAR, ACTIVE_GATE_ENV_VAR, ACTIVE_GATE_OPEN, ACTIVE_HOSTS_ENV_VAR } from "@/lib/run/active-gate-names";
 
 /**
  * Phase 43 (TFP-219; Decisions 3, 4, 7, 8 and 11; review item 2): whether a run's active gate is open.
@@ -15,9 +15,16 @@ import { ACTIVE_ENV_VAR, ACTIVE_GATE_ENV_VAR, ACTIVE_GATE_OPEN } from "@/lib/run
  *
  * When the gate is closed the run still runs (Decision 8): each active test is Not run with the reason, which says what
  * to do. Nothing prompts mid-run.
+ *
+ * TFP-220 (Decision 9): with the gate open, the run's tests also get `MRONION_ACTIVE_HOSTS`, the hosts an active test
+ * may reach; the covered-host guard (src/lib/generate/active-guard.ts) stops anything else. A CLI run never asks for
+ * active tests (review item 3), and says why: not in CI until TFP-249.
  */
 
-export type ActiveGateClosedBy = "not-asked" | ConfirmationStatus | "host-not-covered" | "no-active-tick" | "no-host";
+export type ActiveGateClosedBy = "not-asked" | "ci" | ConfirmationStatus | "host-not-covered" | "no-active-tick" | "no-host";
+
+/** What a run asked for: active tests or not, or "ci" for a CLI run, which can't ask yet (review item 3, TFP-249). */
+export type ActiveRequest = boolean | "ci";
 
 /**
  * The run's copy of the confirmation as it was when the run started (Decision 1), so a later withdrawal doesn't
@@ -45,6 +52,11 @@ export interface ActiveGate {
     reason: string | null;
     /** The target host was a local host, which needs no confirmation (Decision 7). */
     localHost: boolean;
+    /**
+     * TFP-220 (Decision 9): the hosts an active test may reach, with the gate open: the target host when it is local,
+     * and every host of a valid confirmation with the active tick. Empty when closed.
+     */
+    coveredHosts: string[];
     /** The site's confirmation as the run started, without its contact email; null when it has none. */
     confirmation: RunOwnershipCopy | null;
 }
@@ -73,6 +85,8 @@ export function closedReason(closedBy: ActiveGateClosedBy, host: string, confirm
     switch (closedBy) {
         case "not-asked":
             return "active test: this run didn't turn active tests on";
+        case "ci":
+            return "active test: not available in CI yet (TFP-249)";
         case "missing":
             return `active test: the site has no ownership confirmation; confirm the site (docs/SITE_OWNERSHIP.md) to run active tests on ${host}`;
         case "expired":
@@ -91,21 +105,41 @@ export function closedReason(closedBy: ActiveGateClosedBy, host: string, confirm
 }
 
 /** The gate for a run, from what it asked for and its target host's confirmation, as read when it starts. */
-export function decideActiveGate(requested: boolean, baseUrl: string | undefined, confirmation: OwnershipConfirmation | null, now: Date = new Date()): ActiveGate {
+export function decideActiveGate(request: ActiveRequest, baseUrl: string | undefined, confirmation: OwnershipConfirmation | null, now: Date = new Date()): ActiveGate {
+    const requested = request === true;
     const copy = ownershipCopy(confirmation, now);
-    let host = "";
-    try {
-        host = new URL(baseUrl ?? "").hostname.toLowerCase();
-    } catch { /* no host */ }
+    const host = hostOf(baseUrl);
     const localHost = Boolean(host) && isLocalDevelopmentHost(baseUrl);
-    const closed = (closedBy: ActiveGateClosedBy): ActiveGate => ({ requested, open: false, closedBy, reason: closedReason(closedBy, host, copy), localHost, confirmation: copy });
+    const closed = (closedBy: ActiveGateClosedBy): ActiveGate => ({ requested, open: false, closedBy, reason: closedReason(closedBy, host, copy), localHost, coveredHosts: [], confirmation: copy });
+    // TFP-220 (Decision 9): a valid confirmation with the active tick covers its hosts; a local target covers itself.
+    const confirmed = copy?.status === "valid" && copy.scopes.active ? copy.hosts : [];
+    const open = (): ActiveGate => ({ requested, open: true, closedBy: null, reason: null, localHost, coveredHosts: [...new Set([...(localHost ? [host] : []), ...confirmed])], confirmation: copy });
+    if (request === "ci") return closed("ci");
     if (!requested) return closed("not-asked");
     if (!host) return closed("no-host");
-    if (localHost) return { requested, open: true, closedBy: null, reason: null, localHost, confirmation: copy };
+    if (localHost) return open();
     if (!copy || copy.status !== "valid") return closed(copy?.status ?? "missing");
     if (!copy.hosts.includes(host)) return closed("host-not-covered");
     if (!copy.scopes.active) return closed("no-active-tick");
-    return { requested, open: true, closedBy: null, reason: null, localHost, confirmation: copy };
+    return open();
+}
+
+/** A run's target host as the gate and the caps compare it with a confirmation's hosts: lower case, "" with none. */
+export function hostOf(baseUrl: string | undefined): string {
+    try {
+        return new URL(baseUrl ?? "").hostname.toLowerCase();
+    } catch {
+        return "";
+    }
+}
+
+/**
+ * Phase 39 Decision 10's ownership row, as TFP-220 builds it on the stored confirmation (Decision 3): the caps are
+ * lifted on a host a valid confirmation covers, whatever its ticks. It replaces TFP-157's stub.
+ */
+export function confirmationCoversHost(confirmation: OwnershipConfirmation | null, baseUrl: string | undefined, now: Date = new Date()): boolean {
+    const host = hostOf(baseUrl);
+    return Boolean(host) && confirmation !== null && confirmationStatus(confirmation, now) === "valid" && confirmation.hosts.includes(host);
 }
 
 /** The site's confirmation for a run's target address, read from the data folder; null with no address or none saved. */
@@ -120,7 +154,11 @@ export function describeActiveGate(gate: ActiveGate): string {
     return `closed (${gate.reason})`;
 }
 
-/** The two settings the run's tests get (each also under its old name, by runEnv). */
+/** The three settings the run's tests get (each also under its old name, by runEnv), always set, never inherited. */
 export function activeGateEnv(gate: ActiveGate): Record<string, string> {
-    return { [ACTIVE_ENV_VAR]: gate.requested ? "1" : "0", [ACTIVE_GATE_ENV_VAR]: gate.open ? ACTIVE_GATE_OPEN : gate.reason ?? "closed" };
+    return {
+        [ACTIVE_ENV_VAR]: gate.requested ? "1" : "0",
+        [ACTIVE_GATE_ENV_VAR]: gate.open ? ACTIVE_GATE_OPEN : gate.reason ?? "closed",
+        [ACTIVE_HOSTS_ENV_VAR]: gate.open ? gate.coveredHosts.join(",") : "",
+    };
 }

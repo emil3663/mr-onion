@@ -33,7 +33,7 @@ after(() => rmSync(scratch, { recursive: true, force: true }));
 
 const { starvedReason, waitingWithin, failingStep, markCapStarved, STEP_TIMING_SLACK_MS } = await import("./cap-starved.ts");
 const { REQUEST_CAP_STARVED_ANNOTATION, REQUEST_CAP_WAITS_ANNOTATION } = await import("../report/execution.ts");
-const { setOwnershipLookupForTests } = await import("./ownership.ts");
+const { saveConfirmation, validConfirmation } = await import("../../test-support/ownership.ts");
 const { startRunJob } = await import("./executor.ts");
 const { waitForSavedRun } = await import("../../test-support/saved-run.ts");
 const { chromiumSkipReason } = await import("../../test-support/chromium.ts");
@@ -182,23 +182,19 @@ test("in a real browser: on a capped host, a test the cap holds up past its asse
     });
 });
 
-test("in a real browser: the same test uncapped (the ownership confirmation's stub) passes, with no wait recorded (TFP-264)", { skip: lanSkip }, async () => {
-    setOwnershipLookupForTests((baseUrl) => Boolean(baseUrl?.startsWith(`http://${lanAddress}:`)));
-    try {
-        await withRecordingSite(async (origin) => {
-            const snapshot = await startRunJob(starvedSuite(origin), ["functional"], "fast", origin, [], [], "Check the site.");
-            const job = await finished(snapshot.runId, 300_000);
-            const report = job.result?.report;
-            assert.ok(report, job.result?.output);
-            const [record] = report.execution as ExecutionRecord[];
-            assert.equal(record.status, "Passed", `${record.status}: ${(record.rawMessage ?? "").slice(0, 120)}`);
-            assert.equal(record.requestCapWaitMs, undefined);
-            assert.equal(report.hostLimits?.requestCap, null);
-            assert.ok(!job.outputChunks.join("").includes("starved by the request cap"));
-        });
-    } finally {
-        setOwnershipLookupForTests(null);
-    }
+test("in a real browser: the same test uncapped (a saved ownership confirmation, TFP-220) passes, with no wait recorded (TFP-264)", { skip: lanSkip }, async () => {
+    await withRecordingSite(async (origin) => {
+        saveConfirmation(origin, validConfirmation([lanAddress!]));
+        const snapshot = await startRunJob(starvedSuite(origin), ["functional"], "fast", origin, [], [], "Check the site.");
+        const job = await finished(snapshot.runId, 300_000);
+        const report = job.result?.report;
+        assert.ok(report, job.result?.output);
+        const [record] = report.execution as ExecutionRecord[];
+        assert.equal(record.status, "Passed", `${record.status}: ${(record.rawMessage ?? "").slice(0, 120)}`);
+        assert.equal(record.requestCapWaitMs, undefined);
+        assert.equal(report.hostLimits?.requestCap, null);
+        assert.ok(!job.outputChunks.join("").includes("starved by the request cap"));
+    });
 });
 
 test("in a real browser: on a capped host, a real defect with little waiting stays Failed (TFP-264)", { skip: lanSkip }, async () => {

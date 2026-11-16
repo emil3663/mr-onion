@@ -41,7 +41,9 @@ process.env.MRONION_DATA_DIR = join(scratch, "data");
 
 const { hostLimitsFor, machineWorkerLimit, setMachineLimitForTests, siteDomainOf, countsAgainstCap } = await import("./host-limits.ts");
 const { startRequestCap, withRequestCap, REQUEST_CAP_TOKEN_HEADER, REQUEST_CAP_QUEUED_HEADER } = await import("./request-cap.ts");
-const { setOwnershipLookupForTests } = await import("./ownership.ts");
+const { saveConfirmation, validConfirmation, expiredOverrides, withdrawnOverrides } = await import("../../test-support/ownership.ts");
+const { readFileSync } = await import("node:fs");
+const { runJsonPath } = await import("./persistence.ts");
 const { TIMED_CHECK_TITLES } = await import("../generate/mock/performance-checks.ts");
 const { startRunJob } = await import("./executor.ts");
 const { waitForSavedRun } = await import("../../test-support/saved-run.ts");
@@ -340,23 +342,42 @@ test("in a real browser: a test that fails while its page's requests wait for sl
     });
 });
 
-test("in a real browser: with the ownership confirmation (a stub until Phase 43), the same host's run uses the machine's limit and no cap, and the timed check runs (Acceptance Criteria 6)", { skip: lanSkip }, async () => {
-    setOwnershipLookupForTests((baseUrl) => Boolean(baseUrl?.startsWith(`http://${lanAddress}:`)));
-    try {
-        await withRecordingSite(async (origin, arrivals) => {
-            const snapshot = await startRunJob(suiteFor(origin), ["functional", "performance"], "fast", origin, [], [], "Check the site.");
-            const job = await finished(snapshot.runId, 300_000);
-            const report = job.result?.report;
-            assert.ok(report, job.result?.output);
-            const statuses = Object.fromEntries(report.execution.map((record: ExecutionRecord) => [record.title, record.status]));
-            assert.ok(report.execution.every((record: ExecutionRecord) => record.status === "Passed"), JSON.stringify(statuses));
-            const limits = report.hostLimits;
-            assert.ok(limits, "the run record's host limits");
-            assert.deepEqual([limits.row, limits.workers, limits.requestsPerSecond, limits.ownershipConfirmed, limits.requestCap], ["confirmed", machineWorkerLimit(), null, true, null]);
-            assert.ok(arrivals.length > 0);
-            assert.ok(job.outputChunks.join("").includes("the caps are lifted because the site has a valid ownership confirmation covering this host"));
-        });
-    } finally {
-        setOwnershipLookupForTests(null);
-    }
+/**
+ * TFP-220 (Phase 43 Decision 3, Acceptance Criterion 4): TFP-157's stub is replaced by the site's saved confirmation.
+ * Decision table, one run per column, on the same remote-looking host:
+ *   valid, covering the host, neither tick         -> confirmed: the machine's limit, no cap (the caps need no tick)
+ *   expired / withdrawn / covering another host    -> capped again: at most 3 workers, 5 requests per second
+ * The run record keeps the host's row and the confirmation's copy (Phase 39 Decision 11; Phase 43 Decision 1).
+ */
+test("in a real browser: a valid saved confirmation covering the host, with no tick, lifts the caps, and the timed check runs; expired, withdrawn or covering another host, the same host is capped again (TFP-220, Acceptance Criterion 4)", { skip: lanSkip }, async () => {
+    await withRecordingSite(async (origin, arrivals) => {
+        saveConfirmation(origin, validConfirmation([lanAddress!], { scopes: { active: false, load: false } }));
+        const snapshot = await startRunJob(suiteFor(origin), ["functional", "performance"], "fast", origin, [], [], "Check the site.");
+        const job = await finished(snapshot.runId, 300_000);
+        const report = job.result?.report;
+        assert.ok(report, job.result?.output);
+        const statuses = Object.fromEntries(report.execution.map((record: ExecutionRecord) => [record.title, record.status]));
+        assert.ok(report.execution.every((record: ExecutionRecord) => record.status === "Passed"), JSON.stringify(statuses));
+        const limits = report.hostLimits;
+        assert.ok(limits, "the run record's host limits");
+        assert.deepEqual([limits.row, limits.workers, limits.requestsPerSecond, limits.ownershipConfirmed, limits.requestCap], ["confirmed", machineWorkerLimit(), null, true, null]);
+        assert.ok(arrivals.length > 0);
+        assert.ok(job.outputChunks.join("").includes("the caps are lifted because the site has a valid ownership confirmation covering this host"));
+        const record = JSON.parse(readFileSync(runJsonPath(snapshot.runId), "utf8"));
+        assert.equal(record.result.report.hostLimits.row, "confirmed", "the run record keeps the host's row");
+        assert.deepEqual([record.activeGate.confirmation.status, record.activeGate.confirmation.name, record.activeGate.confirmation.hosts], ["valid", "Tess Tester", [lanAddress]], "and the confirmation's copy");
+
+        const oneTest = "import { test } from '@playwright/test';\n\ntest('the page loads', async ({ page }) => {\n  await page.goto('/');\n});\n";
+        for (const [label, saved] of [["expired", validConfirmation([lanAddress!], expiredOverrides())], ["withdrawn", validConfirmation([lanAddress!], withdrawnOverrides())], ["another host", validConfirmation(["shop.example.com"])]] as const) {
+            saveConfirmation(origin, saved);
+            const run = await startRunJob(oneTest, ["functional"], "fast", origin, [], [], "Check the site.");
+            const capped = await finished(run.runId, 300_000);
+            const cappedLimits = capped.result?.report?.hostLimits;
+            assert.ok(cappedLimits, `${label}: ${capped.result?.output}`);
+            assert.deepEqual([cappedLimits.row, cappedLimits.requestsPerSecond, cappedLimits.ownershipConfirmed], ["capped", 5, false], label);
+            assert.ok(cappedLimits.workers <= 3, label);
+            const cappedRecord = JSON.parse(readFileSync(runJsonPath(run.runId), "utf8"));
+            assert.equal(cappedRecord.activeGate.confirmation.status, label === "another host" ? "valid" : label, `${label}: the run keeps the copy as it was`);
+        }
+    });
 });
