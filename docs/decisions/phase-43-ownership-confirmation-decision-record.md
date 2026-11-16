@@ -449,8 +449,18 @@ Each of these has a line in `deferred-work-register.md`.
 
 ### TFP-219 — The active gate opens on a covered host, by run switch
 
-- **Status:** Built (2026-11-16). Stopped for Gate A's independent
-  verification and the owner's ruling.
+- **Status:** Done 2026-11-16: `acaf56f`, `4d83bef` and `832f4ca`, with
+  `2c50fef` moving `TEMPLATE_BASELINE` to `acaf56f`, on `main` by
+  fast-forward (PR #41). Every check passed on its head `832f4ca`: PR
+  Validation, CodeQL and its alert check, and Release Image. The nightly
+  dispatched on the branch was green on the same commit (run 43839514843),
+  its template check against `acaf56f`. Verified by a planning session at
+  Gate A, which the owner passed (2026-11-16, rulings 1 to 5 below).
+  - **Found by the first nightly on the branch (run 43836726361) and fixed
+    in `832f4ca`:** knip's dead-code job failed on an unused re-export of
+    the gate's four setting names in `active-gate.ts`. PR Validation
+    doesn't run knip.
+- **Built (2026-11-16).**
   - **The gate:** `src/lib/run/active-gate.ts` decides it once, as the run
     starts. The run must ask (`enableActive` in `POST /api/run`; the CLI
     never does), and the target host must be local or covered by the
