@@ -56,7 +56,9 @@ export function buildSummary(
     defects: DefectRecord[],
     duration: number,
     /** Whether the run turned interactive tests on (MRONION_INTERACTIVE=1); off by default, as in the executor. */
-    interactiveEnabled = false
+    interactiveEnabled = false,
+    /** Phase 43 (TFP-219): whether the run's active gate was open; closed by default, as in the executor. */
+    activeOpen = false
 ) {
     const passed = records.filter((record) => record.status === "Passed").length;
     const failed = records.filter((record) => record.status === "Failed").length;
@@ -78,7 +80,7 @@ export function buildSummary(
     // itself for its own reason behind an open gate (e.g. a read-only cookie
     // check with no cookie to check) is not counted. Only when the run's
     // tests declare gates, so older runs don't show zeros.
-    const closed = closedGates(interactiveEnabled);
+    const closed = closedGates(interactiveEnabled, activeOpen);
     const notRunByGate = records.some((record) => record.gate)
         ? Object.fromEntries(TEST_GATES.map((gate) => [gate, closed.includes(gate) ? notRunRecords.filter((record) => record.gate === gate).length : 0])) as Record<TestGate, number>
         : undefined;

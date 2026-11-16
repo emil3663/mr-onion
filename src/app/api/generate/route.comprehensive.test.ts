@@ -91,7 +91,7 @@ test("TFP-135, TFP-146: in a passive security run the model's scenarios are at t
     useOllama();
     const body = await comprehensive("security");
     assert.equal(body.generatedBy, "template+ollama");
-    assert.match(body.code, /test\.describe\('Local model \(mr-onion-qwen7b:latest\)', \{ annotation: \{ type: 'gate', description: 'active' \} \}, \(\) => \{\n {4}test\.skip\(true, 'attack-shaped input: needs the ownership confirmation, not built yet'\);/);
+    assert.match(body.code, /test\.describe\('Local model \(mr-onion-qwen7b:latest\)', \{ annotation: \{ type: 'gate', description: 'active' \} \}, \(\) => \{\n {4}test\.skip\(true, 'model-written active test: not run'\);/);
 });
 
 test("TFP-135: a rejected model suite leaves the template's suite alone, labelled with why", async (t) => {

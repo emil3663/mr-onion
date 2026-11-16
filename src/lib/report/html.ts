@@ -2,6 +2,7 @@ import { buildVersionFooterHtml, escapeReportHtml, formatMilliseconds } from "./
 import { buildFallbackExecutionHtmlMarkup } from "./status";
 import { describePageInspection } from "./page-inspection-text";
 import { describeSiteSuite } from "./site-suite-text";
+import { buildOwnershipHtmlSection } from "./ownership";
 import { formatNotRunByGate, noTestRan } from "./summary";
 import type { RunReport } from "./types";
 import { buildComprehensiveHtmlDocument } from "./comprehensive-html";
@@ -381,6 +382,8 @@ export function buildReportHtmlDocument(report: RunReport, runId: string) {
             <pre style="margin-top:8px">${escapeReportHtml(report.rawOutput)}</pre>
         </details>
         <!-- Phase 40 (TFP-173): page types and the copyable re-run lists, last -->
+        <!-- Phase 43 (TFP-219): the ownership confirmation the run ran under, and its active gate -->
+        ${buildOwnershipHtmlSection(report.ownership)}
         ${buildPageTypesHtmlSection(report.generation?.pageTypes)}
         ${buildCoverageMapHtmlSection(report.coverageMap)}
     </main>

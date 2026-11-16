@@ -288,6 +288,8 @@ export interface RunReport {
     coverageMap?: CoverageMap;
     /** TFP-257: the Mr Onion that ran this, stamped when the run started; absent on runs from before it. */
     producedBy?: import("./produced-by-types").ProducedBy;
+    /** Phase 43 (TFP-219): the run's active gate and its copy of the ownership confirmation; absent on older runs. */
+    ownership?: import("./ownership").RunOwnershipSection;
     /** Phase 39 (TFP-211): where the run's time went; absent on runs from before it, or when the timing reporter wrote nothing. */
     runTiming?: import("@/lib/run/timing").RunTiming;
     /**

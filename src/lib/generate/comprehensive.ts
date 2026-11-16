@@ -10,7 +10,7 @@ import { entryApplies } from "@/lib/library/entries";
 import { escapeForSingleQuotedString } from "./mock/format";
 import { localModelSuiteTitle } from "./gap-fill";
 import { INTERACTIVE_ENV_VAR } from "@/lib/run/interactive";
-import { ACTIVE_GATE_SKIP, gateDetails, type TestGate } from "@/lib/run/test-gates";
+import { gateDetails, MODEL_ACTIVE_SKIP, type TestGate } from "@/lib/run/test-gates";
 import { SUITE_AREA_CODES, SUITE_TITLES } from "./mock/suite";
 import { routeAddedVisits, routePageVisits } from "./page-visits";
 import { shareReadOnlyVisits, type ShareOptions } from "./shared-visits";
@@ -82,8 +82,8 @@ const HELPERS: Record<ComprehensiveArea, string> = {
  * may still submit forms, so they run only with interactive tests on.
  *
  * Phase 38 (TFP-146, owner decision, 2026-10-05): in a security run they sit
- * at the active gate, closed until the ownership confirmation exists, with
- * that gate's reason; elsewhere at the interactive gate (Decision 3).
+ * at the active gate, and are never run there, with their own reason (Phase 43 Decision 11: model-written attack code
+ * against a real site is a separate decision); elsewhere at the interactive gate (Decision 3).
  */
 export function scenarioGate(mode: ComprehensiveRunMode): TestGate {
     return mode.area === "security" ? "active" : "interactive";
@@ -91,7 +91,7 @@ export function scenarioGate(mode: ComprehensiveRunMode): TestGate {
 
 export function scenarioSkip(mode: ComprehensiveRunMode, model: string): string {
     return scenarioGate(mode) === "active"
-        ? ACTIVE_GATE_SKIP
+        ? MODEL_ACTIVE_SKIP
         : `test.skip(process.env.${INTERACTIVE_ENV_VAR} !== '1', '${escapeForSingleQuotedString(`written by the local model (${model}): it may submit forms on the live site, so it runs only when ${INTERACTIVE_ENV_VAR}=1 is set for the run`)}');`;
 }
 

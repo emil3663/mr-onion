@@ -28,7 +28,7 @@ function normalizeTestAuditMode(input: unknown): TestAuditMode {
 }
 
 export async function POST(req: NextRequest) {
-    const { code, selectedPractices, auditMode, baseUrl, excludeTestTitles, includeTestTitles, description, contentProfile, enableInteractive, login, generation, runMode } = await req.json().catch(() => ({}));
+    const { code, selectedPractices, auditMode, baseUrl, excludeTestTitles, includeTestTitles, description, contentProfile, enableInteractive, enableActive, login, generation, runMode } = await req.json().catch(() => ({}));
 
     if (!code || typeof code !== "string") {
         return NextResponse.json({ error: "code is required" }, { status: 400 });
@@ -79,7 +79,9 @@ export async function POST(req: NextRequest) {
             loginConfig,
             // Phase 34 (TFP-119): untrusted input, so only the known shape, capped.
             normalizeGenerationRecord(generation, typeof baseUrl === "string" ? baseUrl : undefined),
-            normalizedRunMode
+            normalizedRunMode,
+            // Phase 43 (TFP-219, Decision 4): active tests only when the request asks for them, as interactive.
+            enableActive === true
         );
     } catch (error) {
         if (error instanceof RunLoginError) {

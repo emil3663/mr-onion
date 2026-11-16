@@ -37,7 +37,9 @@ export function buildReport(
     /** Phase 38: whether the run turned interactive tests on, for the per-gate Not run count. */
     interactiveEnabled = false,
     /** TFP-157 (Decision 11): the host limits' note, for a Comprehensive report's worker line. */
-    hostNote: string | null = null
+    hostNote: string | null = null,
+    /** Phase 43 (TFP-219): whether the run's active gate was open, for the per-gate Not run count. */
+    activeOpen = false
 ): RunReport {
     const allExecution = flattenSuites(report.suites ?? []);
     // Phase 35 (TFP-135, Decision 5): in a Comprehensive run the local
@@ -57,7 +59,7 @@ export function buildReport(
     const coverage = buildDiscoveredCoverageMatrix(selectedPractices, execution, matches);
     // Phase 42 (TFP-192): what each test touches, read from the suite that ran.
     const coverageMap = buildCoverageMap(contentProfile, suiteCode);
-    const summary = buildSummary(execution, defects, report.stats?.duration ?? 0, interactiveEnabled);
+    const summary = buildSummary(execution, defects, report.stats?.duration ?? 0, interactiveEnabled, activeOpen);
     const performance = buildPerformanceReport(execution, report.stats?.duration ?? 0);
     const usability = buildUsabilityReport(execution, defects);
     const seo = buildSeoReport(execution, selectedPractices, baseUrl);

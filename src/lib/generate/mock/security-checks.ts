@@ -90,8 +90,8 @@ function payloadTest(form: PayloadForm) {
         ? `await form.getByRole('button', { name: '${escapeForSingleQuotedString(submit.text || submit.locator.name)}' }).first().click();`
         : `await form.evaluate((el) => (el as HTMLFormElement).requestSubmit());`;
 
-    // Phase 38 Decisions 3 and 6: attack-shaped input is the active gate,
-    // closed until the ownership confirmation exists.
+    // Phase 38 Decisions 3 and 6: attack-shaped input is the active gate. Phase 43 (TFP-219, Decision 10): it runs
+    // when the run's gate is open, and is otherwise Not run with the gate's reason, checked at run time.
     return `  test('${title}', ${gateDetails("active")}, async ({ page }) => {
     ${ACTIVE_GATE_SKIP}
 

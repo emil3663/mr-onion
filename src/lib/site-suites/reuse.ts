@@ -4,6 +4,7 @@ import { groupPagesByAddress } from "@/lib/selection/page-types";
 import type { SiteSuiteRecord } from "@/lib/report/types";
 import { hashOf, loadSiteSuite, saveSiteSuite, unitFileName, type SiteSuiteIdentity, type SiteSuiteInputs, type SiteSuiteManifest, type StoredType, type StoredUnit } from "./store";
 import { READ_ONLY_GUARD_HELPER } from "@/lib/generate/read-only-guard";
+import { ACTIVE_GATE_SKIP } from "@/lib/run/test-gates";
 import { escapeForSingleQuotedString } from "@/lib/generate/mock/format";
 import ts from "typescript";
 import { parseTestUnits, withId, type TestUnit } from "./units";
@@ -71,6 +72,17 @@ function sameType(before: StoredType | undefined, now: StoredType | undefined) {
     return JSON.stringify(before.signatures) === JSON.stringify(now.signatures);
 }
 
+/**
+ * Phase 43 (TFP-219): the static skip every active test had before the active gate could open. A test Mr Onion wrote
+ * with it, unedited and reused, gets today's run-time check, so a site suite saved before TFP-219 runs its payload test
+ * when the gate is open. A hand-edited test is kept as the person left it, this line too.
+ */
+const OLD_ACTIVE_GATE_SKIP = "test.skip(true, 'attack-shaped input: needs the ownership confirmation, not built yet');";
+
+function withCurrentActiveGate(source: string): string {
+    return source.split(OLD_ACTIVE_GATE_SKIP).join(ACTIVE_GATE_SKIP);
+}
+
 export interface SiteSuiteResult {
     code: string;
     record: SiteSuiteRecord;
@@ -118,7 +130,7 @@ export async function applySiteSuite(fresh: string, profile: ContentProfile | nu
         }
         const written = withId(unit.source, unit.id);
         if (stored && stored.type === type && unchanged(type) && saved!.sources.has(stored.unit)) {
-            replacements.push({ start: unit.start, end: unit.end, text: withId(saved!.sources.get(stored.unit)!, unit.id) });
+            replacements.push({ start: unit.start, end: unit.end, text: withId(withCurrentActiveGate(saved!.sources.get(stored.unit)!), unit.id) });
             kept.push(stored);
             counts.reused++;
             continue;

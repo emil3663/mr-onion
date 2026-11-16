@@ -19,7 +19,7 @@ import type { ComprehensiveRunMode } from "../comprehensive/run-mode.ts";
 import type { JsonSuite } from "../report/types.ts";
 import type { BestPracticeArea } from "../generate/mock/types.ts";
 
-const { ACTIVE_GATE_SKIP, withDefaultGate } = await import("./test-gates.ts");
+const { ACTIVE_GATE_SKIP, MODEL_ACTIVE_SKIP, withDefaultGate } = await import("./test-gates.ts");
 const { mockGenerate } = await import("../generate/mock/index.ts");
 const { normalizeContentRules, normalizeTestAuditMode } = await import("../generate/normalize.ts");
 const { buildComprehensiveSuite, mergeComprehensiveScenarios } = await import("../generate/comprehensive.ts");
@@ -134,15 +134,16 @@ test("model-written blocks: the describe declares the gate once - interactive fo
     assert.deepEqual(describeGates(openAi), ["interactive"]);
     const openAiSecurity = gateOpenAiSuite(MODEL_SUITE, "gpt-x", openAiGate(["functional", "security"]));
     assert.deepEqual(describeGates(openAiSecurity), ["active"]);
+    // Phase 43 Decision 11: a model-written active block is never run, whatever the run's gate.
     assert.ok(openAiSecurity.includes(`() => {
-    ${ACTIVE_GATE_SKIP}`), openAiSecurity);
+    ${MODEL_ACTIVE_SKIP}`), openAiSecurity);
     assert.doesNotMatch(openAiSecurity, /MRONION_INTERACTIVE/);
     assert.deepEqual(findTypeErrors(openAiSecurity), []);
     assert.equal(openAiGate(["functional", "accessibility"]), "interactive");
     assert.match(openAi, /^import \{ test, expect \} from '@playwright\/test';\n\n/);
     assert.deepEqual(findTypeErrors(openAi), []);
 
-    for (const [area, gate, skip] of [["accessibility", "interactive", INTERACTIVE_SKIP], ["security", "active", ACTIVE_GATE_SKIP]]) {
+    for (const [area, gate, skip] of [["accessibility", "interactive", INTERACTIVE_SKIP], ["security", "active", MODEL_ACTIVE_SKIP]]) {
         const mode = normalizeRunMode({ kind: "comprehensive", area }) as ComprehensiveRunMode;
         const merged = mergeComprehensiveScenarios(buildComprehensiveSuite("https://site.test", mode, { covered: ["/"], notCovered: [], pageCap: 20 }), MODEL_SUITE, "m", mode);
         const block = merged.slice(merged.indexOf("test.describe('Local model (m)'"));

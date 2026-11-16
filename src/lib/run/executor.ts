@@ -23,6 +23,7 @@ import { splitSuite } from "@/lib/run/split";
 import { hostLimitsFor } from "@/lib/run/host-limits";
 import { currentVersion } from "@/lib/version";
 import { hasOwnershipConfirmation } from "@/lib/run/ownership";
+import { activeGateEnv, confirmationForRun, decideActiveGate, describeActiveGate } from "@/lib/run/active-gate";
 import { requestCapEnv, startRequestCap, withRequestCap, writeRequestCapModule } from "@/lib/run/request-cap";
 import { markCapStarved } from "@/lib/run/cap-starved";
 import type { RequestCap } from "@/lib/run/request-cap";
@@ -102,7 +103,9 @@ export async function startRunJob(
     enableInteractive = false,
     login: LoginConfig | null = null,
     generation: GenerationRecord | null = null,
-    runMode: RunMode = STANDARD_RUN
+    runMode: RunMode = STANDARD_RUN,
+    // Phase 43 (TFP-219, Decision 4): whether the run asks for active tests. Off unless the request says so.
+    enableActive = false
 ) {
     const browserProjects = ["chromium"];
     const runSelection = buildRunSelection(code, excludedTestTitles, includedTestTitles);
@@ -117,6 +120,9 @@ export async function startRunJob(
     // serial group, on one worker, after the rest (TFP-156, Decision 9).
     const units = splitSuite(code);
     const hostLimits = hostLimitsFor(baseUrl, { ownershipConfirmed: await hasOwnershipConfirmation(baseUrl) });
+    // TFP-219 (Decisions 4, 7 and 8): the active gate, decided once as the run starts, from what it asked for and the
+    // site's confirmation as it is now. The run keeps that copy (Decision 1). A closed gate never stops the run.
+    const activeGate = decideActiveGate(enableActive, baseUrl, await confirmationForRun(baseUrl));
     const workerCount = hostLimits.workers;
     const estimatedExecutions = estimateTestCount(code) * browserProjects.length;
     // Ruling 5 (decided by ruling 4 amended, 2026-10-28; TFP-264): a capped run's budget is 60 minutes, as the cap,
@@ -214,6 +220,7 @@ export async function startRunJob(
         selectedPractices,
         contentProfile,
         enableInteractive,
+        activeGate,
         login,
         generation,
         runMode,
@@ -232,6 +239,8 @@ export async function startRunJob(
         // Always set, never inherited: skipped-by-default interactive tests
         // (journeys) run only when this run explicitly asked.
         [INTERACTIVE_ENV_VAR]: enableInteractive ? "1" : "0",
+        // TFP-219 (review item 2): likewise always set, from the run's request and its confirmation, never inherited.
+        ...activeGateEnv(activeGate),
         PLAYWRIGHT_JSON_OUTPUT_FILE: jsonReportFile,
         [TIMING_FILE_ENV_VAR]: timingFile,
         FORCE_COLOR: "0",
@@ -294,6 +303,7 @@ export async function startRunJob(
     );
     // TFP-157 (Decision 11): the worker count, the host's row, and why.
     job.outputChunks.push(`Host limits: ${hostLimits.note}\n`);
+    job.outputChunks.push(`Active gate: ${describeActiveGate(activeGate)}.\n`);
     // TFP-155: how the suite was split, and how many workers take its units.
     const pageUnits = parallelUnits.filter((unit) => unit.kind === "page").length;
     job.outputChunks.push(

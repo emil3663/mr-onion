@@ -4,6 +4,7 @@ import type { ContentProfile } from "@/lib/generate/mock/types";
 import { capStarvedCount, flattenSuites } from "@/lib/report/execution";
 import { recordCandidateRuns } from "@/lib/candidates/evidence";
 import { buildReport } from "@/lib/report/report";
+import { ownershipSection } from "@/lib/report/ownership";
 import type { GenerationRecord, JsonReport, RunReport } from "@/lib/report/types";
 import { buildConsoleSummary, collectArtifactFiles, finalizeInterruptedPlannedExecutions, withArtifactDownloadPath } from "@/lib/run/output";
 import type { LoginConfig } from "@/lib/run/auth";
@@ -100,6 +101,9 @@ export interface RunJob {
     // TFP-091: whether this run explicitly enabled the skipped-by-default
     // interactive (journey) tests.
     enableInteractive: boolean;
+    // Phase 43 (TFP-219): the run's active gate, decided as it started, with its copy of the site's confirmation
+    // (without the contact email). Optional so jobs built before it existed (and in tests) read as closed.
+    activeGate?: import("@/lib/run/active-gate").ActiveGate;
     // TFP-092: the login this run used - references only (URL, selectors, and
     // the NAMES of the credential environment variables), never a value.
     login: LoginConfig | null;
@@ -265,9 +269,12 @@ async function finalizeRunJobUnredacted(job: RunJob) {
             job.runMode,
             job.workerCount,
             job.enableInteractive,
-            job.hostLimits?.note ?? null
+            job.hostLimits?.note ?? null,
+            job.activeGate?.open === true
         );
         aggregatedReport.producedBy = job.producedBy;
+        // TFP-219 (Acceptance Criterion 5): the run's active gate and the confirmation it ran under, as it was then.
+        if (job.activeGate) aggregatedReport.ownership = ownershipSection(job.activeGate);
         job.artifactFiles = collectArtifactFiles(executionRecords);
         const zeroExecution = aggregatedReport.summary.planned === 0;
 

@@ -10,10 +10,36 @@ So Mr Onion asks you to confirm it, **once per site**. The confirmation is
 saved with the site and used by every later run, so you aren't asked again on
 each run. It is your statement: Mr Onion records it and can't check it.
 
-> **Status (Phase 43, TFP-218):** the confirmation can be saved, read and
-> withdrawn through the API below. What it unlocks comes in the rest of
-> Phase 43: the active gate in TFP-219 and the lifted caps in TFP-220. Until
-> those land, saving one changes no run.
+> **Status (Phase 43):** the confirmation can be saved, read and withdrawn
+> through the API below (TFP-218). Since TFP-219 it opens the active gate,
+> as [Running active tests](#running-active-tests) says. The lifted request
+> limits come in TFP-220; until then a confirmed remote host is still capped.
+
+---
+
+## Running active tests
+
+A run sends attack-shaped input (today, the script-payload test on each form
+with a free-text field) only when two things are both true:
+
+1. **The run asks for it.** Start the run with `"enableActive": true` in the
+   `POST /api/run` request. It is off unless the request says so, and a
+   setting in Mr Onion's own environment can't turn it on. The CLI never asks
+   for it, so no active test runs in CI yet (TFP-249).
+2. **The target host is covered.** It is a local host, or the site's
+   confirmation is valid, covers the host, and has the active tick.
+
+Otherwise the run still runs, and each active test is Not run with a reason
+that says what to do: turn active tests on for the run, confirm the site,
+renew an expired confirmation, confirm again after withdrawing one, add the
+host, or tick active tests. The run's output and its report say whether the
+gate was open, and the report names the confirmation the run used. It shows
+the hosts, the basis, who confirmed it and when, the expiry and the ticks,
+but never the contact email.
+
+A test the local model wrote for the security area is never run, gate open
+or not. Untrusted, model-written attack code against a real site is a
+separate decision.
 
 ---
 

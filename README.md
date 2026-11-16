@@ -117,9 +117,11 @@ is not a sandbox.
 test can be confirmed once, through `/api/site-ownership`: the hosts it
 covers, typed in full, plus who confirmed it, a 90-day expiry (at most 1 year)
 and ticks for active tests and load testing. It is kept in the local data
-folder and can be withdrawn. It unlocks nothing yet. The active gate and the
-lifted caps come next in Phase 43. See
-[docs/SITE_OWNERSHIP.md](docs/SITE_OWNERSHIP.md).
+folder and can be withdrawn. Attack-shaped tests (the script-payload test)
+run only when a run asks for them (`"enableActive": true` in `POST /api/run`)
+and the host is local, or covered with the active tick. Otherwise each is Not
+run, with a reason that says what to do. The lifted caps come next in Phase
+43. See [docs/SITE_OWNERSHIP.md](docs/SITE_OWNERSHIP.md).
 
 Each saved gap test is also generalised to its component's pattern and
 kept in the candidate pool (`candidates/` in the data folder). On a

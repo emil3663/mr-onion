@@ -19,10 +19,10 @@ Two kinds of run:
 - **Comprehensive:** one area in depth, or all of them, trying to break
   fields and flows.
 
-The active gate (attack-shaped input, such as the script-payload test) stays
-closed: it opens only with a site's ownership confirmation (Phase 43). The
-confirmation can be saved per site since TFP-218, but nothing reads it until
-TFP-219 opens the gate. Data-changing tests, such as journeys and the database
+The active gate (attack-shaped input, such as the script-payload test) is
+closed unless a run asks for active tests and its host is local or covered
+by the site's ownership confirmation, with the active tick (Phase 43,
+TFP-218 and TFP-219). Data-changing tests, such as journeys and the database
 round trip, sit at the interactive gate.
 
 Each site's Standard suite is kept and reused, regenerated only for page
@@ -51,7 +51,7 @@ run, report, export, and save-suite.
 | Page-type selection | ✅ Done | Phase 40: pages grouped by address pattern, split by form signature; Standard tests one page of every type, capped at 8; the report lists types found, covered and skipped, with a copyable page list. |
 | Check gaps | ✅ Done | Phase 41: layout consistency, overlap and unrendered images, spelling, controls that don't do their job (GET-only interactions behind a request guard), tab order and grouping, known-path probes, guessable ids, exposed API fields. Local Toolshop copies: 33 of 37 known bugs found with Standard plus Comprehensive security and accessibility (Gate B, TFP-188); 30 with Standard alone (TFP-207). |
 | Site suites, library, coverage map | ✅ Done | Phase 42: Standard suites kept per site and reused; a library of component-pattern tests with candidates promoted only with the tester's approval; a coverage map in two tiers (reachability and in context), with a template test for every link on the selected pages (TFP-205). The gap writer (Claude Code) exists but is off unless a site opts in, and not kept as a bug finder (Gate B ruling). |
-| Ownership confirmation | 🚧 In progress | Phase 43. TFP-218: saved once per site through `/api/site-ownership`, in the local data folder. It holds the hosts, typed in full, who confirmed it and a contact email, a 90-day expiry (at most 1 year), and ticks for active tests and load testing. It can be replaced or withdrawn, and the old one is kept as evidence (RUN-56 to RUN-60, [docs/SITE_OWNERSHIP.md](docs/SITE_OWNERSHIP.md)). It unlocks nothing yet: TFP-219 adds the active gate and TFP-220 the lifted caps. |
+| Ownership confirmation | 🚧 In progress | Phase 43. TFP-218: saved once per site through `/api/site-ownership`, in the local data folder. It holds the hosts, typed in full, who confirmed it and a contact email, a 90-day expiry (at most 1 year), and ticks for active tests and load testing. It can be replaced or withdrawn, and the old one is kept as evidence (RUN-56 to RUN-60, [docs/SITE_OWNERSHIP.md](docs/SITE_OWNERSHIP.md)). TFP-219: the active gate opens on it. A run must ask with `enableActive`, and the host must be covered with the active tick, or be local. Otherwise each active test is Not run, with a reason that says what to do, and the report names the confirmation, without its email (RUN-61 to RUN-65). The lifted caps come in TFP-220. |
 | Run concurrency and speed | ⏳ Locked, not started | Phase 39, amended 2026-10-16: fewer page visits first, then workers by host. Today Standard runs 4 workers in the app (2 in deep mode). |
 
 ## 3. Test Cases
@@ -64,7 +64,7 @@ Each area's cases are in a file of their own under `docs/test-plan/` (TFP-253). 
 | 3.2 | Generate (GEN) | 112 | [docs/test-plan/GEN.md](docs/test-plan/GEN.md) |
 | 3.3 | Crawl (CRW) | 5 | [docs/test-plan/CRW.md](docs/test-plan/CRW.md) |
 | 3.4 | Introspect (INT) | 11 | [docs/test-plan/INT.md](docs/test-plan/INT.md) |
-| 3.5 | Run (RUN) | 60 | [docs/test-plan/RUN.md](docs/test-plan/RUN.md) |
+| 3.5 | Run (RUN) | 65 | [docs/test-plan/RUN.md](docs/test-plan/RUN.md) |
 | 3.6 | Report (RPT) | 22 | [docs/test-plan/RPT.md](docs/test-plan/RPT.md) |
 | 3.7 | Export (EXP) | 2 | [docs/test-plan/EXP.md](docs/test-plan/EXP.md) |
 | 3.8 | Save-suite (SAV) | 3 | [docs/test-plan/SAV.md](docs/test-plan/SAV.md) |

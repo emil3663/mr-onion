@@ -1,6 +1,6 @@
 import { routeAddedVisits, routePageVisits } from "./page-visits";
 import { INTERACTIVE_ENV_VAR } from "@/lib/run/interactive";
-import { ACTIVE_GATE_SKIP, gateDetails, type TestGate } from "@/lib/run/test-gates";
+import { gateDetails, MODEL_ACTIVE_SKIP, type TestGate } from "@/lib/run/test-gates";
 import { escapeForSingleQuotedString } from "./mock/format";
 import { SUITE_TITLES } from "./mock/suite";
 import type { BestPracticeArea } from "./mock/types";
@@ -87,7 +87,7 @@ export function gateOpenAiSuite(code: string, model: string, gate: TestGate = "i
 
 // Written by OpenAI (${model}). Phase 38 (TFP-146): at the ${gate} gate.
 test.describe('${escapeForSingleQuotedString(`OpenAI (${model})`)}', ${gateDetails(gate)}, () => {
-    ${gate === "active" ? ACTIVE_GATE_SKIP : `test.skip(process.env.${INTERACTIVE_ENV_VAR} !== '1', '${escapeForSingleQuotedString(openAiSkipReason(model))}');`}
+    ${gate === "active" ? MODEL_ACTIVE_SKIP : `test.skip(process.env.${INTERACTIVE_ENV_VAR} !== '1', '${escapeForSingleQuotedString(openAiSkipReason(model))}');`}
 
 ${body.join("\n").replace(/^\n+|\n+$/g, "")}
 });

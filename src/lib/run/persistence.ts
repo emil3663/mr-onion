@@ -41,6 +41,10 @@ export interface RunRecord {
     // TFP-091: absent on runs persisted before this field existed, which
     // never ran an interactive test.
     enableInteractive?: boolean;
+    // Phase 43 (TFP-219): the run's active gate, with its copy of the site's ownership confirmation as it was when the
+    // run started (Decision 1), so a later withdrawal doesn't rewrite this run's history. Never the contact email.
+    // Absent on runs from before it.
+    activeGate?: import("@/lib/run/active-gate").ActiveGate;
     // TFP-092: the login config this run used, references only. Absent/null
     // for a run that did not log in. Never carries a credential value or the
     // login's storageState (Decision 5).
@@ -197,6 +201,7 @@ export async function persistRunJob(
         artifactFiles: persistedArtifacts,
         contentProfile: job.contentProfile,
         enableInteractive: job.enableInteractive,
+        ...(job.activeGate ? { activeGate: job.activeGate } : {}),
         login: job.login,
         generation: job.generation,
         ...(job.producedBy ? { producedBy: job.producedBy } : {}),

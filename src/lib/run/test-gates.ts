@@ -10,11 +10,15 @@
 // - interactive: submitting forms with valid or harmlessly invalid data. Runs
 //   only with MRONION_INTERACTIVE=1 (Phase 19 Decision 2, unchanged).
 // - active: attack-shaped input, lockout and rate-limit probing, load testing.
-//   Runs only after Phase 35 Decision 8's typed ownership confirmation, which
-//   is not built, so it is always closed (Decision 6).
+//   Phase 43 (TFP-219, Decision 4): open only when the run asks for active
+//   tests and its target host is local or covered by the site's ownership
+//   confirmation with the active tick (src/lib/run/active-gate.ts). The
+//   executor decides it as the run starts and hands each test the outcome.
 // A closed gate makes the test Not run with its reason, never absent and
 // never failed. Kept apart from the generator, like interactive.ts, so the
 // report and the UI can import it.
+
+import { ACTIVE_GATE_ENV_VAR, ACTIVE_GATE_OPEN, ACTIVE_GATE_UNSET_REASON } from "@/lib/run/active-gate-names";
 
 export const TEST_GATES = ["read-only", "interactive", "active"] as const;
 export type TestGate = (typeof TEST_GATES)[number];
@@ -22,8 +26,14 @@ export type TestGate = (typeof TEST_GATES)[number];
 /** The static annotation type each generated test declares its gate in. */
 export const GATE_ANNOTATION = "gate";
 
-/** Decision 6's reason for every active-gate test while the confirmation is not built. */
-export const ACTIVE_GATE_REASON = "attack-shaped input: needs the ownership confirmation, not built yet";
+/**
+ * TFP-219: an active-gate test's reason when it runs with no gate setting at all, outside a Mr Onion run. In a run, the
+ * executor's reason (Decision 8's, one per way the gate is closed) is given instead.
+ */
+export const ACTIVE_GATE_REASON = ACTIVE_GATE_UNSET_REASON;
+
+/** Decision 11: a model-written test at the active gate is never run, whether the gate is open or not. */
+export const MODEL_ACTIVE_REASON = "model-written active test: not run";
 
 export function isTestGate(value: unknown): value is TestGate {
     return typeof value === "string" && (TEST_GATES as readonly string[]).includes(value);
@@ -40,15 +50,21 @@ export function gateAnnotation(gate: TestGate) {
 }
 
 /**
- * The gates closed for a run: active always (Decision 6), interactive unless
- * the run turned interactive tests on. Read-only never closes.
+ * The gates closed for a run: interactive unless the run turned interactive tests on, and active unless its active
+ * gate was open (TFP-219). Read-only never closes.
  */
-export function closedGates(interactiveEnabled: boolean): TestGate[] {
-    return interactiveEnabled ? ["active"] : ["interactive", "active"];
+export function closedGates(interactiveEnabled: boolean, activeOpen = false): TestGate[] {
+    return [...(interactiveEnabled ? [] : ["interactive" as const]), ...(activeOpen ? [] : ["active" as const])];
 }
 
-/** The first statement of an active-gate test: closed until the confirmation exists. */
-export const ACTIVE_GATE_SKIP = `test.skip(true, '${ACTIVE_GATE_REASON}');`;
+/**
+ * The first statement of an active-gate test (TFP-219): a check at run time, of the gate the executor decided for the
+ * run. Closed, the test is Not run with the executor's reason.
+ */
+export const ACTIVE_GATE_SKIP = `test.skip(process.env.${ACTIVE_GATE_ENV_VAR} !== '${ACTIVE_GATE_OPEN}', process.env.${ACTIVE_GATE_ENV_VAR} || '${ACTIVE_GATE_REASON.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}');`;
+
+/** The first statement of a model-written active-gate test (Decision 11): never run. */
+export const MODEL_ACTIVE_SKIP = `test.skip(true, '${MODEL_ACTIVE_REASON}');`;
 
 // A test call with no details argument yet: `test('title', async ...`.
 const UNDECLARED_TEST = /^(\s*test\('(?:[^'\\]|\\.)*'),\s*async\b/;
