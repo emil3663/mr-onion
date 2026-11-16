@@ -794,6 +794,30 @@ builder's measurement.
 - Both local copies: unchanged with the switch off; the payload results on
   with-bugs recorded and explained.
 
+**Gate B verification (planning session, 2026-11-16; it built none of
+TFP-220, TFP-221 or the notes fix): every checked criterion met once the
+notes fix (PR #47, `4812e84`) merges. The owner's ruling (Emil,
+2026-11-16): Gate B passes, with rulings 1 to 3 below as written.**
+
+| Check | How | Result |
+|---|---|---|
+| TFP-220: nothing reaches an uncovered host | Read `src/lib/generate/active-guard.ts` | Every request to a covered host is sent by the guard with redirects off, each hop checked; any hop to an uncovered host is aborted. `sendBeacon`, keepalive `fetch` and `fetchLater` are wrapped before the first navigation and stopped once armed. The route is on the browser context, so a popup is covered |
+| Criterion 3: shown at the server | `active-guard.test.ts`, red first as `b7fc1cb`'s body quotes | With the guard off, the uncovered host received every case (form, 307, two hops, popup, `fetchLater`, beacon, keepalive); with it, none |
+| Criterion 4: the caps | Read `executor.ts`, `active-gate.ts`; TFP-157's stub removed | The confirmation read once per run; a valid one covering the host lifts the caps, whatever its ticks |
+| Criterion 6: unchanged with the switch off | `benchmarks/2026-11-16-tfp-221/` | Every test's status identical on both copies against the 2026-11-15 base; the only differences are the payload tests' Not-run reason in CI |
+| Criterion 7: one real run, switch on | `outcome.md` | Login's payload test ran and passed (no listed injection bug); register and contact were Not run, "sent no request", their required fields left empty (TFP-288) |
+| The notes fix | Read `execution.ts`, `notes.ts`, both HTML reports | `note` annotations reach each record as `notes` and both exports show them with their test; no template change |
+
+Not checked here: the unit suite and PR #47's checks (reported green on
+`4812e84`), and the live runs, which rest on `outcome.md`.
+
+**The owner's ruling (Emil, 2026-11-16): yes to each.**
+1. **Gate B passes** once PR #47 merges, and Phase 43 is complete.
+2. **Register and contact untested:** accepted for Phase 43 (its Decision
+   10 kept Phase 38's test unchanged); TFP-288 is decided when it is placed.
+3. **Notes in the app's own report tabs:** a Phase 46 item (its review
+   adds it), not this phase.
+
 **Gate B waits for one fix (owner, 2026-11-16).** TFP-221 found that the
 report drops every guard note: `findingsOf` reads only `finding`
 annotations. The owner asked for three things:
