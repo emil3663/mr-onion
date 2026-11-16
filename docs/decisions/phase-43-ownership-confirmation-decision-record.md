@@ -11,7 +11,13 @@ confirmation does three things:
 
 The script-payload test runs again behind the active gate.
 
-Status: **Locked (Emil, 2026-10-19). Not started.**
+Status: **Locked (Emil, 2026-10-19). Complete 2026-11-16: TFP-218 to TFP-221
+done. Gate A and Gate B passed (owner rulings, 2026-11-16).** Gate B's one
+fix, notes in the report, merged as PR #47 (`4812e84`, `2c630d2`). Not
+released yet: no version tag (owner, 2026-11-16). TFP-288, the payload
+test's required fields, is in the backlog (D45), to be decided when it is
+placed. Notes in the app's own report tabs go to Phase 46 (Gate B
+ruling 3). Tracking issue #46, closed.
 - He decided the shape in the deferred-work triage
   (`deferred-work-register.md`, D8): Decisions 1, 3, 5 and 6, and the
   amendments to two locked records.
@@ -723,6 +729,17 @@ Each of these has a line in `deferred-work-register.md`.
   `required` attribute, an `aria-required`, a label's "*", or every field
   of the form. And whether a ticked checkbox may agree to terms on the
   tester's behalf.
+  - **[for Emil]** Required fields, the planning session's lean
+    (2026-11-16): only those marked `required` or `aria-required`. Not a
+    label's "*" (a visual convention the generator can't read reliably),
+    and not every field.
+  - **[for Emil]** A required checkbox (terms, consent), the planning
+    session's lean (2026-11-16): it may be ticked on a site whose
+    ownership confirmation covers the host, as confirming already says
+    the tester may submit forms there. The report names each box the test
+    ticked.
+  - Neither is decided: the backlog item is D45 in
+    `deferred-work-register.md`.
 - **Deliverables:**
   - the template change, measured with `check:template-unchanged` and its
     baseline moved in its own commit once accepted;

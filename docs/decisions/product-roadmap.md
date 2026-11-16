@@ -427,7 +427,7 @@ Planned 2026-10-15 as `post-phase-42-review-plan.md` (R1 to R6).
 16. all-areas runs;
 17. load testing.
 
-### Phase 43 — Ownership confirmation, once per site, and the active gate (locked 2026-10-19; Gate A passed 2026-11-16: TFP-218 to TFP-220 done, TFP-221 measured; Gate B next)
+### Phase 43 — Ownership confirmation, once per site, and the active gate (complete 2026-11-16: TFP-218 to TFP-221; Gates A and B passed; not released yet)
 A tester confirms once per site, by API, that they own the site or have
 written permission:
 - exact hosts;
