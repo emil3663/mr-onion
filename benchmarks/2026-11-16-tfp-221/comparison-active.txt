@@ -1,0 +1,6 @@
+switch off (Action Gate): 481 planned / 377 passed / 84 failed / 20 not run / 0 blocked
+active (local, the app):  481 planned / 378 passed / 84 failed / 19 not run / 0 blocked
+- TFSC-034: script-shaped input is not executed: First name, Last name, Date of birth, Address, Postcode, City, Country, Phone, E-mail address on /#/auth/register: Not run ("active test: not available in CI yet (TFP-249)") -> Not run ("submitting the form on /#/auth/register sent no request, so the payload never reached the site")
+- TFSC-035: script-shaped input is not executed: First name, Last name on /#/contact: Not run ("active test: not available in CI yet (TFP-249)") -> Not run ("submitting the form on /#/contact sent no request, so the payload never reached the site")
+- TFSC-036: script-shaped input is not executed: Your E-mail * on /#/auth/login: Not run ("active test: not available in CI yet (TFP-249)") -> Passed
+3 difference(s)

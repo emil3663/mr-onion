@@ -658,6 +658,27 @@ Each of these has a line in `deferred-work-register.md`.
 
 ### TFP-221 — Measure: the script-payload test on local with-bugs
 
+- **Status:** Measured 2026-11-16 (owner decision, the same day: not
+  overnight). Stopped for Gate B's verification. Everything is in
+  `benchmarks/2026-11-16-tfp-221/outcome.md`.
+  - **Switch off:** Action Gate on `main` at `1da312a` (run 43863206585)
+    against the base (`202a17a`), test by test. Every test of both copies
+    has the same status. The only differences are the payload tests' Not
+    run reason (3 on each copy), now "not available in CI yet (TFP-249)".
+  - **Switch on:** one Standard run through the app on local with-bugs,
+    with `enableActive: true`. The gate was open on the local host, and
+    the run gave 481 / 378 passed / 84 failed / 19 not run.
+    - Against the switch-off run, only the 3 payload tests differ.
+    - Login's payload test passed. The answer key lists no
+      script-injection bug.
+    - Register and contact were Not run: Angular's own validation stopped
+      the submit.
+    - The covered-host guard stopped nothing and failed nothing.
+  - **Three findings for Gate B:**
+    - The guard's notes (and the read-only guard's) never reach Mr Onion's
+      report, including ruling 4's.
+    - Two of the three forms aren't really tested.
+    - The gate was measured open on a local host only.
 - **Phase:** 43 · **Priority:** P2 · **Labels:** `measurement`, `benchmark`
 - **Problem it solves:** the payload test has not run since Phase 38 moved
   it to the active gate.

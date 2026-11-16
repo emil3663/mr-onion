@@ -1,0 +1,5 @@
+Run budget: up to 1800s for ~489 execution(s) across 1 browser project(s) in fast mode.
+Host limits: 3 worker(s), no request cap: a local development host (Decision 10).
+Active gate: open (a local host, which needs no ownership confirmation).
+Split into 18 unit file(s) (10 page(s), 8 other), run by 3 worker(s).
+The serial group (data-changing and model-written tests) runs after them, one test at a time (Decision 9).

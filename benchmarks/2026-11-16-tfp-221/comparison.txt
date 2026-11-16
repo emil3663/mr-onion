@@ -1,0 +1,18 @@
+
+## clean
+base: 470 planned / 406 passed / 46 failed / 18 not run / 0 blocked
+now:  470 planned / 406 passed / 46 failed / 18 not run / 0 blocked
+matched 470 of 470 by title; 70 of them only once their record ids were masked
+- Not run reason: TFSC-034: script-shaped input is not executed: Search on /: "attack-shaped input: needs the ownership confirmation, not built yet" -> "active test: not available in CI yet (TFP-249)"
+- Not run reason: TFSC-035: script-shaped input is not executed: First name, Last name, Date of Birth *, Postal code, House number, Street, City, State, Phone, Email address on /auth/register: "attack-shaped input: needs the ownership confirmation, not built yet" -> "active test: not available in CI yet (TFP-249)"
+- Not run reason: TFSC-036: script-shaped input is not executed: First name, Last name, Message * on /contact: "attack-shaped input: needs the ownership confirmation, not built yet" -> "active test: not available in CI yet (TFP-249)"
+
+## with-bugs
+base: 481 planned / 377 passed / 84 failed / 20 not run / 0 blocked
+now:  481 planned / 377 passed / 84 failed / 20 not run / 0 blocked
+matched 481 of 481 by title; 0 of them only once their record ids were masked
+- Not run reason: TFSC-034: script-shaped input is not executed: First name, Last name, Date of birth, Address, Postcode, City, Country, Phone, E-mail address on /#/auth/register: "attack-shaped input: needs the ownership confirmation, not built yet" -> "active test: not available in CI yet (TFP-249)"
+- Not run reason: TFSC-035: script-shaped input is not executed: First name, Last name on /#/contact: "attack-shaped input: needs the ownership confirmation, not built yet" -> "active test: not available in CI yet (TFP-249)"
+- Not run reason: TFSC-036: script-shaped input is not executed: Your E-mail * on /#/auth/login: "attack-shaped input: needs the ownership confirmation, not built yet" -> "active test: not available in CI yet (TFP-249)"
+
+6 difference(s)

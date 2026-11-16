@@ -1,0 +1,10 @@
+3 payload test(s), run again alone with the gate open on localhost:
+- TFSC-034: script-shaped input is not executed: First name, Last name, Date of birth, Address, Postcode, City, Country, Phone, E-mail address on /#/auth/register
+  status: skipped, "submitting the form on /#/auth/register sent no request, so the payload never reached the site"
+  guard notes: none (nothing stopped)
+- TFSC-035: script-shaped input is not executed: First name, Last name on /#/contact
+  status: skipped, "submitting the form on /#/contact sent no request, so the payload never reached the site"
+  guard notes: none (nothing stopped)
+- TFSC-036: script-shaped input is not executed: Your E-mail * on /#/auth/login
+  status: passed
+  guard notes: none (nothing stopped)
