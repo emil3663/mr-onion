@@ -173,6 +173,17 @@ test('a frame from the uncovered host', async ({ page }) => {
   });
 });
 
+// Owner ruling at TFP-220's verification (2026-11-16): a stopped script from an uncovered host is named in the
+// test's note, as the page may not have rendered as visitors see it (known limitation 14).
+test('a script from the uncovered host', async ({ page }) => {
+  await tfActiveWrap(page);
+  await page.goto('/');
+  await tfActiveGuarded(page, async () => {
+    await page.evaluate((src) => { const script = document.createElement('script'); script.src = src; document.body.append(script); }, '${elsewhere}/widget.js');
+    await page.waitForTimeout(1000);
+  });
+});
+
 test('without the guard, the control', async ({ page }) => {
   await page.goto('/');
   await page.locator('#ext input').fill('payload-control');
@@ -217,6 +228,13 @@ test('without the guard, the control', async ({ page }) => {
             const readNotes = guardNotes(report.suites).get(title) ?? [];
             assert.ok(readNotes.some((note) => note.includes(noted)), `${title}: ${JSON.stringify(readNotes)}`);
         }
+
+        const script = one(records, "a script from the uncovered host");
+        assert.equal(script.status, "Passed", script.rawMessage);
+        const scriptNotes = guardNotes(report.suites).get("a script from the uncovered host") ?? [];
+        assert.ok(scriptNotes.some((note) => note.includes(`a script from an uncovered host was stopped (GET ${elsewhere}/widget.js), so the result may not reflect the page as visitors see it`)), JSON.stringify(scriptNotes));
+        const imageOnly = guardNotes(report.suites).get("an image from the uncovered host") ?? [];
+        assert.ok(imageOnly.every((note) => !note.includes("may not reflect")), "an image alone doesn't say so");
 
         assert.equal(one(records, "without the guard, the control").status, "Passed");
     } finally {

@@ -81,6 +81,9 @@ async function tfActiveGuarded(page: import('@playwright/test').Page, interact: 
   const context = page.context();
   const breaches: string[] = [];
   const stopped: string[] = [];
+  // Owner ruling (2026-11-16): a script from an uncovered host, stopped, means the page may not have run as it does for
+  // its visitors, so the note says so (known limitation 14).
+  const scripts: string[] = [];
   const hostOf = (url: string) => { try { return new URL(url).hostname.toLowerCase(); } catch { return ''; } };
   const covered = (url: string) => {
     let parsed: URL;
@@ -102,6 +105,7 @@ async function tfActiveGuarded(page: import('@playwright/test').Page, interact: 
     }
     const breach = navigation || (type !== 'ping' && !['GET', 'HEAD', 'QUERY'].includes(method.toUpperCase()));
     (breach ? breaches : stopped).push(method + ' ' + url + ' (' + (navigation ? 'navigation' : type) + ') to ' + hostOf(url));
+    if (!breach && type === 'script') scripts.push(method + ' ' + url);
   };
   await context.exposeBinding('__tfActiveRequest', (_source, method: string, url: string, type: string) => judge(method, url, type, false));
   await context.route('**/*', async (route) => {
@@ -128,7 +132,9 @@ async function tfActiveGuarded(page: import('@playwright/test').Page, interact: 
       if (!covered(next)) {
         // Judged as the request it would become: a covered image redirected to a CDN is a read, noted.
         const what = method + ' ' + url + ' redirected to ' + next + ' (' + response.status() + ') to ' + hostOf(next);
-        (carries(request, method) ? breaches : stopped).push(what);
+        const breach = carries(request, method);
+        (breach ? breaches : stopped).push(what);
+        if (!breach && request.resourceType() === 'script') scripts.push(method + ' ' + next);
         return route.abort('blockedbyclient');
       }
       if ([301, 302, 303].includes(response.status()) && !['GET', 'HEAD'].includes(method)) {
@@ -148,7 +154,8 @@ async function tfActiveGuarded(page: import('@playwright/test').Page, interact: 
   } catch (error) {
     failure = error;
   }
-  if (stopped.length > 0) test.info().annotations.push({ type: 'note', description: 'covered-host guard: stopped ' + stopped.length + ' request(s), not a breach: ' + [...new Set(stopped)].join('; ') });
+  const unrendered = scripts.length > 0 ? '; a script from an uncovered host was stopped (' + [...new Set(scripts)].join('; ') + '), so the result may not reflect the page as visitors see it' : '';
+  if (stopped.length > 0) test.info().annotations.push({ type: 'note', description: 'covered-host guard: stopped ' + stopped.length + ' request(s), not a breach: ' + [...new Set(stopped)].join('; ') + unrendered });
   expect(breaches, 'covered-host guard breach, stopped: ' + breaches.join('; ') + ' (an active test reaches only the hosts the site\'s ownership confirmation covers: ' + hosts.join(', ') + ')').toEqual([]);
   if (failure) throw failure;
 }`;

@@ -513,7 +513,20 @@ Each of these has a line in `deferred-work-register.md`.
 
 ### TFP-220 — Active tests reach only covered hosts; the caps come from the confirmation
 
-- **Status:** Built (2026-11-16). Stopped for independent verification.
+- **Status:** Built (2026-11-16) in `b7fc1cb`. Verified by a planning
+  session (2026-11-16). The owner's rulings at verification (Emil,
+  2026-11-16):
+  1. **The template change is accepted.** `TEMPLATE_BASELINE` moves in its
+     own commit, to the commit below that carries the guard as accepted.
+  2. **The four readings below stand.**
+  3. **A third-party write stays a breach.** Revisit after TFP-221's
+     measurement.
+  4. **A stopped script from an uncovered host is named in the test's
+     note**, which says "the result may not reflect the page as visitors
+     see it", and it is listed as known limitation 14. Built in the
+     commit after `b7fc1cb`, red first.
+  5. **The redirect-address, streaming and port limits are accepted as
+     documented** below.
   - **The covered-host guard:** `src/lib/generate/active-guard.ts`. The
     payload test types its input and submits under `tfActiveGuarded`, on
     the test's browser context, so a popup is covered too. The run gives
@@ -583,8 +596,8 @@ Each of these has a line in `deferred-work-register.md`.
   - The review also found that `68b2ce6`, the commit marking TFP-219 done,
     deleted TFP-157's stub by mistake: a staged deletion from this work went
     with it, and `main` didn't build. `91a627e` restored it on `main`.
-- **Raised by the review, left for the owner** (none sends anything to an
-  uncovered host):
+- **Raised by the review, ruled on at verification** (rulings 3 to 5
+  above; none sends anything to an uncovered host):
   - **A third-party write is a breach, a beacon isn't.** Sentry's
     transport (a keepalive POST) or an analytics POST to another host
     during the payload test fails it on every run. The tester can't fix
@@ -610,7 +623,8 @@ Each of these has a line in `deferred-work-register.md`.
     their API (`localhost:8091`).
 - **The template changes again**, as the guard is in the generated test.
   Against `acaf56f`, 2 of 172 outputs differ: the two security suites
-  with page data (fast and deep), each 556 to 683 lines. The guard's
+  with page data (fast and deep), each 556 to 683 lines at `b7fc1cb` and
+  690 with ruling 4's note. The guard's
   helper is added before the payload tests, the note's wording is
   corrected, and the payload test's body, from typing to the result page,
   moves inside `tfActiveGuarded` with `tfActiveWrap` before its
