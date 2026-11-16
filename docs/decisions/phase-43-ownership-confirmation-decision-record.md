@@ -81,6 +81,10 @@ The design stands. These amendments apply; each says who decided it.
    executor (TFP-157). TFP-220 replaces the stub. Acceptance Criterion 6's
    template difference is measured against the current
    `TEMPLATE_BASELINE` (`0fe8ffe`).
+   **Since then:** TFP-287 moved the baseline to `7ba7399`, the base
+   TFP-219's template difference is measured against. TFP-219 replaces
+   `ACTIVE_GATE_REASON`'s "not built yet", and `closedGates()` now takes
+   the run's gate. The stub remains for TFP-220.
 
 ## Context
 
@@ -435,6 +439,43 @@ Each of these has a line in `deferred-work-register.md`.
 - **Dependencies:** none.
 
 ### TFP-219 — The active gate opens on a covered host, by run switch
+
+- **Status:** Built (2026-11-16). Stopped for Gate A's independent
+  verification and the owner's ruling.
+  - **The gate:** `src/lib/run/active-gate.ts` decides it once, as the run
+    starts. The run must ask (`enableActive` in `POST /api/run`; the CLI
+    never does), and the target host must be local or covered by the
+    site's valid confirmation with the active tick. Otherwise the gate is
+    closed, with one of six reasons, each saying what to do.
+  - **What the tests read:** the executor always sets `MRONION_ACTIVE` (what
+    the run asked for) and `MRONION_ACTIVE_GATE` (`open`, or the closed
+    reason). The generated active test checks only the second, at run time.
+  - **Model-written active tests** get `test.skip(true, 'model-written active
+    test: not run')` (Decision 11).
+  - **The report** has an ownership section, and the run record keeps the
+    confirmation's copy as it was, without the contact email.
+  - **Reused suites:** an unedited reused test with the old static skip gets
+    the run-time check (found by the fresh-context review). A hand-edited
+    one keeps the old skip.
+- **Built against the record, as Claude Code read it.** Three choices for
+  the owner to keep or change at Gate A:
+  - **Two settings, not one.** Decision 4 names one switch, set "to 0 or
+    1". Here `MRONION_ACTIVE` is what the run asked for, and a second
+    setting, `MRONION_ACTIVE_GATE`, carries the executor's decision. That
+    way no setting a person could put in a shell or in CI opens the gate on
+    its own (review item 2).
+  - **The local hosts are Phase 39's function.** `isLocalDevelopmentHost`
+    also counts `0.0.0.0` and the whole of `127.0.0.0/8` as local, which
+    Decision 7's list doesn't name.
+  - **Model-written active tests and the per-gate count.** With the gate
+    open, they are Not run under their own reason and are not counted under
+    "Not run because their gate was closed". They still count in the total
+    and in the reasons.
+- **Not moved here:** `TEMPLATE_BASELINE`. Against `7ba7399`, 2 of 172
+  outputs differ (the two security suites), each in one line, the payload
+  test's skip becoming the run-time check, as Acceptance Criterion 6
+  describes. The baseline moves in its own commit once the owner accepts
+  that.
 
 - **Phase:** 43 · **Priority:** P1 · **Labels:** `enhancement`, `security`, `run`, `generate`
 - **Problem it solves:** the active gate is always closed, and its one
