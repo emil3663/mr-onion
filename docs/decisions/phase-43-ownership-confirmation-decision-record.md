@@ -513,9 +513,20 @@ Each of these has a line in `deferred-work-register.md`.
 
 ### TFP-220 — Active tests reach only covered hosts; the caps come from the confirmation
 
-- **Status:** Built (2026-11-16) in `b7fc1cb`. Verified by a planning
-  session (2026-11-16). The owner's rulings at verification (Emil,
-  2026-11-16):
+- **Status:** Done 2026-11-16: `b7fc1cb` and `6397e37` (ruling 4's
+  note), with `6ac3541` moving `TEMPLATE_BASELINE` to `6397e37` and
+  `1d0a84c` quoting it, on `main` by fast-forward (PR #42). Every check
+  passed on its head `1d0a84c`: PR Validation, CodeQL and its alert
+  check, and Release Image. The nightly dispatched on the branch was green
+  on the same commit (run 43855174332), its template check against
+  `6397e37`.
+  - **Found by the nightly on `6ac3541` and fixed in `1d0a84c`:** YAML
+    read the unquoted `6397e37` as the number 6.397e40, so the template
+    check couldn't find its base. The baseline is quoted now. Before that,
+    run 43853367395 stayed "queued" on GitHub with no jobs, refusing both
+    cancel and force-cancel; it was left there and run again.
+- Verified by a planning session (2026-11-16). The owner's rulings at
+  verification (Emil, 2026-11-16):
   1. **The template change is accepted.** `TEMPLATE_BASELINE` moves in its
      own commit, to the commit below that carries the guard as accepted.
   2. **The four readings below stand.**
