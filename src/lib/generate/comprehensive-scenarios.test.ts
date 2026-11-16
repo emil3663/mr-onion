@@ -18,6 +18,7 @@ const { buildComprehensiveSuite, mergeComprehensiveScenarios } = await import(".
 const { normalizeRunMode } = await import("../comprehensive/run-mode.ts");
 const { buildReport } = await import("../report/report.ts");
 const { buildReportHtmlDocument } = await import("../report/html.ts");
+const { escapeReportHtml } = await import("../report/text.ts");
 const { findTypeErrors } = await import("./validate.ts");
 
 const { chromiumSkipReason } = await import("../../test-support/chromium.ts");
@@ -79,6 +80,15 @@ test("in a real browser: a deliberately failing model test is shown as 'failed: 
         assert.match(report.comprehensive!.model.note, /count toward no pass or fail, no recommendation and no coverage figure/);
         const html = buildReportHtmlDocument(report, "r");
         assert.match(html, /<strong>failed: needs review<\/strong> - [^<]*the home page greets the user by name/);
+        // Gate B's fix (Phase 43): a Comprehensive export shows a test's notes too, with its test, before the fixed
+        // statement of what the run did not test. The record is this run's; the note is the guard's wording.
+        const noted = { ...report, execution: report.execution.map((record, index) => (index === 0 ? { ...record, notes: ["covered-host guard: stopped 1 request(s), not a breach: GET https://cdn.example.net/app.js (script) to cdn.example.net"] } : record)) };
+        const notedHtml = buildReportHtmlDocument(noted, "r");
+        const notes = notedHtml.indexOf("Notes from the run");
+        assert.ok(notes > 0, "the Comprehensive export has a notes section");
+        assert.ok(notedHtml.slice(notes).includes(escapeReportHtml(report.execution[0].title)), "with its test");
+        assert.ok(notes < notedHtml.indexOf("What this run did not test"), "before the fixed statement, which stays last");
+        assert.ok(!html.includes("Notes from the run"), "and none when no test noted anything");
     });
 });
 

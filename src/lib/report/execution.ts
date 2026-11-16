@@ -343,6 +343,12 @@ function measurementsOf(test: JsonTest): string[] {
     return annotationValues(test, "measurement");
 }
 
+// Gate B's fix (Phase 43, owner 2026-11-16): a guard's note, e.g. the requests the covered-host guard stopped. Until
+// this, findingsOf read only `finding` annotations, so every note was dropped from the report (TFP-221's finding 1).
+function notesOf(test: JsonTest): string[] {
+    return annotationValues(test, "note");
+}
+
 function withMeasurements(remark: string, measurements: string[]) {
     return measurements.length > 0 ? `${remark} Measured: ${measurements.join("; ")}` : remark;
 }
@@ -414,6 +420,7 @@ export function flattenSuites(
                     ),
                     findings: findingsOf(test),
                     ...(measurementsOf(test).length > 0 ? { measurements: measurementsOf(test) } : {}),
+                    ...(notesOf(test).length > 0 ? { notes: notesOf(test) } : {}),
                     // TFP-195: a pool candidate, bound to this site and run outside the verdict.
                     generator: localModel ? "local model" : nextLineage.includes(CANDIDATE_DESCRIBE) ? "candidate" : "template",
                     ...(status === "Not run" && notRunReason ? { skipReason: notRunReason } : {}),

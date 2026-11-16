@@ -86,12 +86,10 @@ export interface ExecutionRecord {
      * `remarks`, so every view that shows remarks shows them.
      */
     findings?: string[];
-    /**
-     * Phase 38 (TFP-149, Decision 5): values a test recorded with no pass or
-     * fail (Playwright `measurement` annotations), e.g. total blocking time.
-     * Also appended to `remarks`.
-     */
+    /** Phase 38 (TFP-149, Decision 5): values recorded with no pass or fail (`measurement` annotations), e.g. TBT; also in `remarks`. */
     measurements?: string[];
+    /** Gate B's fix (Phase 43): `note` annotations, e.g. a guard's stopped requests; shown with the test, apart from findings, not in `remarks`. */
+    notes?: string[];
     /**
      * Phase 34 (TFP-118): which generator wrote the test. Option B appends the
      * local model's tests to the template suite inside a describe titled

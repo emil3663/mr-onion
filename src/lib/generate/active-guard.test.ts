@@ -28,6 +28,9 @@ import type { ExecutionRecord, JsonSuite } from "../report/types.ts";
 
 const { ACTIVE_GUARD_HELPER } = await import("./active-guard.ts");
 const { flattenSuites } = await import("../report/execution.ts");
+const { buildReport } = await import("../report/report.ts");
+const { buildReportHtmlDocument } = await import("../report/html.ts");
+const { escapeReportHtml } = await import("../report/text.ts");
 const { findTypeErrors } = await import("./validate.ts");
 const { chromiumSkipReason } = await import("../../test-support/chromium.ts");
 const { runPlaywrightSpec } = await import("../../test-support/playwright-cli.ts");
@@ -233,6 +236,17 @@ test('without the guard, the control', async ({ page }) => {
         assert.equal(script.status, "Passed", script.rawMessage);
         const scriptNotes = guardNotes(report.suites).get("a script from the uncovered host") ?? [];
         assert.ok(scriptNotes.some((note) => note.includes(`a script from an uncovered host was stopped (GET ${elsewhere}/widget.js), so the result may not reflect the page as visitors see it`)), JSON.stringify(scriptNotes));
+        // Gate B's fix (owner, 2026-11-16): the note reaches Mr Onion's report built from this run, on the test's
+        // record and in the HTML report with its test, apart from findings (TFP-221's finding 1).
+        const scriptNote = `a script from an uncovered host was stopped (GET ${elsewhere}/widget.js), so the result may not reflect the page as visitors see it`;
+        const built = buildReport(report, ["security"], "", covered.origin);
+        const scriptRecord = built.execution.find((record: ExecutionRecord) => record.title.endsWith("a script from the uncovered host"));
+        assert.ok(scriptRecord?.notes?.some((note: string) => note.includes(scriptNote)), `the record carries the note: ${JSON.stringify(scriptRecord?.notes)}`);
+        assert.ok(!(scriptRecord?.findings ?? []).some((finding: string) => finding.includes("covered-host guard")), "a note isn't a finding");
+        const html = buildReportHtmlDocument(built, "run-1");
+        const notesSection = html.slice(html.indexOf("Notes from the run"));
+        assert.ok(html.includes("Notes from the run"), "the HTML report has a notes section");
+        assert.ok(notesSection.includes("a script from the uncovered host") && notesSection.includes(escapeReportHtml(scriptNote)), "the HTML report shows the note with its test");
         const imageOnly = guardNotes(report.suites).get("an image from the uncovered host") ?? [];
         assert.ok(imageOnly.every((note) => !note.includes("may not reflect")), "an image alone doesn't say so");
 

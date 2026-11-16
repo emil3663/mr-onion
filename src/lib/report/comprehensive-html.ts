@@ -2,6 +2,7 @@ import { buildVersionFooterHtml, escapeReportHtml, formatMilliseconds } from "./
 import type { RunReport } from "./types";
 import { buildPageTypesHtmlSection } from "./page-types-html";
 import { buildCoverageMapHtmlSection } from "./coverage-map-html";
+import { buildNotesHtmlSection } from "./notes";
 
 // Phase 35 (TFP-132, Decision 7): the saved report of a Comprehensive run
 // shows that area only, on one page and in a fixed order: the area summary,
@@ -28,6 +29,8 @@ export function buildComprehensiveHtmlDocument(report: RunReport, runId: string)
                 <thead><tr><th>Chapter</th><th>Passive reach</th><th>Tested in this run</th><th>Why</th></tr></thead>
                 <tbody>${asvs.chapters.map((chapter) => `<tr><td>${e(chapter.id)} ${e(chapter.name)}</td><td>${e(chapter.passiveReach)}</td><td>${chapter.testedInRun ? "yes" : "no"}</td><td>${e(chapter.why)}</td></tr>`).join("")}</tbody>
             </table>` : "";
+    // Gate B's fix (Phase 43): what the tests noted, each with its test, before the fixed statement, which stays last.
+    const notes = buildNotesHtmlSection(report.execution);
 
     return `<!doctype html>
 <html lang="en">
@@ -78,6 +81,9 @@ export function buildComprehensiveHtmlDocument(report: RunReport, runId: string)
             <h2>Candidate tests</h2>
             <p>${e(c.candidates.note)}</p>
             <ul>${c.candidates.tests.map((t) => `<li><strong>${e(t.outcome)}</strong> - ${e(t.title)}${t.detail ? `: ${e(t.detail)}` : ""}</li>`).join("")}</ul>
+        </section>` : ""}
+        ${notes ? `<section id="notes">
+            ${notes}
         </section>` : ""}
         <section id="not-tested">
             <h2>What this run did not test</h2>

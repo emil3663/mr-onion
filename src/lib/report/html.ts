@@ -3,6 +3,7 @@ import { buildFallbackExecutionHtmlMarkup } from "./status";
 import { describePageInspection } from "./page-inspection-text";
 import { describeSiteSuite } from "./site-suite-text";
 import { buildOwnershipHtmlSection } from "./ownership";
+import { buildNotesHtmlSection } from "./notes";
 import { formatNotRunByGate, noTestRan } from "./summary";
 import type { RunReport } from "./types";
 import { buildComprehensiveHtmlDocument } from "./comprehensive-html";
@@ -384,6 +385,8 @@ export function buildReportHtmlDocument(report: RunReport, runId: string) {
         <!-- Phase 40 (TFP-173): page types and the copyable re-run lists, last -->
         <!-- Phase 43 (TFP-219): the ownership confirmation the run ran under, and its active gate -->
         ${buildOwnershipHtmlSection(report.ownership)}
+        <!-- Gate B's fix (Phase 43): what the tests noted, each with its test, apart from findings -->
+        ${buildNotesHtmlSection(report.execution)}
         ${buildPageTypesHtmlSection(report.generation?.pageTypes)}
         ${buildCoverageMapHtmlSection(report.coverageMap)}
     </main>

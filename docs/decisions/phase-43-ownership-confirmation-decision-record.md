@@ -692,12 +692,58 @@ Each of these has a line in `deferred-work-register.md`.
 - **Acceptance criteria:** Acceptance Criteria 6 and 7.
 - **Dependencies:** TFP-220.
 
+### TFP-288 — The payload test fills a form's required fields, so it is tested
+
+- **Status:** Added 2026-11-16 (owner), from TFP-221's finding 2. Not
+  started. **Owner decision before building:** it changes the Phase 38
+  template (the payload test's body), which stays unchanged until this is
+  decided.
+- **Phase:** 43 follow-up · **Priority:** P2 · **Labels:** `enhancement`, `security`, `generate`
+- **Problem it solves:** on the local with-bugs copy, two of the three
+  payload tests are Not run: "submitting the form on /#/auth/register
+  (/#/contact) sent no request, so the payload never reached the site".
+  - Both are Angular forms that validate in their own code, not with HTML
+    constraints, so the test's browser-validation check passes them.
+  - The test fills only free-text fields with the payload, and email, url
+    and tel fields with a dummy. It leaves required selects (State,
+    Subject), a password and a message empty, and the app silently refuses
+    to submit.
+  - Reasoned from the saved page data
+    (`benchmarks/2026-11-16-tfp-221/outcome.md`), not measured.
+- **Scope:** the payload test, generated (`src/lib/generate/mock/security-checks.ts`):
+  - every field of the form it targets that has to hold a value gets a
+    valid one before the submit: a select's first real option, a password,
+    a checkbox ticked, a textarea or number long enough for a length or
+    range rule;
+  - the payload still goes only into the free-text fields it goes into
+    today;
+  - a field it can't fill validly is named in the Not run reason, in place
+    of today's "sent no request".
+- **For the owner:** which fields count as "has to hold a value": the
+  `required` attribute, an `aria-required`, a label's "*", or every field
+  of the form. And whether a ticked checkbox may agree to terms on the
+  tester's behalf.
+- **Deliverables:**
+  - the template change, measured with `check:template-unchanged` and its
+    baseline moved in its own commit once accepted;
+  - a fixture case for each kind of field, red first;
+  - `TEST_PLAN.md` cases;
+  - a re-run of TFP-221's switch-on run, showing register and contact
+    tested.
+- **Acceptance criteria:**
+  - on the local with-bugs copy, the payload tests on `/#/auth/register`
+    and `/#/contact` submit, and their results are matched to the answer
+    key;
+  - with the switch off, nothing else changes.
+- **Dependencies:** TFP-221, and the owner's decision above.
+
 ## Recommended Execution Order
 
 1. TFP-218.
 2. TFP-219.
 3. TFP-220.
 4. TFP-221.
+5. TFP-288, once the owner decides it (added 2026-11-16).
 
 ## Suggested Milestone Gates
 
@@ -747,3 +793,33 @@ builder's measurement.
   test.
 - Both local copies: unchanged with the switch off; the payload results on
   with-bugs recorded and explained.
+
+**Gate B waits for one fix (owner, 2026-11-16).** TFP-221 found that the
+report drops every guard note: `findingsOf` reads only `finding`
+annotations. The owner asked for three things:
+- the run's records carry `note` annotations;
+- the HTML report shows each with its test, apart from findings;
+- no template change.
+
+**Built (2026-11-16), stopped for Gate B's verification.**
+- **Records:** a test's notes are now carried as `notes`
+  (`src/lib/report/execution.ts`).
+- **The HTML report:** it lists them under "Notes from the run", each under
+  its test (`src/lib/report/notes.ts`).
+- **The Comprehensive export too,** before its fixed "what this run did not
+  test", which stays last. The fresh-context review found it missing: a
+  candidate bound into a Comprehensive run can call the read-only guard.
+  Red first.
+- **Raised by the review, left alone:**
+  - A shared visit's re-run keeps only the re-run's notes, not the first
+    attempt's. That is template code, and the ruling is no template change.
+  - Notes are in the HTML exports and the saved record, not in the app's
+    report tabs, which the ruling didn't name.
+  - Runs saved before this have no notes to recover.
+- **Red first:** on a report built from a real browser run that has the
+  guard's stopped-script note, the record had no notes. A mutant dropping
+  the HTML section fails, and so does one filing notes as findings
+  (RPT-23).
+- **Template:** `check:template-unchanged`, 172 of 172 identical.
+- **TFP-288** (the payload test's required fields) is ticketed for a
+  decision and not built. The Phase 38 template stays as it is until then.
