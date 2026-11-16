@@ -23,6 +23,7 @@
         { "path": "src/lib/selection/coverage.test.ts", "line": "TestForge version not recorded", "why": "compatibility tests: the footer of a run from before the version stamp (Decision 7)" },
         { "path": "src/lib/run/timing.ts", "line": "\\(\\?:mr-onion\\|testforge\\)-missing", "why": "compatibility: a saved suite's probe route, under either name" },
         { "path": "src/lib/run/child-env.ts", "line": "MRONION_\\* and TESTFORGE_\\*", "why": "compatibility: names both prefixes a run keeps out of its children" },
+        { "path": "src/lib/run/active-gate.test.ts", "line": "TESTFORGE_ACTIVE", "why": "compatibility tests (TFP-219): a run gets the active gate's settings under both names, and never an ambient one (Decision 8)" },
         { "path": "src/lib/run/split.test.ts", "line": "TESTFORGE_INTERACTIVE !==|TESTFORGE_INTERACTIVE=1|saved by 0\\.2\\.0 checks TESTFORGE_INTERACTIVE|MRONION\\|TESTFORGE|'TESTFORGE_' \\+", "why": "compatibility tests: a unit as 0.2.0 saved it, checking the old interactive switch (Decision 8); a run's children get both names" },
         { "path": "src/lib/gap-writer/hardening.test.ts", "line": "PROBES = |MRONION\\|TESTFORGE|'TESTFORGE_' \\+|TESTFORGE_INTERACTIVE", "why": "compatibility tests: probes under both names, which a run's children must not inherit; a run's children get the switch under both names" },
         { "path": "src/app/api/generate/route-test-helpers.ts", "line": "`TESTFORGE_\\$\\{name\\}`", "why": "compatibility: clears both names of the generation settings around each test" },

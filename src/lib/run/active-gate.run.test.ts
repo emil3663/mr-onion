@@ -155,7 +155,7 @@ test("in real runs: the payload test runs only with the switch on and the host c
         ["missing", null, true, /^active test: the site has no ownership confirmation; confirm the site/],
         ["expired", valid({ expiresAt: new Date(Date.now() - 3_600_000).toISOString() }), true, /^active test: the site's ownership confirmation expired on \d{4}-\d{2}-\d{2}; renew it/],
         ["withdrawn", valid({ withdrawnAt: new Date(Date.now() - 3_600_000).toISOString() }), true, /^active test: the site's ownership confirmation was withdrawn on \d{4}-\d{2}-\d{2}; confirm the site again/],
-        ["host not covered", valid({ hosts: ["shop.example.com"] }), true, new RegExp(`^active test: the site's ownership confirmation doesn't cover ${lanAddress!.replace(/\./g, "\\.")}; add the host`)],
+        ["host not covered", valid({ hosts: ["shop.example.com"] }), true, new RegExp(`^active test: the site's ownership confirmation doesn't cover ${lanAddress!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}; add the host`)],
         ["no active tick", valid({ scopes: { active: false, load: true } }), true, /^active test: the site's ownership confirmation doesn't allow active tests; confirm it again with the active tick$/],
     ];
     for (const [label, saved, enableActive, reason] of closed) {
