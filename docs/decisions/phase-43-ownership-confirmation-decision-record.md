@@ -182,6 +182,12 @@ The design stands. These amendments apply; each says who decided it.
   later run into an attack run.
 - The switch is a choice made per run, like interactive. It isn't a second
   confirmation.
+- **Amended at Gate A (Emil, 2026-11-16): two settings, not one.**
+  - `MRONION_ACTIVE` carries what the run asked for, "0" or "1".
+  - `MRONION_ACTIVE_GATE` carries the executor's decision: `open`, or the
+    reason the gate is closed. A generated test reads only this one.
+  - The executor always sets both for the run's children, so no value in a
+    shell or in CI opens the gate on its own (review item 2).
 
 5. Expiry (Emil, 2026-10-19).
 - 90 days by default.
@@ -204,6 +210,9 @@ The design stands. These amendments apply; each says who decided it.
 - On those, the active gate follows Decision 4's switch alone.
 - This covers the local Docker copies of Toolshop and of other practice
   sites.
+- **Amended at Gate A (Emil, 2026-11-16): the local hosts are whatever
+  Phase 39's `isLocalDevelopmentHost` counts.** That adds `0.0.0.0` and the
+  rest of `127.0.0.0/8` to the list above, all of them this machine.
 
 8. When the confirmation doesn't cover a run, the run still runs. (Emil,
    2026-10-19)
@@ -535,6 +544,42 @@ Each of these has a line in `deferred-work-register.md`.
 ### Gate A — Confirmed and gated
 - TFP-218 and TFP-219 landed and independently verified.
 - Without the switch, the template difference is the described one only.
+
+**Gate A verification (planning session, 2026-11-16; it built neither
+ticket): every checked criterion met. The owner's ruling (Emil,
+2026-11-16): Gate A passes, with rulings 1 to 5 below as written.**
+
+| Check | How | Result |
+|---|---|---|
+| Commits and scope | `git log`, `git diff --stat main 4d83bef`, `git ls-remote` | `acaf56f`, `9f02465`, `4d83bef` on `tfp-219-active-gate`, pushed; `main` at `16d5e3e`. The gate, its two setting names, the executor, the run route, the report's confirmation section, the reuse fix and their tests |
+| TFP-218 (criterion 1) | Read `src/lib/ownership/confirmation.ts` and both routes, 2026-11-15 | Every field of Decision 1; each refusal with its reason; a malformed file reads as no confirmation; no mail code |
+| The gate needs both conditions (Decision 4) | Read `decideActiveGate` | Closed unless the run asked and the host is local, or covered by a valid confirmation with the active tick. One reason per way it is closed (Decision 8), each saying what to do |
+| Nothing inherited (review item 2) | Read `executor.ts`, `activeGateEnv`, `runEnv` | The executor decides once as the run starts and always sets both settings for the run's children, under both prefixes. The generated test reads only the executor's decision |
+| The run asks explicitly | Read `src/app/api/run/route.ts` | `enableActive === true` only; off by default; the CLI never passes it |
+| The run's copy (Decision 1, criterion 5) | Read `ownershipCopy` | The confirmation as the run started, without the contact email |
+| Model-written active tests (Decision 11) | Read `comprehensive.ts`, `gap-fill.ts` | A static skip of their own, never run, gate open or not |
+| Saved suites | Read `reuse.ts` | An unedited reused test gets the run-time check in place of the old static skip; a hand-edited one is left alone |
+
+Not checked here: the unit suite (862 of 862 reported), the 9 real runs
+and 15 mutants, and PR #41's checks (reported green on `4d83bef`). The
+template check (2 of 172 differ, the payload test's skip line) is the
+builder's measurement.
+
+**The owner's ruling (Emil, 2026-11-16): yes to each.**
+1. **Gate A passes**, and the template change is accepted (criterion 6's
+   described difference). `TEMPLATE_BASELINE` then moves in its own commit.
+2. **Decision 4 amended:** two settings, not one. `MRONION_ACTIVE` carries
+   what the run asked for, and `MRONION_ACTIVE_GATE` the executor's
+   decision, which is all a generated test reads.
+3. **Decision 7 amended:** the local hosts are whatever Phase 39's
+   `isLocalDevelopmentHost` counts, which adds `0.0.0.0` and the rest of
+   `127.0.0.0/8` (all this machine).
+4. **Model-written active tests** count in the Not run total with their
+   own reason, not under "gate closed".
+5. **No version tag between TFP-219 and Gate B.** Until TFP-220's
+   covered-host guard lands, an open gate on a confirmed remote host has
+   nothing stopping an active test's submit from reaching an uncovered
+   host. `main` may carry that; a release may not.
 
 ### Gate B — Guarded and measured
 - TFP-220 and TFP-221 landed and independently verified.
