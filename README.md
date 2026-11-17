@@ -113,15 +113,17 @@ tests and candidates included, gets only the environment Playwright needs,
 plus the proxy settings when set: no keys, tokens or Mr Onion settings. This
 is not a sandbox.
 
-**Ownership confirmation (Phase 43, in progress).** A site you own or may
-test can be confirmed once, through `/api/site-ownership`: the hosts it
-covers, typed in full, plus who confirmed it, a 90-day expiry (at most 1 year)
-and ticks for active tests and load testing. It is kept in the local data
-folder and can be withdrawn. Attack-shaped tests (the script-payload test)
-run only when a run asks for them (`"enableActive": true` in `POST /api/run`)
-and the host is local, or covered with the active tick. Otherwise each is Not
-run, with a reason that says what to do. The lifted caps come next in Phase
-43. See [docs/SITE_OWNERSHIP.md](docs/SITE_OWNERSHIP.md).
+**Ownership confirmation (Phases 43 and 46).** A site you own or may test is
+confirmed once, in the app's site lookup (`/sites`) or through
+`/api/site-ownership`: the hosts it covers, typed in full, plus who confirmed
+it, a 90-day expiry (at most 1 year) and ticks for active tests and load
+testing. It is kept in the local data folder and can be withdrawn; the app
+only ever shows its contact email masked. It lifts the request limits on the
+hosts it covers. Attack-shaped tests (the script-payload test) run only when
+a run asks for them (**Run active tests** in the run form, or
+`"enableActive": true` in `POST /api/run`) and the host is local, or covered
+with the active tick. Otherwise each is Not run, with a reason that says what
+to do. See [docs/SITE_OWNERSHIP.md](docs/SITE_OWNERSHIP.md).
 
 Each saved gap test is also generalised to its component's pattern and
 kept in the candidate pool (`candidates/` in the data folder). On a

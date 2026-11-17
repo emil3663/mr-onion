@@ -512,6 +512,49 @@ these amendments apply and override older wording below.
 
 ### TFP-235 — The active switch in the run form
 
+- **Status:** Built (2026-11-17). Stopped for verification.
+  - **Where:** "Run active tests", under the interactive toggle
+    (`src/app/_components/ActiveSwitch.tsx`), shown for a suite with an
+    active test (`checksActiveGate`). It is labelled with what it sends:
+    "attack-shaped input (today: script-shaped input in forms)", as the
+    confirmation's tick reads since Gate A.
+  - **It asks the API (review item 5):** `GET /api/site-ownership` gives
+    `activeGate`, Phase 43's `decideActiveGate` for a run asking for active
+    tests on the suite's target. Closed: disabled and off, with Phase 43's
+    reason and a link to the site's lookup entry. Open: available. It reads
+    again when the tab is focused, so a confirmation made in the lookup's
+    tab shows on return.
+  - **The run decides at its start** (Decision 4): the switch sends
+    `enableActive` with the run (Run, Continue and rerun alike, through
+    `startRun`), and only for a suite with an active test. A switch whose
+    gate is read as closed turns off.
+  - **Tests:** RUN-75 (`tests/regression/mr-onion.active-switch-ui.spec.ts`,
+    and `activeGate` in `src/lib/ownership/confirmation.test.ts`). AC4's
+    "the API decides" is Phase 43's real-run test
+    (`src/lib/run/active-gate.run.test.ts`, RUN-61), unchanged: it starts
+    runs through the executor (`startRunJob`) with `enableActive`, not
+    through `POST /api/run`, and skips without Chromium or a LAN address.
+    The route's own step, `enableActive === true` (`route.ts:84`), is
+    checked by reading here, not by a test.
+- **Found by the fresh-context review and fixed before commit, red first:**
+  - The switch turned itself off whenever its section remounted (a run
+    collapses it), as a read on its way counted as closed. Only a definite
+    closed answer turns it off now.
+  - A suite with no active test sent the switch's last value. `startRun`
+    sends it only for a suite with one.
+  - A read for an earlier target could show for a new one; a read counts
+    only for the URL it was made for.
+  - The status names the host it is about; it is a live region; the
+    switch's description id is `useId()`; the lookup link waits for the
+    read.
+  - The "nothing is sent" test now reads the gate's modules too.
+  - **Docs:** `docs/SITE_OWNERSHIP.md` and `README.md` name the site lookup
+    and the switch; the README's "the lifted caps come next" was stale.
+- **Built against the record, as Claude Code read it.** For the owner:
+  - **The switch shows only for a suite with an active test,** as the
+    interactive toggle shows only for a suite that reads its switch.
+  - **Its state is kept in `useRun`**, not the page, and starts off on
+    every open.
 - **Phase:** 46 · **Priority:** P2 · **Labels:** `ui`, `security`
 - **Scope:** Decision 4. Acceptance Criteria 4 and 5.
 - **Deliverables:**

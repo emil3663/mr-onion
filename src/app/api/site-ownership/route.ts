@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { decideActiveGate } from "@/lib/run/active-gate";
 import { CONFIRMATION_WORDING, confirmationStatus, LEGAL_NOTE, loadOwnership, maskedOwnership, originOf, saveConfirmation, validateConfirmation } from "@/lib/ownership/confirmation";
 
 /**
  * Phase 43 (TFP-218, Decision 13): a site's ownership confirmation, by its origin. API only; the screen comes from
  * the app-screens record (Phase 46). Stored in the local data folder (src/lib/ownership/confirmation.ts).
  *
- *   GET  /api/site-ownership?baseUrl=<url>            the confirmation, its status, its history, the wording to show and the legal note
+ *   GET  /api/site-ownership?baseUrl=<url>            the confirmation, its status, its history, the wording to show, the legal note,
+ *                                                     and the active gate a run asking for active tests would get for the URL
  *   POST /api/site-ownership { baseUrl, hosts, basis, wording, name, contactEmail, expiresAt?, scopes? }
  *                                                     create or replace it; refused with every reason when invalid
  *   POST /api/site-ownership/withdraw { baseUrl }     withdraw it, keeping it with its withdrawal date
@@ -15,11 +17,16 @@ import { CONFIRMATION_WORDING, confirmationStatus, LEGAL_NOTE, loadOwnership, ma
  */
 
 export async function GET(req: NextRequest) {
-    const origin = originOf(req.nextUrl.searchParams.get("baseUrl"));
+    const baseUrl = req.nextUrl.searchParams.get("baseUrl");
+    const origin = originOf(baseUrl);
     if (!origin) return NextResponse.json({ error: "baseUrl must be a valid http(s) URL" }, { status: 400 });
     const file = await loadOwnership(origin);
     const shown = maskedOwnership(file);
-    return NextResponse.json({ origin, status: confirmationStatus(file.current), confirmation: shown.current, history: shown.history, wording: CONFIRMATION_WORDING, legalNote: LEGAL_NOTE });
+    // Phase 46 (TFP-235, review item 5): Phase 43's decision for a run that asks for active tests on this URL, so the
+    // run form's switch shows the API's answer. Only what the switch needs: never the run copy's hosts.
+    const gate = decideActiveGate(true, baseUrl ?? undefined, file.current);
+    const activeGate = { open: gate.open, closedBy: gate.closedBy, reason: gate.reason, localHost: gate.localHost };
+    return NextResponse.json({ origin, status: confirmationStatus(file.current), confirmation: shown.current, history: shown.history, wording: CONFIRMATION_WORDING, legalNote: LEGAL_NOTE, activeGate });
 }
 
 export async function POST(req: NextRequest) {

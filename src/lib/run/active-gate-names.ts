@@ -17,3 +17,11 @@ export const ACTIVE_GATE_UNSET_REASON = "active test: runs only in a Mr Onion ru
  * open, the target host when it is local and every host of a valid confirmation with the active tick; otherwise empty.
  */
 export const ACTIVE_HOSTS_ENV_VAR = "MRONION_ACTIVE_HOSTS";
+
+/**
+ * Phase 46 (TFP-235): whether a suite has active tests, so the run form shows the active switch only where it does
+ * something: each generated active test reads the gate's setting (test-gates.ts's ACTIVE_GATE_SKIP).
+ */
+export function checksActiveGate(code: string): boolean {
+    return code.includes(ACTIVE_GATE_ENV_VAR);
+}

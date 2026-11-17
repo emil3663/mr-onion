@@ -5,6 +5,8 @@ import type { TestAuditMode } from "@/app/_lib/types";
 import { droppedJourneysHeading, journeyName } from "@/app/_lib/dropped-journeys";
 import type { DroppedJourney } from "@/lib/generate/journey-check";
 import { checksInteractiveSwitch } from "@/lib/run/interactive";
+import { checksActiveGate } from "@/lib/run/active-gate-names";
+import { ActiveSwitch } from "@/app/_components/ActiveSwitch";
 
 interface SavedSuiteResult {
     fileName: string;
@@ -20,6 +22,10 @@ interface GeneratedSuiteSectionProps {
     setReportPopupNotice: (value: string) => void;
     handleRun: () => void;
     enableInteractive: boolean;
+    // Phase 46 (TFP-235): the active switch, decided for the suite's own target (from the generation).
+    enableActive: boolean;
+    setEnableActive: (value: boolean) => void;
+    lastGeneratedBaseUrl: string;
     setEnableInteractive: (value: boolean) => void;
     hasCode: boolean;
     isRunning: boolean;
@@ -51,6 +57,9 @@ export function GeneratedSuiteSection({
     setReportPopupNotice,
     handleRun,
     enableInteractive,
+    enableActive,
+    setEnableActive,
+    lastGeneratedBaseUrl,
     setEnableInteractive,
     hasCode,
     isRunning,
@@ -123,6 +132,9 @@ export function GeneratedSuiteSection({
                                     </span>
                                 </label>
                             )}
+                            {checksActiveGate(editedCode) && lastGeneratedBaseUrl ? (
+                                <ActiveSwitch baseUrl={lastGeneratedBaseUrl} enableActive={enableActive} setEnableActive={setEnableActive} />
+                            ) : null}
                         </div>
                         <div className="flex items-center gap-2">
                             <button

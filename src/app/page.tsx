@@ -457,6 +457,8 @@ export default function Home() {
                     handleRun={boundHandleRun}
                     enableInteractive={enableInteractive}
                     setEnableInteractive={setEnableInteractive}
+                    enableActive={run.enableActive}
+                    setEnableActive={run.setEnableActive}
                     hasCode={hasCode}
                     isRunning={isRunning}
                     isContentAwareReady={isContentAwareReady}

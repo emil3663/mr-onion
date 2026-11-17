@@ -211,6 +211,41 @@ test("replacing keeps the old one in the history; withdrawing keeps it with its 
     assert.ok(body.history[1].withdrawnAt);
 });
 
+// Phase 46 (TFP-235, review item 5): the read carries the gate a run asking for active tests would get for the URL,
+// decided by Phase 43's decideActiveGate, so the run form's switch shows the API's answer, not its own copy of the
+// rules. Each of the five closed cases, the covered one, and a local host, which needs no confirmation.
+test("the read gives the active gate a run would get for the URL: each closed reason, covered, and local", async () => {
+    const dir = join(process.env.MRONION_DATA_DIR!, "site-suites", siteFolderName(ORIGIN));
+    mkdirSync(dir, { recursive: true });
+    const base = { hosts: ["shop.example.com"], basis: "owner", wording: CONFIRMATION_WORDING.owner, name: "Tess", contactEmail: "tess@example.com", confirmedAt: "2026-11-15T10:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z", scopes: { active: true, load: false } };
+    const gateFor = async (current: unknown, url = `${ORIGIN}/cart`) => {
+        if (current === undefined) rmSync(join(dir, "ownership.json"), { force: true });
+        else writeFileSync(join(dir, "ownership.json"), JSON.stringify({ current, history: [] }));
+        return (await read(url)).activeGate;
+    };
+    const cases: Array<[string, unknown, string, RegExp]> = [
+        ["none", undefined, "missing", /^active test: the site has no ownership confirmation; confirm the site/],
+        ["expired", { ...base, expiresAt: "2026-11-16T00:00:00.000Z" }, "expired", /^active test: the site's ownership confirmation expired on 2026-11-16; renew it/],
+        ["withdrawn", { ...base, withdrawnAt: "2026-11-16T12:00:00.000Z" }, "withdrawn", /^active test: the site's ownership confirmation was withdrawn on 2026-11-16/],
+        ["host not covered", { ...base, hosts: ["other.example.com"] }, "host-not-covered", /^active test: the site's ownership confirmation doesn't cover shop\.example\.com/],
+        ["no active tick", { ...base, scopes: { active: false, load: false } }, "no-active-tick", /^active test: the site's ownership confirmation doesn't allow active tests/],
+    ];
+    for (const [label, current, closedBy, reason] of cases) {
+        const gate = await gateFor(current);
+        assert.equal(gate.open, false, label);
+        assert.equal(gate.closedBy, closedBy, label);
+        assert.match(gate.reason, reason, label);
+        assert.equal(gate.localHost, false, label);
+    }
+    const covered = await gateFor(base);
+    assert.deepEqual({ open: covered.open, closedBy: covered.closedBy, reason: covered.reason, localHost: covered.localHost }, { open: true, closedBy: null, reason: null, localHost: false });
+    // A local host is always available (Phase 43 Decision 7), with no confirmation at all.
+    const local = (await read("http://127.0.0.1:4410/form")).activeGate;
+    assert.deepEqual({ open: local.open, localHost: local.localHost }, { open: true, localHost: true });
+    // Only what the switch needs: never the confirmation's hosts or its email, which the gate's run copy would carry.
+    assert.deepEqual(Object.keys(covered).sort(), ["closedBy", "localHost", "open", "reason"]);
+});
+
 test("an unreadable or malformed confirmation file reads as missing: it fails closed", async () => {
     const dir = join(process.env.MRONION_DATA_DIR!, "site-suites", siteFolderName(ORIGIN));
     mkdirSync(dir, { recursive: true });
@@ -287,13 +322,16 @@ test("a request host the crawl recorded counts by its host alone, without a samp
 });
 
 test("nothing is sent to the contact email: the store and its routes reach only the local file system", () => {
-    for (const file of ["src/lib/ownership/confirmation.ts", "src/app/api/site-ownership/route.ts", "src/app/api/site-ownership/withdraw/route.ts"]) {
+    // TFP-235: the read route now loads the active gate's decision, so its modules are read too (the fresh-context review).
+    for (const file of ["src/lib/ownership/confirmation.ts", "src/lib/ownership/messages.ts", "src/app/api/site-ownership/route.ts", "src/app/api/site-ownership/withdraw/route.ts", "src/lib/run/active-gate.ts", "src/lib/run/active-gate-names.ts", "src/lib/comprehensive/run-mode.ts"]) {
         const source = readFileSync(join(process.cwd(), file), "utf8");
         // Every module it loads, however it is written: a static import (on one line or several), import(), require().
         const loaded = [...source.matchAll(/\bfrom\s+["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)["']|\brequire\s*\(\s*["']([^"']+)["']|^\s*import\s+["']([^"']+)["']/gm)].map((match) => match.slice(1).find(Boolean)!);
-        assert.ok(loaded.length > 0, `${file}: its imports were read`);
-        // Mr Onion's own: the store, and what it uses for the site's origin and folder (none of them sends anything).
-        const allowed = ["fs/promises", "path", "next/server", "@/lib/ownership/confirmation", "@/lib/ownership/messages", "@/lib/generate/normalize", "@/lib/site-suites/store", "@/lib/storage/data-dir"];
+        // A module with no imports of its own (messages.ts, active-gate-names.ts, run-mode.ts) loads nothing at all.
+        if (!["src/lib/ownership/messages.ts", "src/lib/run/active-gate-names.ts", "src/lib/comprehensive/run-mode.ts"].includes(file)) assert.ok(loaded.length > 0, `${file}: its imports were read`);
+        // Mr Onion's own: the store, what it uses for the site's origin and folder, and the active gate's decision (TFP-235);
+        // none of them sends anything.
+        const allowed = ["fs/promises", "path", "next/server", "@/lib/ownership/confirmation", "@/lib/ownership/messages", "@/lib/run/active-gate", "@/lib/run/active-gate-names", "@/lib/comprehensive/run-mode", "@/lib/generate/normalize", "@/lib/site-suites/store", "@/lib/storage/data-dir"];
         for (const name of loaded) assert.ok(allowed.includes(name), `${file} loads ${name}`);
         assert.doesNotMatch(source, /\bfetch\s*\(|\bimport\s*\(|\brequire\s*\(|smtp|nodemailer|sendmail/i, file);
     }

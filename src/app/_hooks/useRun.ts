@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { checksActiveGate } from "@/lib/run/active-gate-names";
 import { buildReportHtmlDocument, buildResultHtmlDocument } from "@/lib/report/html";
 import type { ExecutionStatus, RunReport } from "@/lib/report/types";
 import { BASE_REPORT_TABS } from "@/app/_lib/constants";
@@ -40,6 +41,9 @@ export function useRun(
     const [reportPopupNotice, setReportPopupNotice] = useState("");
     const [activeTab, setActiveTab] = useState<ReportTab>("summary");
     const [openReportInNewPage, setOpenReportInNewPage] = useState(false);
+    // Phase 46 (TFP-235): the run form's active switch, off on every open, as Phase 43 has each run ask for active tests.
+    // Sent with every run; the run decides at its start whether the gate opens (Decision 4).
+    const [enableActive, setEnableActive] = useState(false);
     const [selectedSeoPageKey, setSelectedSeoPageKey] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<"All" | ExecutionStatus>("All");
     const [selectedFailedRerunTitles, setSelectedFailedRerunTitles] = useState<string[]>([]);
@@ -192,6 +196,9 @@ export function useRun(
                     includeTestTitles,
                     contentProfile,
                     enableInteractive,
+                    // Only a suite with an active test asks: the switch isn't shown for one without, so its last value
+                    // mustn't ride along (the fresh-context review). Run, Continue and rerun all come through here.
+                    enableActive: enableActive && checksActiveGate(code),
                     login: login ?? undefined,
                     generation: generation ?? undefined,
                     runMode: runMode?.kind === "comprehensive" ? runMode : undefined,
@@ -404,6 +411,8 @@ export function useRun(
         setActiveTab,
         openReportInNewPage,
         setOpenReportInNewPage,
+        enableActive,
+        setEnableActive,
         selectedSeoPageKey: selectedSeoPageGroup?.pageKey ?? null,
         setSelectedSeoPageKey,
         statusFilter,

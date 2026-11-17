@@ -10,10 +10,12 @@ So Mr Onion asks you to confirm it, **once per site**. The confirmation is
 saved with the site and used by every later run, so you aren't asked again on
 each run. It is your statement: Mr Onion records it and can't check it.
 
-> **Status (Phase 43):** the confirmation can be saved, read and withdrawn
-> through the API below (TFP-218). It opens the active gate (TFP-219), as
+> **Status (Phases 43 and 46):** the confirmation is made, renewed and
+> withdrawn in the app's **site lookup** (`/sites`, "Site lookup" in the
+> header, or the link under the run form's Base URL), or through the API
+> below. It opens the active gate, as
 > [Running active tests](#running-active-tests) says, and lifts the request
-> limits on the hosts it covers (TFP-220), in the app and in CI.
+> limits on the hosts it covers, in the app and in CI.
 
 ---
 
@@ -22,10 +24,14 @@ each run. It is your statement: Mr Onion records it and can't check it.
 A run sends attack-shaped input (today, the script-payload test on each form
 with a free-text field) only when two things are both true:
 
-1. **The run asks for it.** Start the run with `"enableActive": true` in the
-   `POST /api/run` request. It is off unless the request says so, and a
-   setting in Mr Onion's own environment can't turn it on. The CLI never asks
-   for it, so no active test runs in CI yet (TFP-249).
+1. **The run asks for it.** In the app, turn on **Run active tests**, under
+   the interactive toggle beside the generated suite. It shows only for a suite with active tests, and is
+   disabled, with the reason and a link to the site's lookup entry, when the
+   host isn't covered (it asks the API, below). Through the API, start the
+   run with `"enableActive": true` in the `POST /api/run` request. It is off
+   unless the run asks, and a setting in Mr Onion's own environment can't
+   turn it on. The run decides when it starts, whatever the screen showed.
+   The CLI never asks for it, so no active test runs in CI yet (TFP-249).
 2. **The target host is covered.** It is a local host, or the site's
    confirmation is valid, covers the host, and has the active tick.
 
@@ -130,15 +136,19 @@ of the text you confirm.
 
 ## The API
 
-The confirmation screen comes with the app screens (Phase 46). Until then:
+The site lookup and its confirmation form use these; a script can too.
 
 ```http
 GET  /api/site-ownership?baseUrl=https://shop.example.com
 ```
 
 Returns its `status` (`missing`, `valid`, `expired` or `withdrawn`), the
-`confirmation`, the `history` of earlier ones, and the `wording` for each
-basis.
+`confirmation`, the `history` of earlier ones, the `wording` for each basis,
+the `legalNote` shown beside it, and `activeGate`: what a run asking for
+active tests would get for that URL (`open`, `closedBy` and the `reason`
+it is closed, and whether it is a `localHost`). Every response of this API shows the contact
+email masked (`t***@example.com`); the full address is only in the local
+file.
 
 ```http
 POST /api/site-ownership
