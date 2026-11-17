@@ -279,6 +279,39 @@ these amendments apply and override older wording below.
   if Phase 44's results need more than the report shows.
 - **Load testing's run option.** With D24.
 - **A screen for library entries** (browse or retire). Not asked for.
+- **TFP-291: a site folder name that can't collide** (found building
+  TFP-232; owner ruling 2026-11-17: a known limitation, ticketed, not
+  placed). Register D46; TEST_PLAN known limitation 15; issue #51.
+
+### TFP-291 — A site folder name that can't collide, with a one-time move
+
+- **Phase:** none, not placed · **Priority:** P3 · **Labels:**
+  `storage`, `known-limitation`
+- **Problem it solves:** `siteFolderName` (`src/lib/site-suites/store.ts`,
+  Phase 42) makes every character outside `[a-z0-9.-]` a `_`, so two
+  origins can share one folder (`https://a.b:8080` and `https://a.b_8080`
+  are both `https_a.b_8080`). They share the confirmation, the gap writer
+  and the saved crawls that decide which typed hosts a confirmation
+  accepts. It can't open the active gate or lift the caps: both compare
+  the run's own host with the confirmation's typed hosts, and colliding
+  origins always have different host names.
+- **Scope:**
+  - a folder name that is one-to-one with the origin (an encoding that
+    can't produce one origin's name from another's);
+  - a one-time move of existing folders to the new names, once per data
+    folder, as Phase 48's rename moved the data folder (TFP-277): a
+    folder whose contents belong to two origins is split by each file's
+    recorded origin where it has one, and otherwise reported, not
+    guessed;
+  - run records that name a suite folder by its old path still find it.
+- **Acceptance criteria:**
+  - two origins that collide today get different folders; a unit test
+    over the colliding pairs fails on today's `siteFolderName`;
+  - after the move, every existing site's confirmation, gap writer and
+    suites are found by its origin, and a run saved before the move still
+    finds its suite;
+  - a folder shared by two origins is split or reported, never merged.
+- **Dependencies:** none.
 
 ## Dependencies and order
 
@@ -324,20 +357,21 @@ these amendments apply and override older wording below.
       read-back fails;
     - "Keep it" is disabled while the withdrawal is with the API;
     - an entry being searched again is dimmed.
-- **Built against the record, as Claude Code read it.** For the owner:
-  - **Two origins can share a site's folder** (`siteFolderName` maps every
-    character outside `[a-z0-9.-]` to `_`, so `https://a.b:8080` and
-    `https://a.b_8080` share one), and with it the confirmation and the
-    gap writer. It is older than this phase, from Phase 42. The lookup now
-    shows only the suites saved for its origin; a folder name that can't
-    collide needs its own ticket and a move of existing folders.
-  - **`GET /api/runs` lists every saved run with its address**, which is
-    a list of the sites tested. It predates this phase, and the app doesn't
-    call it (the request-guard spec and `scripts/compare-generators.mjs`
-    do). Review item 7 allows `/api/candidates` "and no other", so this is
-    an owner decision: keep it as run history outside the rule, or
-    restrict it. Until then RUN-73 pins that it still lists, so the ruling
-    changes a test.
+- **The owner's rulings at verification (Emil, 2026-11-17):**
+  1. **`GET /api/runs` is restricted to one site.** It listed every saved
+     run with its address, which is a list of the sites tested (the app
+     never called it). It now requires `baseUrl` and returns only that
+     site's runs. `no-listing.test.ts` allows `/api/candidates` alone to
+     name more than one site, and failed on the old route first.
+  2. **Two origins can share a site's folder** (`siteFolderName` maps
+     every character outside `[a-z0-9.-]` to `_`, so `https://a.b:8080`
+     and `https://a.b_8080` share one, from Phase 42). A known limitation
+     (TEST_PLAN item 15, issue #51) with a ticket, TFP-291, not placed. It
+     can't open the active gate or lift the caps: both compare the run's
+     own host with the confirmation's typed hosts, and colliding origins
+     always have different host names. The lookup shows only the suites
+     saved for its origin.
+- **Built against the record, as Claude Code read it, also:**
   - **Creating and renewing a confirmation** are AC1's, but the form is
     TFP-233's (Decision 2). The entry here shows, withdraws and sets the
     gap writer; the form adds the rest.
