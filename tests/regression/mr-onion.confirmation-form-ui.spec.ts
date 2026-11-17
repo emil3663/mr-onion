@@ -88,7 +88,8 @@ test("TFP-233: opened from the run form, the host field is empty, 90 days presel
     await expect(form.getByLabel("Expires on")).toHaveAttribute("max", isoDay(yearOn));
     await expect(form.getByRole("checkbox", { name: /^Active tests:/ })).not.toBeChecked();
     await expect(form.getByRole("checkbox", { name: /^Load testing:/ })).not.toBeChecked();
-    await expect(form.getByText("sends script-shaped input to these hosts' forms, on a run that asks for active tests.", { exact: false })).toBeVisible();
+    // The label names the category the stored statement does, with today's example (owner ruling at Gate A, 2026-11-17).
+    await expect(form.getByRole("checkbox", { name: "Active tests: attack-shaped input (today: script-shaped input in forms), on a run that asks for active tests." })).toBeVisible();
 
     // The basis is chosen: none is preselected, and there is nothing to tick until one is.
     await expect(form.getByRole("radio", { name: "I own this site" })).not.toBeChecked();

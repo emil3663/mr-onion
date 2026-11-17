@@ -246,7 +246,8 @@ export function ConfirmationForm({
                 <legend className="text-sm font-medium text-zinc-700">What it allows beyond runs without the request limits</legend>
                 <label className="flex items-start gap-2 text-sm text-zinc-800">
                     <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} className="mt-1" />
-                    <span><strong>Active tests:</strong> sends script-shaped input to these hosts&apos; forms, on a run that asks for active tests.</span>
+                    {/* Owner ruling at Gate A (2026-11-17): the category the stored statement names, with today's example. */}
+                    <span><strong>Active tests:</strong> attack-shaped input (today: script-shaped input in forms), on a run that asks for active tests.</span>
                 </label>
                 <label className="flex items-start gap-2 text-sm text-zinc-800">
                     <input type="checkbox" checked={load} onChange={(event) => setLoad(event.target.checked)} className="mt-1" />
