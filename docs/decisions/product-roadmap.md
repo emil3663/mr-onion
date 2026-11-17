@@ -473,7 +473,7 @@ Tickets TFP-228 to TFP-231.
 
 See `phase-45-docker-sandbox-decision-record.md`.
 
-### Phase 46 — App screens (locked 2026-10-20, in progress: Gate A passed 2026-11-17, TFP-232 to TFP-234 done)
+### Phase 46 — App screens (locked 2026-10-20, in progress: Gate A passed 2026-11-17, TFP-232 to TFP-235 done)
 - **A site lookup by URL:** exact match only, no list of sites, the email
   masked.
 - **The confirmation form:** hosts typed by hand.
