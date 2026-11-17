@@ -1,9 +1,11 @@
-import type { ComprehensiveReport } from "@/lib/report/types";
+import { NotesFromTheRun } from "@/app/_components/TestNotes";
+import type { ComprehensiveReport, ExecutionRecord } from "@/lib/report/types";
 
 // Phase 35 (TFP-132, Decision 7): a Comprehensive run's report shows its one
 // area: the summary, a per-page table, failures and findings by category,
 // the local model's section, then what the run did not test.
-export function ComprehensiveReportView({ report }: { report: ComprehensiveReport }) {
+// Phase 46 (TFP-289): `execution` is the run's records, for their notes; the view's counts come from `report` alone.
+export function ComprehensiveReportView({ report, execution = [] }: { report: ComprehensiveReport; execution?: ExecutionRecord[] }) {
     return (
         <div className="space-y-6" data-testid="comprehensive-report">
             <div className="rounded-[28px] border border-indigo-100 bg-indigo-50/60 p-6">
@@ -91,6 +93,10 @@ export function ComprehensiveReportView({ report }: { report: ComprehensiveRepor
                     </ul>
                 </section>
             ) : null}
+
+            {/* TFP-289: what the tests noted, each with its test, before the fixed statement, which stays last (Phase
+                35 Decision 6), as in the HTML export. */}
+            <NotesFromTheRun records={execution} />
 
             <section className="rounded-[28px] border border-amber-200 bg-amber-50/60 p-5">
                 <h3 className="text-sm font-semibold text-zinc-900">What this run did not test</h3>

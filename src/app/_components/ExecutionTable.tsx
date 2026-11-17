@@ -3,6 +3,7 @@ import { EmptyState } from "@/app/_components/EmptyState";
 import { formatExecutionRemark, getSuiteLabel, statusClasses, summarizeSuite } from "@/app/_lib/format";
 import { formatMilliseconds } from "@/lib/report/text";
 import type { ExecutionRecord } from "@/lib/report/types";
+import { RecordNotes } from "@/app/_components/TestNotes";
 
 export function ExecutionTable({
     records,
@@ -147,6 +148,9 @@ export function ExecutionTable({
                                                     {formatExecutionRemark(record)}
                                                 </p>
                                             </div>
+
+                                            {/* TFP-289: the test's notes, whole, apart from its outcome and findings. */}
+                                            <RecordNotes notes={record.notes} title={record.title} />
 
                                             <div className="mt-4 flex flex-wrap gap-2">
                                                 {record.status === "Failed" ? (

@@ -572,6 +572,44 @@ these amendments apply and override older wording below.
 
 ### TFP-289 — Notes in the app's report tabs
 
+- **Status:** Built (2026-11-17). Stopped for Gate B.
+  - **Where:** `src/app/_components/TestNotes.tsx`. In the Execution tab,
+    each test with notes has a "Notes" box after its observed outcome,
+    every note whole. A Comprehensive run's view has "Notes from the run"
+    (only the noted tests, each with its status), before "What this run
+    did not test", which stays last, as in the HTML export.
+  - **Apart from findings:** the screen reads `notes` as saved; no count,
+    verdict, pass ratio or Not-run figure reads them. A test with none
+    shows nothing.
+  - **Tests:** RPT-24 (`tests/regression/mr-onion.report-notes-ui.spec.ts`),
+    from real runs: a Standard run whose payload test the covered-host
+    guard notes, and a Comprehensive run, which has no active test, given
+    a note on one record on its way to the screen, as Gate B's fix's own
+    Comprehensive test does. Red first, on the build before: the row had
+    no Notes region and the view no "Notes from the run" ("element(s) not
+    found"); the Standard run's record had the note.
+- **Found by the fresh-context review and fixed before commit:**
+  - The check that a note isn't in the observed outcome matched exactly,
+    so a note appended to the outcome would have passed. It checks for any
+    part of it now, and failed red on a mutant that appended it.
+  - Each row's box was a region named "Notes", the same for every test.
+    It is "Notes on <the test>".
+  - The Comprehensive list names the browser when a run had more than one.
+  - The spec opens the payload test's set by its summary, as a tester
+    would; reads the app's run replies in arrival order; skips artifact
+    downloads; and shows the Comprehensive view the guard's own
+    stopped-script wording.
+- **For the owner at Gate B:**
+  - **The Comprehensive case is a substitute.** A Comprehensive run has no
+    active test, so its view is shown a real Comprehensive run's reply
+    with the stopped-script note added to one record, as Gate B's fix's
+    Comprehensive test did. It proves the view, not that a Comprehensive
+    run saves its notes (the HTML export's test covers the record). A
+    candidate bound into a Comprehensive run can call the read-only guard
+    (4812e84), so a real Comprehensive note is reachable, at the cost of a
+    bound candidate and a beacon fixture in the spec.
+  - **The counts are unchanged by inspection:** they read `report.summary`,
+    built on the server, and only `TestNotes.tsx` reads `notes`.
 - **Phase:** 46 · **Priority:** P2 · **Labels:** `ui`, `report`
 - **Problem it solves:** since Phase 43's Gate B fix (PR #47) a test's notes
   are on its record and in the HTML exports, but not in the app's report

@@ -101,7 +101,7 @@ export function ReportSection({
                         onToggle={() => setIsReportCollapsed((value) => !value)}
                     >
                         <div className="space-y-6">
-                            <ComprehensiveReportView report={report.comprehensive} />
+                            <ComprehensiveReportView report={report.comprehensive} execution={report.execution} />
                             <RawConsolePanel
                                 result={result}
                                 report={report}
