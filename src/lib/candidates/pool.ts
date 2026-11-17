@@ -60,6 +60,8 @@ export interface Candidate {
     reason?: string;
     /** TFP-196: who approved it, and when. */
     approved?: { by: string; at: string };
+    /** TFP-298: an approval withdrawn (through reject), when and why; `approved` stays on record beside it. */
+    withdrawn?: { at: string; reason: string };
     costUsd: number;
 }
 
@@ -75,18 +77,68 @@ export function candidateId(pattern: CandidatePattern): string {
 
 const poolDir = () => join(dataDir(), "candidates");
 
+/**
+ * The pool's candidates: the well-formed ones only (TFP-298, the fresh-context review), so the screen, promotion,
+ * binding into runs and the gap writer all read the same pool. A file that isn't one is reported by poolProblems.
+ */
 export async function loadPool(): Promise<Candidate[]> {
+    return loadDecidablePool();
+}
+
+/** TFP-298: the pool's well-formed candidates only, each from <id>.json with its id candidateId(pattern): the ones that can be decided. */
+export async function loadDecidablePool(): Promise<Candidate[]> {
     const names = await readdir(poolDir()).catch(() => [] as string[]);
     const candidates: Candidate[] = [];
-    for (const name of names.filter((file) => file.endsWith(".json")).sort()) {
-        const text = await readFile(join(poolDir(), name), "utf8").catch(() => null);
+    for (const file of names.filter((name) => name.endsWith(".json")).sort()) {
+        const text = await readFile(join(poolDir(), file), "utf8").catch(() => null);
         try {
-            if (text) candidates.push(JSON.parse(text) as Candidate);
+            const candidate = text ? (JSON.parse(text) as Candidate) : null;
+            if (candidate?.pattern && candidate.id === candidateId(candidate.pattern) && file === `${candidate.id}.json`) candidates.push(candidate);
         } catch {
-            // An unreadable file is no candidate.
+            // Not a candidate: poolProblems reports it.
         }
     }
     return candidates;
+}
+
+/** A pool file that can't be a candidate the screen offers, and why, in words (TFP-298). */
+export interface PoolProblem {
+    file: string;
+    reason: string;
+}
+
+/**
+ * Phase 46 (TFP-298, Gate B's walkthrough): the pool's files that aren't well-formed candidates. A candidate is decided
+ * by its id, read from <id>.json, and the id is candidateId(pattern); one whose id is something else, or whose file
+ * isn't named for its id, would be offered and then refused at every decision. They are reported, never offered.
+ */
+export async function poolProblems(): Promise<PoolProblem[]> {
+    const names = await readdir(poolDir()).catch(() => [] as string[]);
+    const problems: PoolProblem[] = [];
+    for (const file of names.filter((name) => name.endsWith(".json")).sort()) {
+        const text = await readFile(join(poolDir(), file), "utf8").catch(() => null);
+        let candidate: Candidate | null = null;
+        try {
+            candidate = text ? (JSON.parse(text) as Candidate) : null;
+        } catch {
+            candidate = null;
+        }
+        if (!candidate || typeof candidate !== "object") {
+            problems.push({ file, reason: "it can't be read as a candidate (it isn't JSON)" });
+            continue;
+        }
+        if (!candidate.pattern) {
+            problems.push({ file, reason: "it isn't a candidate: it has no pattern" });
+            continue;
+        }
+        const expected = candidateId(candidate.pattern);
+        if (candidate.id !== expected) {
+            problems.push({ file, reason: `its id, ${candidate.id}, isn't the one its pattern gives (${expected}), so it can't be approved or rejected; save it again under that id` });
+        } else if (file !== `${candidate.id}.json`) {
+            problems.push({ file, reason: `its file name isn't its id: save it again as ${candidate.id}.json` });
+        }
+    }
+    return problems;
 }
 
 export async function loadCandidate(id: string): Promise<Candidate | null> {

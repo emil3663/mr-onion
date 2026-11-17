@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
 import { join, relative } from "path";
 import { setting } from "@/lib/settings";
 import { loadCandidate, loadPool, saveCandidate, type Candidate } from "./pool";
@@ -54,6 +54,7 @@ export function promotionVerdict(candidate: Candidate): PromotionVerdict {
 
 /** The candidates to offer the tester: in the pool, not decided, and meeting the rule. */
 export async function offeredCandidates(): Promise<Array<{ candidate: Candidate; verdict: PromotionVerdict }>> {
+    // TFP-298: only a well-formed candidate (its id candidateId(pattern), in <id>.json); poolProblems reports the others.
     return (await loadPool())
         .filter((candidate) => candidate.status === "candidate")
         .map((candidate) => ({ candidate, verdict: promotionVerdict(candidate) }))
@@ -62,23 +63,33 @@ export async function offeredCandidates(): Promise<Array<{ candidate: Candidate;
 
 export class PromotionError extends Error {}
 
+const NO_SUCH_CANDIDATE = "There is no such candidate in the pool. The list is read again.";
+
 export async function approveCandidate(id: string, by: string): Promise<Candidate> {
     const candidate = await loadCandidate(id);
-    if (!candidate) throw new PromotionError(`no candidate ${id}`);
-    if (candidate.status !== "candidate") throw new PromotionError(`candidate ${id} is ${candidate.status}, not open for a decision`);
+    // TFP-298: each refusal in plain words, as the candidate screen shows it.
+    if (!candidate) throw new PromotionError(NO_SUCH_CANDIDATE);
+    if (candidate.status !== "candidate") throw new PromotionError(`This candidate was already ${candidate.status}, so it can't be approved again.`);
     const verdict = promotionVerdict(candidate);
-    if (!verdict.meetsRule) throw new PromotionError(`candidate ${id} doesn't meet the promotion rule: ${verdict.reasons.join("; ")}`);
+    if (!verdict.meetsRule) throw new PromotionError(`This candidate doesn't meet the promotion rule yet: ${verdict.reasons.join("; ")}.`);
     const approved: Candidate = { ...candidate, status: "approved", approved: { by, at: new Date().toISOString() } };
     await saveCandidate(approved);
     return approved;
 }
 
-export async function rejectCandidate(id: string, reason: string): Promise<Candidate> {
+/**
+ * Also how an approval is withdrawn (TFP-298): `from: "approved"`, refused if the candidate is no longer approved (a
+ * second tab, or the library step got there first). A withdrawn approval keeps `approved` on record, and says when.
+ */
+export async function rejectCandidate(id: string, reason: string, from?: Candidate["status"]): Promise<Candidate> {
     const candidate = await loadCandidate(id);
-    if (!candidate) throw new PromotionError(`no candidate ${id}`);
-    if (candidate.status === "promoted") throw new PromotionError(`candidate ${id} is already a library entry`);
-    if (!reason.trim()) throw new PromotionError("a rejection needs its reason");
-    const rejected: Candidate = { ...candidate, status: "rejected", reason: reason.trim() };
+    if (!candidate) throw new PromotionError(NO_SUCH_CANDIDATE);
+    if (candidate.status === "promoted") throw new PromotionError("This candidate is already in the library: it can't be rejected, or its approval withdrawn, here. Remove its library entry in a reviewed commit.");
+    if (from === "approved" && candidate.status !== "approved") throw new PromotionError(`This approval was already withdrawn: the candidate is ${candidate.status} now. The list is read again.`);
+    if (candidate.status === "rejected") throw new PromotionError("This candidate was already rejected.");
+    if (!reason.trim()) throw new PromotionError("Type a reason first: it is kept with the candidate.");
+    const withdrawing = candidate.status === "approved";
+    const rejected: Candidate = { ...candidate, status: "rejected", reason: reason.trim(), ...(withdrawing ? { withdrawn: { at: new Date().toISOString(), reason: reason.trim() } } : {}) };
     await saveCandidate(rejected);
     return rejected;
 }
@@ -86,8 +97,8 @@ export async function rejectCandidate(id: string, reason: string): Promise<Candi
 /** A person's label for one run's failure: a real defect (optionally a benchmark bug), or not one. */
 export async function labelRun(id: string, run: string, label: "real" | "not a defect", bug?: number): Promise<Candidate> {
     const candidate = await loadCandidate(id);
-    if (!candidate) throw new PromotionError(`no candidate ${id}`);
-    if (!candidate.evidence.some((evidence) => evidence.run === run)) throw new PromotionError(`candidate ${id} has no run ${run}`);
+    if (!candidate) throw new PromotionError(NO_SUCH_CANDIDATE);
+    if (!candidate.evidence.some((evidence) => evidence.run === run)) throw new PromotionError("This candidate has no such run to label.");
     const labelled: Candidate = {
         ...candidate,
         evidence: candidate.evidence.map((evidence) => (evidence.run === run ? { ...evidence, label, ...(bug !== undefined ? { bug } : {}) } : evidence)),
@@ -130,7 +141,13 @@ export async function promoteApproved(libraryDir: string = join(process.cwd(), P
             caught: [...new Set(candidate.evidence.flatMap((run) => (run.bug !== undefined ? [run.bug] : [])))].sort((a, b) => a - b),
         };
         const file = join(libraryDir, `${candidate.id}.json`);
+        // TFP-298 (the fresh-context review): an approval withdrawn while this ran isn't promoted.
+        if ((await loadCandidate(candidate.id))?.status !== "approved") continue;
         await writeFile(file, `${JSON.stringify(entry, null, 2)}\n`, "utf8");
+        if ((await loadCandidate(candidate.id))?.status !== "approved") {
+            await rm(file, { force: true });
+            continue;
+        }
         await saveCandidate({ ...candidate, status: "promoted", reason: `library entry ${relative(process.cwd(), file).replace(/\\/g, "/")}` });
         written.push(file);
     }

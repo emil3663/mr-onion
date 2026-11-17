@@ -70,7 +70,7 @@ test("only a candidate that meets the rule is offered (decision table)", async (
     // Approving one below the rule is refused, naming why.
     const refused = await post({ action: "approve", id: two.id, by: "Emil" });
     assert.equal(refused.status, 409);
-    assert.match((await refused.json()).error, /doesn't meet the promotion rule: .*it ran on 2 sites \(3 needed without one\)/);
+    assert.match((await refused.json()).error, /doesn't meet the promotion rule yet: .*it ran on 2 sites \(3 needed without one\)/);
     assert.equal((await loadCandidate(two.id))!.status, "candidate");
 
     // A failure labelled not a defect: then the three sites count.

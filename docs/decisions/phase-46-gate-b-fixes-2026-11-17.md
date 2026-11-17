@@ -118,7 +118,37 @@ repo as evidence for C and TFP-299.
 
 ## TFP-298 (E) — The pool and the promotion screen
 
-- **Status:** Not started.
+- **Status:** Built (2026-11-17). Stopped for the re-walk.
+- **As built:**
+  - `loadDecidablePool` and `poolProblems` (`src/lib/candidates/pool.ts`):
+    only a candidate in `<id>.json` whose id is `candidateId(pattern)`
+    is offered. The others (that id wrong, the file misnamed, not JSON)
+    come back from `GET /api/candidates` as `problems`, each with why,
+    and the screen lists them under "Not offered".
+  - The API's refusals, as the screen shows them, are plain: "Type your
+    name to approve: the approval records who made it.", "Type a reason
+    first: it is kept with the candidate.", "This candidate was already
+    approved, so it can't be approved again.", "This candidate doesn't
+    meet the promotion rule yet: ...", "There is no such candidate in
+    the pool: ...".
+  - Each waiting candidate has "Withdraw approval" with "Reason to
+    withdraw", through `POST /api/candidates` `reject`, which already
+    took an approved candidate.
+- **Found by the fresh-context review and fixed, red first:** the first
+  build checked only the offer, so a misnamed *approved* file was still
+  waiting (and refused), `library:promote` would have committed it, and a
+  misfiled copy could be bound into runs or overwrite a real rejection.
+  `loadPool` itself now gives only well-formed candidates, so the screen,
+  promotion, binding and the gap writer read one pool; the promote script
+  lists what it skipped. A withdrawal sends `from: "approved"` and is
+  refused once the candidate changed (another tab, or promotion first);
+  `reject` refuses a rejected one; promotion re-reads before it saves;
+  a withdrawn approval keeps `approved` and records `withdrawn`. The last
+  technical refusals (labels, the route's own, the screen's fallbacks, a
+  save that fails) are in words.
+- **For the owner at the re-walk:** a withdrawn approval is kept on
+  record beside the rejection (`approved` and `withdrawn`), not erased.
+- **Acceptance criteria:** RUN-70 (updated), RUN-77.
 - **Scope (the owner's words):** the pool doesn't offer a candidate whose
   id isn't `candidateId(pattern)`; it reports it instead. API refusals on
   the candidate screen are in plain words. The waiting list gets

@@ -12,6 +12,9 @@ import type { PromotionVerdict } from "@/lib/candidates/promotion";
  * - approve (naming who approved) or reject (with a reason, which the API requires);
  * - approved candidates wait to be committed, with the one-line pointer for Claude Code, which runs
  *   `npm run library:promote` and commits the entries. The app never writes into the repo.
+ * TFP-298 (Gate B's walkthrough): a pool file that can't be decided (its id isn't candidateId(pattern), its file isn't
+ * named for its id, or it isn't JSON) is listed under "Not offered" with why, as the API reports it; and an approval
+ * still waiting can be withdrawn, with a reason, through the API's reject.
  */
 
 type PooledCandidate = Candidate & { verdict: PromotionVerdict };
@@ -39,8 +42,8 @@ export function hostsOf(candidate: Pick<Candidate, "evidence">): string[] {
 /** An API reply's error, or why there is none: a reply that isn't JSON, or no reply at all, is said so in words. */
 async function replyOf(response: Response): Promise<{ data: Record<string, unknown>; error: string }> {
     const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-    if (data === null) return { data: {}, error: response.ok ? "" : `the server answered ${response.status}, with no reason given` };
-    return { data, error: response.ok ? "" : typeof data.error === "string" ? data.error : `refused (${response.status})` };
+    if (data === null) return { data: {}, error: response.ok ? "" : `Mr Onion couldn't answer (the server said ${response.status}, with no reason). Nothing was decided.` };
+    return { data, error: response.ok ? "" : typeof data.error === "string" ? data.error : `Mr Onion refused it without saying why (${response.status}).` };
 }
 
 const describePattern = (candidate: Candidate) => `${candidate.pattern.name} [${candidate.pattern.type}]`;
@@ -48,6 +51,8 @@ const describePattern = (candidate: Candidate) => `${candidate.pattern.name} [${
 export function PromotionScreen() {
     const [candidates, setCandidates] = useState<PooledCandidate[] | null>(null);
     const [offered, setOffered] = useState<string[]>([]);
+    const [problems, setProblems] = useState<Array<{ file: string; reason: string }>>([]);
+    const [withdrawReasons, setWithdrawReasons] = useState<Record<string, string>>({});
     const [loadError, setLoadError] = useState("");
     const [approver, setApprover] = useState("");
     const [reasons, setReasons] = useState<Record<string, string>>({});
@@ -65,6 +70,7 @@ export function PromotionScreen() {
                 if (!current) return;
                 setCandidates(Array.isArray(data.candidates) ? (data.candidates as PooledCandidate[]) : []);
                 setOffered(Array.isArray(data.offered) ? (data.offered as string[]) : []);
+                setProblems(Array.isArray(data.problems) ? (data.problems as Array<{ file: string; reason: string }>) : []);
                 setLoadError("");
             })
             .catch((error: unknown) => {
@@ -167,6 +173,16 @@ export function PromotionScreen() {
                 </ul>
             </section>
 
+            {problems.length > 0 ? (
+                <section aria-labelledby="not-offered-heading" className="rounded-[28px] border border-amber-200 bg-amber-50/60 p-6">
+                    <h2 id="not-offered-heading" className="text-lg font-semibold text-zinc-950">Not offered</h2>
+                    <p className="mt-1 text-sm text-zinc-600">Files in the candidate pool that can&apos;t be approved or rejected as they are, and why.</p>
+                    <ul className="mt-3 space-y-1 text-sm text-zinc-800">
+                        {problems.map((problem) => <li key={problem.file}><span className="font-mono text-xs">{problem.file}</span>: {problem.reason}</li>)}
+                    </ul>
+                </section>
+            ) : null}
+
             <section aria-labelledby="waiting-heading" className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
                 <h2 id="waiting-heading" className="text-lg font-semibold text-zinc-950">Waiting to be committed</h2>
                 <p className="mt-1 text-sm text-zinc-600">Approved candidates become library entries through a reviewed commit. Mr Onion never writes into the repository itself.</p>
@@ -175,8 +191,29 @@ export function PromotionScreen() {
                         <p className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 font-mono text-xs text-indigo-900">{CLAUDE_CODE_POINTER}</p>
                         <ul className="mt-4 space-y-2 text-sm text-zinc-800">
                             {waiting.map((candidate) => (
-                                <li key={candidate.id} aria-label={`Waiting: ${describePattern(candidate)}`}>
-                                    <strong>{describePattern(candidate)}</strong>, approved by {candidate.approved?.by ?? "?"} on {candidate.approved?.at.slice(0, 10) ?? "?"}
+                                <li key={candidate.id} aria-label={`Waiting: ${describePattern(candidate)}`} className="rounded-2xl border border-zinc-200 p-3">
+                                    <span id={`waiting-${candidate.id}`}><strong>{describePattern(candidate)}</strong>, approved by {candidate.approved?.by ?? "?"} on {candidate.approved?.at.slice(0, 10) ?? "?"}</span>
+                                    {/* TFP-298: withdrawing an approval is the API's reject, with its reason kept. */}
+                                    <div className="mt-2 flex flex-wrap items-end gap-3">
+                                        <label className="text-sm text-zinc-700">
+                                            Reason to withdraw
+                                            <input
+                                                value={withdrawReasons[candidate.id] ?? ""}
+                                                onChange={(event) => setWithdrawReasons((current) => ({ ...current, [candidate.id]: event.target.value }))}
+                                                className="mt-1 block w-72 rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+                                            />
+                                        </label>
+                                        <button
+                                            type="button"
+                                            disabled={busy !== ""}
+                                            aria-describedby={`waiting-${candidate.id}`}
+                                            onClick={() => void decide(candidate.id, { action: "reject", from: "approved", reason: withdrawReasons[candidate.id] ?? "" })}
+                                            className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:opacity-50"
+                                        >
+                                            Withdraw approval
+                                        </button>
+                                    </div>
+                                    {refusals[candidate.id] ? <p role="alert" className="mt-2 text-sm text-rose-700">{refusals[candidate.id]}</p> : null}
                                 </li>
                             ))}
                         </ul>

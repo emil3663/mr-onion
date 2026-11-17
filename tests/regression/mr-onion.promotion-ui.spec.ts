@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve, sep } from "node:path";
 import { expect, test } from "@playwright/test";
 import { setting } from "../../src/lib/settings";
+import { candidateId } from "../../src/lib/candidates/pool";
 
 // Phase 46 (TFP-234, Decision 3, Acceptance Criteria 3): the promotion screen, in the real app, on a candidate pool
 // seeded in the server's temporary data folder (playwright.regression.config.ts). Equivalence partitions:
@@ -26,9 +27,10 @@ function ownRegressionFolder(dir: string | undefined): boolean {
 }
 
 const run = (origin: string, at: string) => ({ origin, page: "/", at, status: "Passed", run: `run-${origin.length}-${at}` });
-const candidate = (id: string, name: string, status: string, origins: string[], extra: Record<string, unknown> = {}) => ({
-    id,
-    pattern: { kind: "element", type: "button", name },
+// TFP-298: each with its proper id, candidateId(pattern), as the pool requires; the first argument only labels it.
+const candidate = (_label: string, name: string, status: string, origins: string[], extra: Record<string, unknown> = {}) => ({
+    id: candidateId({ kind: "element" as const, type: "button", name }),
+    pattern: { kind: "element" as const, type: "button", name },
     body: `await page.goto(__PAGE__);\nawait expect(__LOCATOR__).toBeVisible(); // ${name}`,
     gate: "read-only",
     technique: "state transition",
@@ -80,7 +82,9 @@ test("TFP-234: only a candidate that meets the rule is offered, with its pattern
     await expect(offered.getByRole("list", { name: "Sites it ran on" }).getByRole("listitem")).toHaveText(["localhost:4200", "shop.example.com", "192.168.1.10:8080"]);
 
     // Exactly the candidates meeting the rule: not 1 or 2 clean sites, not a breach, not one already approved.
-    await expect(page.getByRole("region", { name: "Offered for promotion" }).getByRole("heading", { level: 3 })).toHaveText(["add to cart [button]", "checkout [button]", "compare [button]"]);
+    // In the pool's order, by id (TFP-298: the ids are candidateId(pattern) now).
+    const offeredInOrder = [OFFERED, REAL_DEFECT, SAME_HOST].sort((a, b) => a.id.localeCompare(b.id)).map((item) => `${item.pattern.name} [button]`);
+    await expect(page.getByRole("region", { name: "Offered for promotion" }).getByRole("heading", { level: 3 })).toHaveText(offeredInOrder);
     await expect(page.getByRole("listitem", { name: "Candidate checkout [button]" }).getByText("it caught a real defect")).toBeVisible();
     await expect(page.getByRole("listitem", { name: "Candidate compare [button]" }).getByRole("list", { name: "Sites it ran on" }).getByRole("listitem")).toHaveText(["http://dup.example.com", "https://dup.example.com", "localhost:4200"]);
     await expect(page).toHaveTitle("Candidate tests | Mr Onion");
@@ -95,7 +99,7 @@ test("TFP-234: a rejection without a reason is refused, and the candidate stays 
     await page.goto("/candidates");
     const offered = page.getByRole("listitem", { name: "Candidate add to cart [button]" });
     await offered.getByRole("button", { name: "Reject" }).click();
-    await expect(offered.getByRole("alert")).toHaveText("a rejection needs its reason");
+    await expect(offered.getByRole("alert")).toHaveText("Type a reason first: it is kept with the candidate.");
     await page.reload();
     await expect(page.getByRole("listitem", { name: "Candidate add to cart [button]" })).toBeVisible();
     expect(JSON.parse(await readFile(join(pool(), `${OFFERED.id}.json`), "utf8")).status).toBe("candidate");
@@ -131,7 +135,7 @@ test("TFP-234: a decision the server can't answer in JSON, or that never reaches
     const offered = page.getByRole("listitem", { name: "Candidate add to cart [button]" });
     await page.route("**/api/candidates", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "text/html", body: "<h1>Internal Server Error</h1>" }) : route.fallback()));
     await offered.getByRole("button", { name: "Approve" }).click();
-    await expect(offered.getByRole("alert")).toHaveText("the server answered 500, with no reason given");
+    await expect(offered.getByRole("alert")).toHaveText("Mr Onion couldn't answer (the server said 500, with no reason). Nothing was decided.");
     await page.unroute("**/api/candidates");
     await page.route("**/api/candidates", (route) => (route.request().method() === "POST" ? route.abort("connectionrefused") : route.fallback()));
     await offered.getByRole("button", { name: "Approve" }).click();
@@ -173,6 +177,34 @@ test("TFP-234: an approval without a name is refused by the API, as shown", asyn
     await page.goto("/candidates");
     const offered = page.getByRole("listitem", { name: "Candidate add to cart [button]" });
     await offered.getByRole("button", { name: "Approve" }).click();
-    await expect(offered.getByRole("alert")).toHaveText("an approval names who approved it (by)");
+    await expect(offered.getByRole("alert")).toHaveText("Type your name to approve: the approval records who made it.");
     expect(JSON.parse(await readFile(join(pool(), `${OFFERED.id}.json`), "utf8")).status).toBe("candidate");
+});
+
+// Phase 46 (TFP-298, from Gate B's walkthrough): a candidate whose id isn't candidateId(pattern) isn't offered, and is
+// reported, as the walkthrough's stand-in "walkthrough01" was offered and then refused at every decision.
+test("TFP-298: a candidate whose id isn't the one its pattern gives isn't offered; it's reported, with why", async ({ page }) => {
+    const misnamed = { ...candidate("x", "misnamed stand-in", "candidate", ["http://localhost:4200", "https://shop.example.com", "https://a.example.org"]), id: "walkthrough01" };
+    await writeFile(join(pool(), "walkthrough01.json"), JSON.stringify(misnamed, null, 2));
+    await page.goto("/candidates");
+    await expect(page.getByRole("listitem", { name: "Candidate add to cart [button]" })).toBeVisible();
+    await expect(page.getByRole("listitem", { name: "Candidate misnamed stand-in [button]" })).toHaveCount(0);
+    const notOffered = page.getByRole("region", { name: "Not offered" });
+    await expect(notOffered.getByRole("listitem")).toHaveText([
+        `walkthrough01.json: its id, walkthrough01, isn't the one its pattern gives (${candidateId(misnamed.pattern)}), so it can't be approved or rejected; save it again under that id`,
+    ]);
+});
+
+test("TFP-298: an approval is withdrawn from the waiting list with a reason, through the API's reject", async ({ page }) => {
+    await page.goto("/candidates");
+    const waiting = page.getByRole("listitem", { name: "Waiting: search [button]" });
+    await expect(waiting).toBeVisible();
+    await waiting.getByRole("button", { name: "Withdraw approval" }).click();
+    await expect(waiting.getByRole("alert")).toHaveText("Type a reason first: it is kept with the candidate.");
+    expect(JSON.parse(await readFile(join(pool(), `${APPROVED.id}.json`), "utf8")).status).toBe("approved");
+    await waiting.getByLabel("Reason to withdraw").fill("approved by mistake: a stand-in");
+    await waiting.getByRole("button", { name: "Withdraw approval" }).click();
+    await expect(page.getByRole("listitem", { name: "Waiting: search [button]" })).toHaveCount(0);
+    const saved = JSON.parse(await readFile(join(pool(), `${APPROVED.id}.json`), "utf8"));
+    expect(saved).toMatchObject({ status: "rejected", reason: "approved by mistake: a stand-in" });
 });

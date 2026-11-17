@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loadPool } from "@/lib/candidates/pool";
+import { loadPool, poolProblems } from "@/lib/candidates/pool";
 import { approveCandidate, labelRun, offeredCandidates, PromotionError, promotionVerdict, rejectCandidate } from "@/lib/candidates/promotion";
 
 /**
@@ -21,6 +21,8 @@ export async function GET() {
     return NextResponse.json({
         candidates: pool.map((candidate) => ({ ...candidate, verdict: promotionVerdict(candidate) })),
         offered: offered.map(({ candidate }) => candidate.id),
+        // TFP-298: files the pool can't offer, each with why, for the screen to report.
+        problems: await poolProblems(),
     });
 }
 
@@ -29,18 +31,20 @@ export async function POST(req: NextRequest) {
     const id = typeof body.id === "string" ? body.id : "";
     try {
         if (body.action === "approve") {
-            if (typeof body.by !== "string" || !body.by.trim()) return NextResponse.json({ error: "an approval names who approved it (by)" }, { status: 400 });
+            if (typeof body.by !== "string" || !body.by.trim()) return NextResponse.json({ error: "Type your name to approve: the approval records who made it." }, { status: 400 });
             return NextResponse.json(await approveCandidate(id, body.by.trim()));
         }
-        if (body.action === "reject") return NextResponse.json(await rejectCandidate(id, typeof body.reason === "string" ? body.reason : ""));
+        // TFP-298: `from: "approved"` withdraws an approval, refused if it changed meanwhile.
+        if (body.action === "reject") return NextResponse.json(await rejectCandidate(id, typeof body.reason === "string" ? body.reason : "", body.from === "approved" ? "approved" : undefined));
         if (body.action === "label") {
-            if (body.label !== "real" && body.label !== "not a defect") return NextResponse.json({ error: 'label must be "real" or "not a defect"' }, { status: 400 });
+            if (body.label !== "real" && body.label !== "not a defect") return NextResponse.json({ error: 'Label it "real" or "not a defect".' }, { status: 400 });
             const bug = typeof body.bug === "number" && Number.isInteger(body.bug) && body.bug > 0 ? body.bug : undefined;
             return NextResponse.json(await labelRun(id, typeof body.run === "string" ? body.run : "", body.label, bug));
         }
-        return NextResponse.json({ error: 'action must be "approve", "reject" or "label"' }, { status: 400 });
+        return NextResponse.json({ error: 'Choose what to do: "approve", "reject" or "label".' }, { status: 400 });
     } catch (error) {
         if (error instanceof PromotionError) return NextResponse.json({ error: error.message }, { status: 409 });
-        throw error;
+        // TFP-298: anything else (a file that couldn't be saved) in words too, not the server's error page.
+        return NextResponse.json({ error: `Mr Onion couldn't save the decision (${error instanceof Error ? error.message : "an unknown error"}). Nothing was decided; try again.` }, { status: 500 });
     }
 }
