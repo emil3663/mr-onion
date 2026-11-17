@@ -11,7 +11,7 @@ Scope: Give the app screens for settings that are API-only today:
 What Emil sees and approves is decided here. TestForge still never writes
 into the repo.
 
-Status: **Locked (Emil, 2026-10-20). Not started.** Decisions, acceptance criteria and tickets approved; AC1 revised to a site lookup at his request.
+Status: **Locked (Emil, 2026-10-20). In progress: TFP-234 done (2026-11-17).** Decisions, acceptance criteria and tickets approved; AC1 revised to a site lookup at his request.
 - This is R5's second decision record (`post-phase-42-review-plan.md`).
 - Its build order: straight after Phase 43, before D1
   (`deferred-work-register.md`).
@@ -312,7 +312,10 @@ these amendments apply and override older wording below.
 
 ### TFP-234 — The promotion screen
 
-- **Status:** Built (2026-11-17). Stopped for verification.
+- **Status:** Done 2026-11-17: `3538c37`, on `main` by fast-forward
+  (PR #48). Every check passed on that head: PR Validation, CodeQL and its
+  alert check, and Release Image. Verified by a planning session
+  (2026-11-17). The owner kept both choices below (Emil, 2026-11-17).
   - **Where:** a page of its own, `/candidates`
     (`src/app/candidates/page.tsx`, `src/app/_components/PromotionScreen.tsx`),
     reached from "Candidate tests" in the app's header.
@@ -350,7 +353,7 @@ these amendments apply and override older wording below.
   - The fixtures now cover the rule's edges: 2 clean sites, a real defect,
     a breach.
 - **Built against the record, as Claude Code read it.** Two choices for the
-  owner to keep or change:
+  owner to keep or change; both stand (Emil, 2026-11-17):
   - **A page of its own, not a section of the run page.** Candidates
     aren't per site, and Decision 3 makes promotion the owner's decision
     on a candidate.
