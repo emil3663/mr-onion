@@ -1,6 +1,6 @@
 # Dependency upkeep: the watch list and two tickets (2026-11-08)
 
-**Status:** Owner decision (Emil, 2026-11-08). TFP-274 done (`e9ab8b5`); TFP-273 done (`99b477c`). TFP-285 done (`f48579f`, `f354687`). TFP-290 built (2026-11-17), stopped for verification.
+**Status:** Owner decision (Emil, 2026-11-08). TFP-274 done (`e9ab8b5`); TFP-273 done (`99b477c`). TFP-285 done (`f48579f`, `f354687`). TFP-290 done (`a82b0e3`).
 
 Emil asked for a way to see dependency issues and clear them with patches,
 not only dismiss them. Two parts, both chosen on 2026-11-08:
@@ -31,7 +31,12 @@ back, and remove it (with the date and commit) when it is cleared.
 
 ## TFP-290 - Next.js 16.4.3 to 16.4.6, for the November 3 security release
 
-- **Status:** Built (2026-11-17). Stopped for verification. Measured
+- **Status:** Done 2026-11-17: `a82b0e3`, on `main` by fast-forward
+  (PR #49). Every check passed on that head: PR Validation, CodeQL and its
+  alert check, and Release Image. Verified by a planning session
+  (2026-11-17). Dependabot #28 (`npm-minor-and-patch`, which also bumped
+  `react` and `react-dom`) closed as superseded by this ticket (owner
+  decision, 2026-11-17); its other updates aren't taken here. Measured
   on Windows after `npm ci`, with a temporary `LOCALAPPDATA`:
   - **The build on 16.4.3 failed** (exit 1): `SecurityFatalError: Your
     version of Next.js is affected by a known security vulnerability`.
