@@ -51,6 +51,7 @@ mistake. Ticket-specific rulings stay in the decision records.
 
 - "Locked" alone doesn't confirm a record's **[for Emil]** lines: ask, and record only what the owner confirms.
 - Before committing with other work in the tree, check `git diff --cached --stat`: a staged `git rm` rides along (`68b2ce6`).
+- Whenever `LOCALAPPDATA` is temporary on Windows, set `PLAYWRIGHT_BROWSERS_PATH` to the real browsers first: otherwise the browser tests skip or fail (TFP-290).
 
 ## Before reporting a ticket done
 
