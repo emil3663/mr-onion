@@ -73,6 +73,9 @@ test("no confirmation reads as missing, with the wording for each basis to show"
     assert.deepEqual(Object.keys(body.wording).sort(), ["owner", "written-permission"]);
     // Decision 12: the practice-site rule is in what a tester with written permission confirms.
     assert.match(body.wording["written-permission"], /practice site counts only when its published terms explicitly allow attack-shaped or load testing/);
+    // Phase 46 (TFP-233, review item 3): the legal note (Phase 35 Decision 8) comes with the wording, one text for the
+    // form to show beside it.
+    assert.equal(body.legalNote, "Active testing of a site without permission is unauthorised security testing, which is illegal in most countries, including South Africa.");
 });
 
 test("a confirmation is created and read back with every field of Decision 1, in the data folder, never the repo", async () => {
@@ -290,7 +293,7 @@ test("nothing is sent to the contact email: the store and its routes reach only 
         const loaded = [...source.matchAll(/\bfrom\s+["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)["']|\brequire\s*\(\s*["']([^"']+)["']|^\s*import\s+["']([^"']+)["']/gm)].map((match) => match.slice(1).find(Boolean)!);
         assert.ok(loaded.length > 0, `${file}: its imports were read`);
         // Mr Onion's own: the store, and what it uses for the site's origin and folder (none of them sends anything).
-        const allowed = ["fs/promises", "path", "next/server", "@/lib/ownership/confirmation", "@/lib/generate/normalize", "@/lib/site-suites/store", "@/lib/storage/data-dir"];
+        const allowed = ["fs/promises", "path", "next/server", "@/lib/ownership/confirmation", "@/lib/ownership/messages", "@/lib/generate/normalize", "@/lib/site-suites/store", "@/lib/storage/data-dir"];
         for (const name of loaded) assert.ok(allowed.includes(name), `${file} loads ${name}`);
         assert.doesNotMatch(source, /\bfetch\s*\(|\bimport\s*\(|\brequire\s*\(|smtp|nodemailer|sendmail/i, file);
     }

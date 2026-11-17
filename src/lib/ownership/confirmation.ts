@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, rename, writeFile } from "fs/promises";
 import { join } from "path";
 import { normalizeBaseUrl } from "@/lib/generate/normalize";
+import { hostNotUsedReason } from "@/lib/ownership/messages";
 import { siteFolderName } from "@/lib/site-suites/store";
 import { dataDir } from "@/lib/storage/data-dir";
 
@@ -34,6 +35,12 @@ export const CONFIRMATION_WORDING: Record<ConfirmationBasis, string> = {
     "written-permission":
         "I have the site owner's written permission to test every host listed here, including each kind of testing I tick. I understand that Mr Onion runs here without its request limits, and, where I tick them, sends attack-shaped input (active tests) and load (load testing) to these hosts. A hosted practice site counts only when its published terms explicitly allow attack-shaped or load testing.",
 };
+
+/**
+ * Phase 35 Decision 8's legal note, shown beside the wording a tester confirms (Phase 46, TFP-233, review item 3). Not
+ * part of what is confirmed or stored: it says why the confirmation is asked for.
+ */
+export const LEGAL_NOTE = "Active testing of a site without permission is unauthorised security testing, which is illegal in most countries, including South Africa.";
 
 /** Decision 5: 90 days unless the tester chooses another expiry, at most 1 year from the date confirmed. */
 export const DEFAULT_EXPIRY_DAYS = 90;
@@ -234,7 +241,7 @@ export async function validateConfirmation(origin: string, request: Confirmation
     }
     if (typed.length > 0) {
         const used = await hostsTheSiteUses(origin);
-        for (const host of typed) if (!used.has(host)) refused.push(`"${host}" isn't a host this site's address or crawl uses: check it for a typing error`);
+        for (const host of typed) if (!used.has(host)) refused.push(hostNotUsedReason(host));
     }
     const basis = request.basis as ConfirmationBasis;
     if (!(CONFIRMATION_BASES as readonly unknown[]).includes(request.basis)) refused.push(`basis is missing or unknown: it must be one of ${CONFIRMATION_BASES.join(", ")}`);

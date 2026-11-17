@@ -64,7 +64,7 @@ test("TFP-232: the site's URL in any form finds its entry, with the contact emai
     for (const form of [`${SHOP}/cart?item=3`, `${SHOP}/`, "HTTPS://Lookup-Shop.Example.com/a/b/"]) {
         const results = await lookUp(page, form);
         await expect(results.getByRole("heading", { level: 2 })).toHaveText(SHOP);
-        await expect(results.getByTestId("confirmation-status")).toHaveText(/^Valid until \d{4}-\d{2}-\d{2}$/);
+        await expect(results.getByTestId("confirmation-status")).toHaveText(/^Valid until \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
         await expect(results.getByText("lookup-shop.example.com", { exact: true })).toBeVisible();
         await expect(results.getByText("I own this site")).toBeVisible();
         await expect(results.getByText(/^Tess Tester, on \d{4}-\d{2}-\d{2}$/)).toBeVisible();

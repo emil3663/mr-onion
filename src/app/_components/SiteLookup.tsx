@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ConfirmationForm } from "@/app/_components/ConfirmationForm";
 
 /**
  * Phase 46 (TFP-232, Decision 1, Acceptance Criteria 1): the site lookup. The tester names a site by its URL, in any
@@ -11,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * - `/api/site-settings`: the gap writer, which can be set here;
  * - `/api/site-suites`: the saved suites, each with when it was last run (review item 6).
  * Withdrawing needs a second click. After any change the entry is read again from the API, in place, as if the site
- * had just been searched. Creating or renewing a confirmation is TFP-233's form.
+ * had just been searched. Creating or renewing a confirmation is ConfirmationForm (TFP-233), opened from the entry.
  */
 
 type Status = "missing" | "valid" | "expired" | "withdrawn";
@@ -41,6 +42,9 @@ interface Entry {
     history: Confirmation[];
     gapWriter: string;
     suites: Suite[];
+    /** The API's fixed wording for each basis, and the legal note, for the confirmation form (TFP-233). */
+    wording: Partial<Record<Confirmation["basis"], string>>;
+    legalNote: string;
 }
 
 const GAP_WRITER_LABELS: Record<string, string> = { off: "Off", "claude-code": "Claude Code", "local-model": "The local model" };
@@ -75,6 +79,8 @@ async function readEntry(url: string): Promise<Entry> {
         history: Array.isArray(ownership.history) ? (ownership.history as Confirmation[]) : [],
         gapWriter: typeof settings.gapWriter === "string" ? settings.gapWriter : "off",
         suites: Array.isArray(suites.suites) ? (suites.suites as Suite[]) : [],
+        wording: (ownership.wording && typeof ownership.wording === "object" ? ownership.wording : {}) as Entry["wording"],
+        legalNote: typeof ownership.legalNote === "string" ? ownership.legalNote : "",
     };
 }
 
@@ -90,9 +96,10 @@ function statusLine(entry: Entry) {
     const confirmation = entry.confirmation;
     switch (entry.status) {
         case "valid":
-            return `Valid until ${day(confirmation?.expiresAt)}`;
+            // To the minute: a picked date expires at its start, 00:00 UTC (TFP-233, the fresh-context review).
+            return `Valid until ${confirmation ? when(confirmation.expiresAt) : "?"}`;
         case "expired":
-            return `Expired on ${day(confirmation?.expiresAt)}`;
+            return `Expired on ${confirmation ? when(confirmation.expiresAt) : "?"}`;
         case "withdrawn":
             return `Withdrawn on ${day(confirmation?.withdrawnAt)}`;
         default:
@@ -109,6 +116,7 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
     const [busy, setBusy] = useState(Boolean(initialUrl.trim()));
     const [actionError, setActionError] = useState("");
     const [armedWithdraw, setArmedWithdraw] = useState(false);
+    const [formOpen, setFormOpen] = useState(false);
     const [gapWriter, setGapWriter] = useState("off");
     const [saved, setSaved] = useState("");
     // Only the latest search is shown: an earlier one answering late is dropped.
@@ -117,6 +125,15 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
     // status once the API has answered, since the button that had focus is gone.
     const confirmWithdraw = useRef<HTMLButtonElement>(null);
     const statusRef = useRef<HTMLParagraphElement>(null);
+    // Cancel returns focus to the button that opened the form (the fresh-context review).
+    const openForm = useRef<HTMLButtonElement>(null);
+    const refocusOpen = useRef(false);
+    useEffect(() => {
+        if (!formOpen && refocusOpen.current) {
+            refocusOpen.current = false;
+            openForm.current?.focus();
+        }
+    }, [formOpen]);
     useEffect(() => {
         if (armedWithdraw) confirmWithdraw.current?.focus();
     }, [armedWithdraw]);
@@ -152,6 +169,7 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
         setError("");
         setActionError("");
         setArmedWithdraw(false);
+        setFormOpen(false);
         await show(target, note);
     };
 
@@ -181,6 +199,8 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
 
     const confirmation = entry?.confirmation ?? null;
     const canWithdraw = entry?.status === "valid" || entry?.status === "expired";
+    // An expired one is renewed too: the run's closed reason says "renew it" (the fresh-context review).
+    const canRenew = entry?.status === "valid" || entry?.status === "expired";
 
     return (
         <div className="space-y-6">
@@ -278,12 +298,33 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
                                             <span id="withdraw-effect" className="text-sm text-zinc-600">From the next run on, this site counts as unconfirmed.</span>
                                         </>
                                     ) : (
-                                        <button type="button" disabled={busy} onClick={() => setArmedWithdraw(true)} className="rounded-xl border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50">
+                                        <button type="button" disabled={busy} onClick={() => { setFormOpen(false); setArmedWithdraw(true); }} className="rounded-xl border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50">
                                             Withdraw
                                         </button>
                                     )}
                                 </div>
                             ) : null}
+                            {/* TFP-233: create, or renew (which replaces the current one, kept in the history). */}
+                            {formOpen ? (
+                                <ConfirmationForm
+                                    origin={entry.origin}
+                                    wording={entry.wording}
+                                    legalNote={entry.legalNote}
+                                    renewing={canRenew}
+                                    onSending={setBusy}
+                                    onSaved={() => {
+                                        void search(searched || entry.origin, "The confirmation was saved.").then(() => statusRef.current?.focus());
+                                    }}
+                                    onCancel={() => {
+                                        refocusOpen.current = true;
+                                        setFormOpen(false);
+                                    }}
+                                />
+                            ) : (
+                                <button ref={openForm} type="button" disabled={busy} onClick={() => { setArmedWithdraw(false); setFormOpen(true); }} className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                                    {canRenew ? "Renew" : "Confirm ownership"}
+                                </button>
+                            )}
                         </section>
 
                         <section aria-labelledby="gap-writer-heading">

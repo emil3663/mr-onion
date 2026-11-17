@@ -394,6 +394,51 @@ these amendments apply and override older wording below.
 
 ### TFP-233 — The confirmation form
 
+- **Status:** Built (2026-11-17). Stopped for verification.
+  - **Where:** in the site lookup's entry
+    (`src/app/_components/ConfirmationForm.tsx`), opened by "Confirm
+    ownership", or "Renew" on a valid confirmation. A renewal replaces it,
+    and the old one stays in the history.
+  - **It posts to `/api/site-ownership` only,** with the API's wording for
+    the chosen basis, sent back unchanged. Phase 35 Decision 8's legal note
+    now comes with the wording from the same read (`legalNote`), so the
+    text has one source (review item 3).
+  - **Refusals are the API's,** listed as returned and focused. The form
+    sets `noValidate`, so the browser doesn't stop what the API should
+    refuse. A host the site doesn't use yet gets review item 4's note.
+  - **Tests:** RUN-74 (`tests/regression/mr-onion.confirmation-form-ui.spec.ts`),
+    RUN-72 (`legalNote`).
+- **Found by the fresh-context review and fixed before commit, red first
+  where it could fail:**
+  - The default expiry was sent as a date, so it was midnight UTC, under
+    90 days, and "Valid until" named the day it had already expired. The
+    default is now left to the API (90 days to the minute). A picked date
+    is that date from 00:00 UTC, and the entry shows the time.
+  - While the form's request was with the API, a search or another action
+    could run, and a late reply could put the first site's entry over the
+    second's. The lookup's actions now wait, and a closed form ignores its
+    reply.
+  - Cancel focused a stale status line. It now returns to the button.
+  - The review item 4 note keyed on the API's English. Both now share one
+    text (`src/lib/ownership/messages.ts`).
+  - "Renew" is offered for an expired confirmation too, as the run's
+    closed reason says "renew it".
+  - The refusals are a focused, named group, not also an alert. The save
+    hint is linked to the button. A missing statement can't be ticked.
+  - The spec read the date in the test, not the form, so it could fail
+    across UTC midnight. It reads the form's own minimum now.
+- **Built against the record, as Claude Code read it.** For the owner:
+  - **No basis is preselected** (Decision 2: "the basis is chosen"). The
+    statement and its tick appear once one is chosen.
+  - **The active tick says what exists today:** "sends script-shaped
+    input to these hosts' forms, on a run that asks for active tests".
+    There is one payload test, and the run form's switch is TFP-235. It
+    describes what the tester agrees to, so the owner confirms the text.
+  - **A renewal starts empty,** hosts included: Decision 2 has hosts typed
+    every time, so nothing is carried over from the confirmation it
+    replaces.
+  - **The load tick says "Nothing uses it yet":** `scopes.load` is stored
+    and named in the report, and no load test exists (D24).
 - **Phase:** 46 · **Priority:** P2 · **Labels:** `ui`, `security`
 - **Scope:** Decision 2. Acceptance Criteria 2.
 - **Deliverables:**
