@@ -1,6 +1,6 @@
 # Dependency upkeep: the watch list and two tickets (2026-11-08)
 
-**Status:** Owner decision (Emil, 2026-11-08). TFP-274 done (`e9ab8b5`); TFP-273 done (`99b477c`). TFP-285 done (`f48579f`, `f354687`).
+**Status:** Owner decision (Emil, 2026-11-08). TFP-274 done (`e9ab8b5`); TFP-273 done (`99b477c`). TFP-285 done (`f48579f`, `f354687`). TFP-290 built (2026-11-17), stopped for verification.
 
 Emil asked for a way to see dependency issues and clear them with patches,
 not only dismiss them. Two parts, both chosen on 2026-11-08:
@@ -23,11 +23,70 @@ back, and remove it (with the date and commit) when it is cleared.
 |---|---|---|---|
 | **W1. minimatch below 11.0.1** (GHSA-g3hv-75wg-m249; Dependabot #144 and #145 dismissed as tolerable risk, 2026-11-04 and 2026-11-08) | ESLint's plugins (`eslint-plugin-import`, `jsx-a11y`, `react`) accepting minimatch 11, which has no default export; Allure's path too | `npm view eslint-plugin-import dependencies.minimatch`, the same for the other two and for `@allurereport/ci`; any new Dependabot alert on minimatch | Upgrade, drop any override, reopen nothing |
 | **W2. The DOMPurify override** (`package.json` `overrides.dompurify`, TFP-270) | An Allure release whose `@allurereport/web-commons` depends on dompurify 3.4.17 or later | `npm view @allurereport/web-commons dependencies.dompurify` | Upgrade Allure, remove the override and its `"//"` note |
-| **W3. Next.js** (16.4.3, pinned) | Patch and minor releases, security advisories; `AGENTS.md` says read the bundled docs before changing code | `npm view next version`; the Next.js security advisories | A ticket per upgrade; majors get a decision record |
+| **W3. Next.js** (16.4.6, pinned; TFP-290) | Patch and minor releases, security advisories; `AGENTS.md` says read the bundled docs before changing code | `npm view next version`; the Next.js security advisories | A ticket per upgrade; majors get a decision record |
 | **W4. Playwright** (`@playwright/test` ^1.59.1, Chromium only) | New minors (browser updates, fixes) | `npm view @playwright/test version` | A ticket; the template check and regression suites must stay green |
 | **W5. Node** (24, `.nvmrc`) | Node 24 patch releases and security releases; the next LTS | nodejs.org release schedule and security blog | Update `.nvmrc` and CI in a ticket |
 | **W6. Open alerts** | Anything open in Dependabot, code scanning or secret scanning | The repo's Security tab | One line each, with severity and a suggested ticket |
 | **W7. The nightly's audit** | `npm audit` with dev dependencies included (the nightly only checks production) | `npm audit` and `npm audit --omit=dev` on `main` | New high or critical findings become tickets |
+
+## TFP-290 - Next.js 16.4.3 to 16.4.6, for the November 3 security release
+
+- **Status:** Built (2026-11-17). Stopped for verification. Measured
+  on Windows after `npm ci`, with a temporary `LOCALAPPDATA`:
+  - **The build on 16.4.3 failed** (exit 1): `SecurityFatalError: Your
+    version of Next.js is affected by a known security vulnerability`.
+  - **On 16.4.6, five builds in a row passed** (exit 0; 47, 16, 17, 17
+    and 18 s), none of them printing the warning. So did the builds that
+    `test:self` and `test:regression` run first.
+  - **Turbopack's 13 file-pattern warnings** (`persistence.ts`,
+    `promotion.ts`, `version.ts`, `artifacts.ts`) are the same on both
+    versions. They're older than this ticket and left alone.
+  - **Lint:** 0 errors, 14 warnings, the same 14 as before.
+  - **Suites:**
+    - `npm run test:unit`: 868 of 868, 0 failed, 0 skipped (800 s);
+    - `npm run test:self`: 5 passed (1.8 min);
+    - `npm run test:regression`: 80 passed (5.8 min).
+- **How the warning works** (`next/dist/lib/upgrade/nudge.js`, read
+  2026-11-17), so the clean builds aren't a suppressed reminder:
+  - The policy `experimental.agentUpgrade` defaults to `security`, and
+    `next.config.ts` doesn't set it.
+  - When a coding agent runs the build, Next checks the npm advisories for
+    the installed version. On an affected version it stops the build once
+    and leaves a receipt in `.next/cache/next-agentic-upgrade-retries/`.
+    A retry within 5 minutes passes, but still logs the warning.
+  - A person's build, or CI's, gets a prompt or nothing, not a failure.
+    That is why PR Validation stayed green on 16.4.3.
+  - Each receipt is keyed by version; the 16.4.3 one was moved out before
+    the 16.4.6 builds. Each 16.4.6 log was searched for the warning, the
+    retry line and `Could not check Next.js security advisories`, the line
+    an offline check prints: none of them appeared, and no receipt was
+    written.
+  - The message also tells the agent to run `next upgrade --agent=security`
+    in a separate worktree. That wasn't followed: this ticket is the
+    upgrade, by hand, in its own pull request (`docs/QUALITY_GATES.md` §3).
+- **Phase:** None — after TFP-234, before TFP-232
+- **Priority:** P1 (moderate advisories in the framework the app runs on)
+- **Suggested labels:** `security`, `dependencies`
+- **Problem it solves:** Next.js 16.4.5 (2026-11-03) fixed seven Moderate
+  advisories: GHSA-mfr8-8qww-v76h, GHSA-vc7v-qv4w-wrv8,
+  GHSA-vvgp-ww4w-46vf, GHSA-rhh4-g77r-r9qj, GHSA-pc58-hwjq-p385,
+  GHSA-7qx7-33qx-rqx2, GHSA-f3mh-rxg3-f5g2. 16.4.6 (2026-11-09) adds bug
+  fixes only. `main` pinned 16.4.3, and Dependabot's `nextjs` group pull
+  request #18 (to 16.4.5) was superseded by #28 and closed without one for
+  the group.
+- **Scope:**
+  - `next` and `eslint-config-next` 16.4.3 to 16.4.6, exact pins as before.
+  - `react` and `react-dom` 19.2.4 to 19.3.1: Dependabot's `nextjs` group
+    chose it for #18, and create-next-app 16.4.6 syncs React 19.3.0.
+  - The lockfile moves only these and their own packages: 12 entries to
+    16.4.6 (`next`, `eslint-config-next` and 10 `@next/*`), and
+    `scheduler` 0.27.0 to 0.28.0 (react-dom's dependency).
+- **Acceptance criteria** (`docs/QUALITY_GATES.md` §3):
+  - Several builds in a row pass with no security warning.
+  - After `npm ci`, `npm run test:unit`, `npm run test:self` and
+    `npm run test:regression` pass, with their counts in the commit body.
+  - PR Validation and CodeQL green on the pull request's head.
+- **Dependencies:** none.
 
 ## TFP-273 - Monthly Dependabot version updates
 
