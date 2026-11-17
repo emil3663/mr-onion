@@ -3,85 +3,40 @@ import { readFile } from "fs/promises";
 import { resolve } from "path";
 import { normalizeLoginConfig, RunLoginError } from "@/lib/run/auth";
 import { startRunJob } from "@/lib/run/executor";
-import type { TestAuditMode } from "@/lib/run/executor";
-import { normalizeContentProfile } from "@/lib/generate/normalize";
 import { buildRunSnapshot, runJobs } from "@/lib/run/jobs";
 import type { RunStatusPayload } from "@/lib/run/jobs";
 import { isValidRunId, loadRunRecord, markRunAccessed, runEvidenceDir } from "@/lib/run/persistence";
-import { buildRunSelection } from "@/lib/run/selection";
-import { normalizeGenerationRecord } from "@/lib/run/generation-record";
-import { normalizeRunMode, RunModeError } from "@/lib/comprehensive/run-mode";
+import { readRunRequest } from "@/lib/run/run-request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function normalizeSelectedPractices(input: unknown) {
-    if (!Array.isArray(input)) {
-        return [] as string[];
-    }
-
-    return input.filter((item): item is string => typeof item === "string");
-}
-
-function normalizeTestAuditMode(input: unknown): TestAuditMode {
-    return input === "deep" ? "deep" : "fast";
-}
-
 export async function POST(req: NextRequest) {
-    const { code, selectedPractices, auditMode, baseUrl, excludeTestTitles, includeTestTitles, description, contentProfile, enableInteractive, enableActive, login, generation, runMode } = await req.json().catch(() => ({}));
-
-    if (!code || typeof code !== "string") {
-        return NextResponse.json({ error: "code is required" }, { status: 400 });
-    }
-
-    // Phase 35 (TFP-132): absent is a Standard run, exactly as before.
-    let normalizedRunMode;
-    try {
-        normalizedRunMode = normalizeRunMode(runMode);
-    } catch (error) {
-        if (error instanceof RunModeError) return NextResponse.json({ error: error.message }, { status: 400 });
-        throw error;
-    }
-    // Its pages, cap and worker rule are all worked out from the base URL.
-    if (normalizedRunMode.kind === "comprehensive" && typeof baseUrl !== "string") {
-        return NextResponse.json({ error: "baseUrl is required for a Comprehensive run" }, { status: 400 });
-    }
-
-    const normalizedPractices = normalizeSelectedPractices(selectedPractices);
-    const normalizedAuditMode = normalizeTestAuditMode(auditMode);
-    const normalizedExcludedTitles = Array.isArray(excludeTestTitles)
-        ? excludeTestTitles.filter((title): title is string => typeof title === "string")
-        : [];
-    const normalizedIncludedTitles = Array.isArray(includeTestTitles)
-        ? includeTestTitles.filter((title): title is string => typeof title === "string")
-        : [];
-
-    if (buildRunSelection(code, normalizedExcludedTitles, normalizedIncludedTitles).runnableTestCount === 0) {
-        return NextResponse.json({ error: normalizedIncludedTitles.length > 0 ? "No selected tests are available to rerun." : "No remaining tests are available to continue." }, { status: 400 });
-    }
+    // TFP-235: the request read into the run's options, on its own so it is tested on its own (src/lib/run/run-request.ts).
+    const read = readRunRequest(await req.json().catch(() => ({})));
+    if ("error" in read) return NextResponse.json({ error: read.error }, { status: 400 });
+    const options = read.options;
 
     // TFP-092: a login the request asked for must be valid and must succeed.
     // Any failure is a named error and the run does not start - never a quiet
     // fall back to unauthenticated tests.
     let job;
     try {
-        const loginConfig = normalizeLoginConfig(login, typeof baseUrl === "string" ? baseUrl : undefined);
+        const loginConfig = normalizeLoginConfig(options.login, options.baseUrl);
         job = await startRunJob(
-            code,
-            normalizedPractices,
-            normalizedAuditMode,
-            typeof baseUrl === "string" ? baseUrl : undefined,
-            normalizedExcludedTitles,
-            normalizedIncludedTitles,
-            typeof description === "string" ? description : "",
-            normalizeContentProfile(contentProfile),
-            enableInteractive === true,
+            options.code,
+            options.selectedPractices,
+            options.auditMode,
+            options.baseUrl,
+            options.excludeTestTitles,
+            options.includeTestTitles,
+            options.description,
+            options.contentProfile,
+            options.enableInteractive,
             loginConfig,
-            // Phase 34 (TFP-119): untrusted input, so only the known shape, capped.
-            normalizeGenerationRecord(generation, typeof baseUrl === "string" ? baseUrl : undefined),
-            normalizedRunMode,
-            // Phase 43 (TFP-219, Decision 4): active tests only when the request asks for them, as interactive.
-            enableActive === true
+            options.generation,
+            options.runMode,
+            options.enableActive
         );
     } catch (error) {
         if (error instanceof RunLoginError) {

@@ -532,10 +532,15 @@ these amendments apply and override older wording below.
     and `activeGate` in `src/lib/ownership/confirmation.test.ts`). AC4's
     "the API decides" is Phase 43's real-run test
     (`src/lib/run/active-gate.run.test.ts`, RUN-61), unchanged: it starts
-    runs through the executor (`startRunJob`) with `enableActive`, not
-    through `POST /api/run`, and skips without Chromium or a LAN address.
-    The route's own step, `enableActive === true` (`route.ts:84`), is
-    checked by reading here, not by a test.
+    runs through the executor (`startRunJob`) with `enableActive`, and
+    skips without Chromium or a LAN address. The route's own step is
+    tested now (planning session's verification, 2026-11-17): `POST
+    /api/run` reads its request through `readRunRequest`
+    (`src/lib/run/run-request.ts`), and `src/lib/run/run-request.test.ts`
+    shows only `enableActive: true` asks for active tests ("true", 1,
+    missing and false don't). Red first: with the check loosened to a
+    truthy one, `"true"` asked for them. A source check pins the route to
+    pass that result through, not read the body itself.
 - **Found by the fresh-context review and fixed before commit, red first:**
   - The switch turned itself off whenever its section remounted (a run
     collapses it), as a read on its way counted as closed. Only a definite
