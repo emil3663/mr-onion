@@ -427,13 +427,14 @@ these amendments apply and override older wording below.
     hint is linked to the button. A missing statement can't be ticked.
   - The spec read the date in the test, not the form, so it could fail
     across UTC midnight. It reads the form's own minimum now.
-- **Built against the record, as Claude Code read it.** For the owner:
-  - **No basis is preselected** (Decision 2: "the basis is chosen"). The
-    statement and its tick appear once one is chosen.
-  - **The active tick says what exists today:** "sends script-shaped
-    input to these hosts' forms, on a run that asks for active tests".
-    There is one payload test, and the run form's switch is TFP-235. It
-    describes what the tester agrees to, so the owner confirms the text.
+- **The owner's rulings at Gate A (Emil, 2026-11-17):**
+  - **No basis is preselected** stays (Decision 2: "the basis is
+    chosen"). The statement and its tick appear once one is chosen.
+  - **The active tick reads** "Active tests: attack-shaped input (today:
+    script-shaped input in forms), on a run that asks for active tests.",
+    the category the stored statement names, with today's one payload
+    test as its example. Changed with its test before the merge.
+- **Built against the record, as Claude Code read it, also:**
   - **A renewal starts empty,** hosts included: Decision 2 has hosts typed
     every time, so nothing is carried over from the confirmation it
     replaces.
@@ -541,6 +542,31 @@ these amendments apply and override older wording below.
 
 ### Gate A — Settings on screen
 - TFP-232 to TFP-234 landed and independently verified.
+
+**Gate A verification (planning session, 2026-11-17; it built none of
+TFP-232 to TFP-234): every checked criterion met. The owner's ruling
+(Emil, 2026-11-17): Gate A passes.**
+
+| Check | How | Result |
+|---|---|---|
+| TFP-234: offer, reject, approve; no repo writes | Read the screen and its spec, 2026-11-17 | Only candidates meeting the rule; a rejection needs a reason; approved ones wait with the pointer; the spec refuses any data folder but its own temporary one |
+| TFP-232: by site only (AC1) | Read `/api/site-suites`, the ownership routes, the runs route | Each needs `baseUrl`; `GET /api/runs` restricted to one site (owner ruling); only `/api/candidates` names more than one site, by Decision 3 |
+| TFP-232: email masked (review item 2) | Read `maskedOwnership` in the routes | Every response masks it, history included; the file keeps it in full |
+| TFP-233: the form keeps its friction (AC2) | Read `ConfirmationForm.tsx` on `342b357` | Hosts start empty, typed one per line; no basis preselected, and changing basis unticks the statement; the statement is the API's wording, with the legal note beside it; name and email required; 90 days by default, the picker's `max` one year on; active and load start off |
+| Refusals come from the API | Read the form's submit | Shown as returned; the form doesn't repeat the rules |
+
+Not checked here: the suites (882 unit, 5 self-test, 91 regression
+reported) and PR #52's checks (reported green on `342b357`).
+
+**The owner's rulings (Emil, 2026-11-17):**
+1. **Gate A passes.**
+2. **No basis preselected** stays: it matches Decision 2.
+3. **The active tick's label** reads "Active tests: attack-shaped input
+   (today: script-shaped input in forms), on a run that asks for active
+   tests." The stored statement says "attack-shaped input", and a
+   confirmation lasts up to a year while later phases add more active
+   tests (D3, D10), so the tick names the category with today's example.
+   Changed with its test in TFP-233's pull request (PR #52).
 
 ### Gate B — The run form
 - TFP-235 and TFP-289 landed and independently verified.
