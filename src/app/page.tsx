@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, getSiteUrl } from "@/lib/seo";
 import { CreationSection } from "@/app/_components/CreationSection";
 import { GeneratedSuiteSection } from "@/app/_components/GeneratedSuiteSection";
@@ -332,11 +333,15 @@ export default function Home() {
                             AI-native test creation with structured quality reporting
                         </div>
                     </div>
+                    {/* Phase 46 (TFP-234): the promotion screen. */}
+                    <Link href="/candidates" className="ml-auto text-sm font-medium text-indigo-600 hover:underline">
+                        Candidate tests
+                    </Link>
                     <button
                         type="button"
                         onClick={() => setIsHelpPanelOpen(true)}
                         aria-label="Help"
-                        className="ml-auto flex h-9 w-9 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-sm font-semibold text-indigo-600 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50"
+                        className="flex h-9 w-9 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-sm font-semibold text-indigo-600 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50"
                     >
                         ?
                     </button>

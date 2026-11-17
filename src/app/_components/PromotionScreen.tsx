@@ -1,0 +1,188 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { Candidate } from "@/lib/candidates/pool";
+import type { PromotionVerdict } from "@/lib/candidates/promotion";
+
+/**
+ * Phase 46 (TFP-234, Decision 3, Acceptance Criteria 3): the promotion screen. It calls Phase 42's API
+ * (`/api/candidates`, TFP-196) and nothing else, so the rule and its refusals stay there:
+ * - it lists only the candidates the rule offers, each with its pattern, its code (read-only), its evidence in words
+ *   (`promotionVerdict`'s reasons) and every site it ran on, named by host;
+ * - approve (naming who approved) or reject (with a reason, which the API requires);
+ * - approved candidates wait to be committed, with the one-line pointer for Claude Code, which runs
+ *   `npm run library:promote` and commits the entries. The app never writes into the repo.
+ */
+
+type PooledCandidate = Candidate & { verdict: PromotionVerdict };
+
+export const CLAUDE_CODE_POINTER = "Ask Claude Code: run `npm run library:promote`, then commit the new library entries under src/lib/library/promoted/, reviewed like any code.";
+
+/**
+ * Each site a candidate ran on, once each, in the order first seen: one per origin, as the rule counts them
+ * (`promotionVerdict`'s sites), named by its host. Two origins with one host (http and https) are named by origin,
+ * so the list never shows fewer sites than the rule's reason counts (found by the fresh-context review).
+ */
+export function hostsOf(candidate: Pick<Candidate, "evidence">): string[] {
+    const origins = [...new Set(candidate.evidence.map((run) => run.origin))];
+    const hostOf = (origin: string) => {
+        try {
+            return new URL(origin).host;
+        } catch {
+            return origin;
+        }
+    };
+    const hosts = origins.map(hostOf);
+    return origins.map((origin, index) => (hosts.filter((host) => host === hosts[index]).length > 1 ? origin : hosts[index]));
+}
+
+/** An API reply's error, or why there is none: a reply that isn't JSON, or no reply at all, is said so in words. */
+async function replyOf(response: Response): Promise<{ data: Record<string, unknown>; error: string }> {
+    const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+    if (data === null) return { data: {}, error: response.ok ? "" : `the server answered ${response.status}, with no reason given` };
+    return { data, error: response.ok ? "" : typeof data.error === "string" ? data.error : `refused (${response.status})` };
+}
+
+const describePattern = (candidate: Candidate) => `${candidate.pattern.name} [${candidate.pattern.type}]`;
+
+export function PromotionScreen() {
+    const [candidates, setCandidates] = useState<PooledCandidate[] | null>(null);
+    const [offered, setOffered] = useState<string[]>([]);
+    const [loadError, setLoadError] = useState("");
+    const [approver, setApprover] = useState("");
+    const [reasons, setReasons] = useState<Record<string, string>>({});
+    const [refusals, setRefusals] = useState<Record<string, string>>({});
+    const [busy, setBusy] = useState("");
+
+    // Read from the API on open, and again after each decision (the pool as saved, never the screen's own copy).
+    const [reads, setReads] = useState(0);
+    useEffect(() => {
+        let current = true;
+        fetch("/api/candidates", { cache: "no-store" })
+            .then(async (response) => {
+                const { data, error } = await replyOf(response);
+                if (error) throw new Error(`The candidates couldn't be read: ${error}.`);
+                if (!current) return;
+                setCandidates(Array.isArray(data.candidates) ? (data.candidates as PooledCandidate[]) : []);
+                setOffered(Array.isArray(data.offered) ? (data.offered as string[]) : []);
+                setLoadError("");
+            })
+            .catch((error: unknown) => {
+                if (!current) return;
+                setLoadError(error instanceof TypeError ? "The candidates couldn't be read: Mr Onion didn't answer." : error instanceof Error ? error.message : "The candidates couldn't be read.");
+            });
+        return () => {
+            current = false;
+        };
+    }, [reads]);
+
+    // One decision at a time, on any candidate: every Approve and Reject is disabled while one is with the API
+    // (the fresh-context review: approving one and rejecting another, or the same one, could race).
+    const decide = async (id: string, body: Record<string, string>) => {
+        if (busy) return;
+        setBusy(id);
+        let refusal = "";
+        try {
+            const response = await fetch("/api/candidates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...body }) });
+            // Refusals come from the API, shown as returned (Decision 2's pattern): the screen doesn't repeat the rules.
+            refusal = (await replyOf(response)).error;
+        } catch {
+            refusal = "Mr Onion didn't answer, so nothing was decided. Try again.";
+        } finally {
+            setRefusals((current) => ({ ...current, [id]: refusal }));
+            // Read back after every answer, refused or not: a refusal may mean it was decided elsewhere.
+            setReads((count) => count + 1);
+            setBusy("");
+        }
+    };
+
+    const offeredCandidates = (candidates ?? []).filter((candidate) => offered.includes(candidate.id));
+    const waiting = (candidates ?? []).filter((candidate) => candidate.status === "approved");
+
+    return (
+        <div className="space-y-8">
+            {loadError ? <p role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{loadError}</p> : null}
+
+            <section aria-labelledby="offered-heading" className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
+                <h2 id="offered-heading" className="text-lg font-semibold text-zinc-950">Offered for promotion</h2>
+                <p className="mt-1 text-sm text-zinc-600">
+                    Only candidates that meet the promotion rule are offered: they passed the gates on every run, and either caught a real defect or ran on 3 sites with no unlabelled failure.
+                </p>
+                <label className="mt-4 block text-sm font-medium text-zinc-700">
+                    Your name, for an approval
+                    <input
+                        value={approver}
+                        onChange={(event) => setApprover(event.target.value)}
+                        className="mt-1 block w-full max-w-sm rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+                    />
+                </label>
+                {candidates === null && !loadError ? <p role="status" className="mt-4 text-sm text-zinc-500">Reading the candidates...</p> : null}
+                {candidates !== null && offeredCandidates.length === 0 ? <p className="mt-4 text-sm text-zinc-600">No candidate meets the rule yet.</p> : null}
+                <ul className="mt-4 space-y-6">
+                    {offeredCandidates.map((candidate) => (
+                        <li key={candidate.id} aria-label={`Candidate ${describePattern(candidate)}`} className="rounded-2xl border border-zinc-200 p-4">
+                            <h3 id={`candidate-${candidate.id}`} className="text-base font-semibold text-zinc-900">{describePattern(candidate)}</h3>
+                            <p className="text-xs text-zinc-500">{candidate.pattern.kind} pattern · candidate {candidate.id} · {candidate.technique}</p>
+                            <h4 className="mt-3 text-sm font-medium text-zinc-700">Evidence</h4>
+                            <ul className="list-disc pl-5 text-sm text-zinc-700">
+                                {candidate.verdict.reasons.map((reason) => <li key={reason}>{reason}</li>)}
+                            </ul>
+                            <h4 className="mt-3 text-sm font-medium text-zinc-700">Sites it ran on</h4>
+                            <ul aria-label="Sites it ran on" className="flex flex-wrap gap-2 text-sm">
+                                {hostsOf(candidate).map((host) => <li key={host} className="rounded-full bg-zinc-100 px-3 py-1 font-mono text-xs text-zinc-800">{host}</li>)}
+                            </ul>
+                            <h4 className="mt-3 text-sm font-medium text-zinc-700">Its code</h4>
+                            <pre aria-label="Its code" tabIndex={0} className="mt-1 max-h-72 overflow-auto rounded-xl bg-zinc-950 p-3 text-xs text-zinc-100">{candidate.body}</pre>
+                            <div className="mt-4 flex flex-wrap items-end gap-3">
+                                <button
+                                    type="button"
+                                    disabled={busy !== ""}
+                                    aria-describedby={`candidate-${candidate.id}`}
+                                    onClick={() => void decide(candidate.id, { action: "approve", by: approver })}
+                                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                >
+                                    Approve
+                                </button>
+                                <label className="text-sm text-zinc-700">
+                                    Reason to reject
+                                    <input
+                                        value={reasons[candidate.id] ?? ""}
+                                        onChange={(event) => setReasons((current) => ({ ...current, [candidate.id]: event.target.value }))}
+                                        className="mt-1 block w-72 rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    disabled={busy !== ""}
+                                    aria-describedby={`candidate-${candidate.id}`}
+                                    onClick={() => void decide(candidate.id, { action: "reject", reason: reasons[candidate.id] ?? "" })}
+                                    className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:opacity-50"
+                                >
+                                    Reject
+                                </button>
+                            </div>
+                            {refusals[candidate.id] ? <p role="alert" className="mt-3 text-sm text-rose-700">{refusals[candidate.id]}</p> : null}
+                        </li>
+                    ))}
+                </ul>
+            </section>
+
+            <section aria-labelledby="waiting-heading" className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
+                <h2 id="waiting-heading" className="text-lg font-semibold text-zinc-950">Waiting to be committed</h2>
+                <p className="mt-1 text-sm text-zinc-600">Approved candidates become library entries through a reviewed commit. Mr Onion never writes into the repository itself.</p>
+                {waiting.length === 0 ? <p className="mt-4 text-sm text-zinc-600">Nothing is waiting.</p> : (
+                    <>
+                        <p className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 font-mono text-xs text-indigo-900">{CLAUDE_CODE_POINTER}</p>
+                        <ul className="mt-4 space-y-2 text-sm text-zinc-800">
+                            {waiting.map((candidate) => (
+                                <li key={candidate.id} aria-label={`Waiting: ${describePattern(candidate)}`}>
+                                    <strong>{describePattern(candidate)}</strong>, approved by {candidate.approved?.by ?? "?"} on {candidate.approved?.at.slice(0, 10) ?? "?"}
+                                </li>
+                            ))}
+                        </ul>
+                    </>
+                )}
+            </section>
+        </div>
+    );
+}

@@ -312,6 +312,52 @@ these amendments apply and override older wording below.
 
 ### TFP-234 — The promotion screen
 
+- **Status:** Built (2026-11-17). Stopped for verification.
+  - **Where:** a page of its own, `/candidates`
+    (`src/app/candidates/page.tsx`, `src/app/_components/PromotionScreen.tsx`),
+    reached from "Candidate tests" in the app's header.
+  - **It calls only `/api/candidates`** (Phase 42, TFP-196). It lists the
+    candidates the API offers, each with its pattern, its code read-only,
+    `promotionVerdict`'s reasons and every site it ran on by host.
+  - **Approve (with a name) and reject (with a reason) go to the API,**
+    and its refusals are shown as returned. The approved candidates are
+    listed as waiting to be committed, with the pointer for Claude Code.
+  - **Regression:** `tests/regression/mr-onion.promotion-ui.spec.ts`
+    (RUN-70). Its candidate pool is seeded in the server's temporary data
+    folder. For that, `playwright.regression.config.ts` now sets
+    `MRONION_DATA_DIR` in its own process too, so its workers share the
+    server's folder.
+- **Found by the fresh-context review and fixed before commit, each red
+  first:**
+  - The spec deletes and rewrites `<data>/candidates`. With a
+    `MRONION_DATA_DIR` pointing at a real data folder, it would have
+    deleted that pool. It now runs only in the config's own temporary
+    folder.
+  - A decision answered with a reply that isn't JSON, or with no reply,
+    showed nothing. It now says so, and nothing is decided.
+  - Only the candidate being decided had its buttons disabled, so two
+    decisions could race. Every Approve and Reject is now disabled while
+    one is with the API.
+  - After a refusal the list wasn't read again, so a candidate decided
+    elsewhere stayed offered. Every answer now re-reads it.
+  - Two origins on one host showed as one site beside the rule's "ran on
+    3 sites". They are now named by origin.
+  - Accessibility:
+    - each Approve and Reject is described by its candidate's heading;
+    - the code can be scrolled from the keyboard;
+    - the loading text is a status;
+    - the page has its own title.
+  - The fixtures now cover the rule's edges: 2 clean sites, a real defect,
+    a breach.
+- **Built against the record, as Claude Code read it.** Two choices for the
+  owner to keep or change:
+  - **A page of its own, not a section of the run page.** Candidates
+    aren't per site, and Decision 3 makes promotion the owner's decision
+    on a candidate.
+  - **The approver's name is typed once on the screen** and sent with each
+    approval: the API requires `by`, and Mr Onion has no user identity
+    yet.
+
 - **Phase:** 46 · **Priority:** P2 · **Labels:** `ui`
 - **Scope:** Decision 3. Acceptance Criteria 3.
 - **Deliverables:**
