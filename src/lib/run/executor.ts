@@ -1,3 +1,6 @@
+import { originOf } from "@/lib/ownership/confirmation";
+import { ownHostsOfSite } from "@/lib/ownership/site-hosts";
+import { SITE_HOSTS_ENV_VAR } from "@/lib/run/active-gate-names";
 import type { GenerationRecord, JsonReport } from "@/lib/report/types";
 import { spawn } from "child_process";
 import { randomUUID } from "crypto";
@@ -141,6 +144,8 @@ export async function startRunJob(
     const confirmation = await confirmationForRun(baseUrl);
     const hostLimits = hostLimitsFor(baseUrl, { ownershipConfirmed: confirmationCoversHost(confirmation, baseUrl) });
     const activeGate = decideActiveGate(enableActive, baseUrl, confirmation);
+    const siteOrigin = activeGate.open ? originOf(baseUrl) : null;
+    const siteHosts = siteOrigin ? [...(await ownHostsOfSite(siteOrigin))].filter((host) => !activeGate.coveredHosts.includes(host)) : [];
     const workerCount = hostLimits.workers;
     const estimatedExecutions = estimateTestCount(code) * browserProjects.length;
     // Ruling 5 (decided by ruling 4 amended, 2026-10-28; TFP-264): a capped run's budget is 60 minutes, as the cap,
@@ -261,6 +266,8 @@ export async function startRunJob(
         [INTERACTIVE_ENV_VAR]: enableInteractive ? "1" : "0",
         // TFP-219 (review item 2): likewise always set, from the run's request and its confirmation, never inherited.
         ...activeGateEnv(activeGate),
+        // TFP-297: the site's own hosts its crawl recorded and the gate doesn't cover, for the guard's notes.
+        [SITE_HOSTS_ENV_VAR]: siteHosts.join(","),
         PLAYWRIGHT_JSON_OUTPUT_FILE: jsonReportFile,
         [TIMING_FILE_ENV_VAR]: timingFile,
         FORCE_COLOR: "0",

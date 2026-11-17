@@ -163,21 +163,30 @@ export function confirmationStatus(confirmation: OwnershipConfirmation | null, n
 
 /** The hosts the site uses, so a mistyped host is refused (Decision 2): its target address, and every page and request host its saved crawls recorded. */
 export async function hostsTheSiteUses(origin: string): Promise<Set<string>> {
-    const hosts = new Set<string>([new URL(origin).hostname]);
-    const add = (url: unknown) => {
+    const { pageHosts, requestHosts } = await hostsTheCrawlRecorded(origin);
+    return new Set<string>([new URL(origin).hostname, ...pageHosts, ...requestHosts]);
+}
+
+/** TFP-297: the hosts the site's saved crawls recorded, its pages' apart from its requests' (a script, a frame, a form's action). */
+export async function hostsTheCrawlRecorded(origin: string): Promise<{ pageHosts: Set<string>; requestHosts: Set<string> }> {
+    const pageHosts = new Set<string>();
+    const requestHosts = new Set<string>();
+    const addTo = (hosts: Set<string>) => (url: unknown) => {
         if (typeof url !== "string") return;
         try {
             const parsed = new URL(url);
             if (parsed.protocol === "http:" || parsed.protocol === "https:") hosts.add(parsed.hostname);
         } catch { /* not an address */ }
     };
+    const addPage = addTo(pageHosts);
+    const add = addTo(requestHosts);
     const site = join(dataDir(), "site-suites", siteFolderName(origin));
     for (const entry of await readdir(site, { withFileTypes: true }).catch(() => [])) {
         if (!entry.isDirectory()) continue;
         const text = await readFile(join(site, entry.name, "profile.json"), "utf8").catch(() => null);
         try {
             const profile = text ? (JSON.parse(text) as { pages?: Array<{ url?: unknown }>; dependencyMap?: Array<{ host?: unknown; sampleUrl?: unknown }> }) : null;
-            for (const page of profile?.pages ?? []) add(page?.url);
+            for (const page of profile?.pages ?? []) addPage(page?.url);
             for (const dependency of profile?.dependencyMap ?? []) {
                 add(dependency?.sampleUrl);
                 // The entry's own host (with any port), for one recorded without a sample address.
@@ -185,7 +194,7 @@ export async function hostsTheSiteUses(origin: string): Promise<Set<string>> {
             }
         } catch { /* an unreadable profile adds nothing */ }
     }
-    return hosts;
+    return { pageHosts, requestHosts };
 }
 
 export interface ConfirmationRequest {

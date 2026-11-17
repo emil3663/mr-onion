@@ -5,11 +5,20 @@ Mr Onion's own code is under the MIT License (`LICENSE`). The spelling check
 licences ask that their notices travel with any copy of the software, so
 they are reproduced here in full, as each package ships them.
 
+The covered-host guard's site-host check (TFP-297, `src/lib/ownership/site-hosts.ts`)
+uses `tldts` and its `tldts-core`, under the MIT License, whose notice is
+reproduced below. `tldts` builds in the Public Suffix List
+(<https://publicsuffix.org/list/>), which is under the Mozilla Public License
+2.0; its source form is the list itself, published at that address.
+
 | Package | Version | Licence |
 | --- | --- | --- |
 | `nspell` | 2.1.5 | MIT |
 | `dictionary-en` (en_US Hunspell, from SCOWL) | 4.0.0 | SCOWL's notices (Kevin Atkinson, Ispell BSD, ENABLE, UKACD, WordNet, VarCon) |
 | `dictionary-en-gb` (en_GB-ise Hunspell, from SCOWL) | 3.0.0 | the same notices |
+| `tldts` | 7.4.19 | MIT |
+| `tldts-core` | 7.4.19 | MIT (the same notice as `tldts`) |
+| The Public Suffix List, built into `tldts` | as `tldts` 7.4.19 ships it | Mozilla Public License 2.0 |
 
 ## nspell
 
@@ -740,4 +749,22 @@ and Australian word list.  It is under the following copyright:
 
 Build Date: Mon Dec  7 20:19:30 EST 2020
 Wordlist Command: mk-list --accents=strip en_GB-ise 60
+```
+
+## tldts and tldts-core
+
+```
+Copyright (c) 2017 Thomas Parisot, 2018 Rémi Berson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```

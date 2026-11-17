@@ -139,11 +139,44 @@ repo as evidence for C and TFP-299.
 
 ## TFP-297 (D) — Guard notes that name a host the site's crawl recorded
 
-- **Status:** Not started. Changes the template: its difference is shown
-  and waits for the owner's acceptance.
+- **Status:** Built (2026-11-17). Stopped for the re-walk. The template
+  difference was accepted (owner, 2026-11-18): the guard's warning, hint
+  and beacon lines only, in the 2 page-data security inputs of 172. The
+  breach hint on a redirect to a site host was tested red first before
+  the commit, as asked then.
+- **As built:**
+  - The run passes the site's own hosts to its tests as
+    `MRONION_SITE_HOSTS` (`src/lib/run/executor.ts`), always set, `""`
+    when the active gate is closed, never the covered hosts.
+  - The guard (`ACTIVE_GUARD_HELPER`) names one of them in its note when
+    it stops a read there: "`<host>` is one of this site's hosts, so the
+    result may not reflect the page as visitors see it: add `<host>` to
+    this site's confirmation". When a stopped script already says the
+    result may not reflect the page, it is said once. A beacon, a
+    keepalive fetch or a `fetchLater` stopped there gets no warning: it
+    doesn't change the page. A breach to one names it in the failure:
+    "... add `<host>` to this site's confirmation to test with it".
+  - The payload test's expected result: "the script typed into
+    {fields} on {path} is not executed" (`buildExecutionDescription`).
+- **The D1 ruling (owner, 2026-11-17), after the fresh-context review
+  found the first build counted every host the crawl recorded, so a
+  tag manager's host was "one of this site's hosts":**
+  - A host is the site's own when it is same-site with the target: the
+    same registrable domain by the Public Suffix List, through `tldts`
+    (a new dependency, owner-accepted; pinned at 7.4.19, its
+    `tldts-core` by an override; in `THIRD_PARTY_NOTICES.md`, with the
+    list's MPL 2.0). IPs and `localhost` match exactly. The hosts of
+    crawled pages always count. Everything else stays a plain note
+    (`src/lib/ownership/site-hosts.ts`).
+  - The review's D2 to D6, as proposed: the third-party check now runs
+    beside a site host; beacons get no warning; the warning is said
+    once; a breach gets the hint; the port isn't compared.
+  - What isn't caught is known limitation 16: a page on an IP reading
+    from `localhost`, and an API on an unrelated domain.
+- **Acceptance criteria:** RUN-79.
 - **Scope (the owner's words):** when the covered-host guard stops a read
   to a host the site's saved crawl recorded, the test's note carries
-  ruling 4's warning and says "add <host> to this site's confirmation".
+  ruling 4's warning and says "add `<host>` to this site's confirmation".
   Third-party hosts stay plain notes. The payload test's expected result
   says what it checks, e.g. "the script typed into Search on / is not
   executed".

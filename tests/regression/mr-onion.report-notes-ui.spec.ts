@@ -1,6 +1,11 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join, resolve, sep } from "node:path";
 import { expect, type Page, type Response, test } from "@playwright/test";
+import { setting } from "../../src/lib/settings";
+import { siteFolderName } from "../../src/lib/site-suites/store";
 
 // Phase 46 (TFP-289, Decision 6, Acceptance Criteria 6, review item 8): a test's notes in the app's report tabs, with
 // their test, apart from findings. Built from real runs:
@@ -146,4 +151,35 @@ test("TFP-289: a Comprehensive run's view shows a test's notes with their test, 
     });
     expect(order.notes).toBeGreaterThan(-1);
     expect(order.notes).toBeLessThan(order.notTested);
+});
+
+// Phase 46 (TFP-297, from Gate B's walkthrough; the D1 ruling): when the script the guard stops comes from one of the
+// site's own hosts, the note says so and to add the host to the confirmation. The site is on 127.0.0.1 and the script
+// on localhost, which isn't same-site with it (known limitation 16), so the saved crawl (a profile in the server's
+// temporary data folder) records a page on localhost: a crawled page's host always counts. The run passes the site's
+// own hosts to its tests.
+function ownRegressionFolder(dir: string | undefined): boolean {
+    if (!dir) return false;
+    const full = resolve(dir);
+    return full.startsWith(resolve(tmpdir()) + sep) && basename(full).startsWith("mr-onion-regression-data-");
+}
+
+test("TFP-297: a stopped read from a host the site's saved crawl recorded says to add it to the confirmation", async ({ page }) => {
+    test.setTimeout(300_000);
+    const dataDir = setting("DATA_DIR");
+    expect(ownRegressionFolder(dataDir), `only the regression config's own temporary data folder, not ${dataDir}`).toBe(true);
+    const crawl = join(dataDir!, "site-suites", siteFolderName(origin), "seeded-crawl");
+    await mkdir(crawl, { recursive: true });
+    await writeFile(join(crawl, "profile.json"), JSON.stringify({ baseUrl: origin, pages: [{ path: "/", url: `${origin}/` }, { path: "/help", url: `${scriptHost}/help` }], dependencyMap: [{ kind: "third-party-script", host: new URL(scriptHost).host, sampleUrl: `${scriptHost}/widget.js` }] }));
+    try {
+        const lastRun = watchRun(page);
+        await page.goto("/");
+        await generateAndRun(page, "Check the contact form for security issues.", true);
+        await expect(page.getByText("Release readiness at a glance")).toBeVisible({ timeout: 180_000 });
+        await expect.poll(() => lastRun()?.result?.report?.execution?.length ?? 0, { timeout: 30_000 }).toBeGreaterThan(0);
+        const payload = lastRun()!.result!.report!.execution!.find((record) => record.title.includes("script-shaped input is not executed"));
+        expect(payload?.notes ?? [], JSON.stringify(payload)).toEqual(expect.arrayContaining([expect.stringContaining("so the result may not reflect the page as visitors see it; localhost is one of this site's hosts: add localhost to this site's confirmation")]));
+    } finally {
+        await rm(crawl, { recursive: true, force: true });
+    }
 });

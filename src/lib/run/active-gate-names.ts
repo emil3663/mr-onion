@@ -25,3 +25,10 @@ export const ACTIVE_HOSTS_ENV_VAR = "MRONION_ACTIVE_HOSTS";
 export function checksActiveGate(code: string): boolean {
     return code.includes(ACTIVE_GATE_ENV_VAR);
 }
+
+/**
+ * Phase 46 (TFP-297, Gate B's walkthrough): with the gate open, the hosts the site's saved crawl recorded that the
+ * confirmation doesn't cover, comma-separated. When the covered-host guard stops a read to one of them, its note says the
+ * result may not reflect the page and to add the host to the confirmation; a third-party host stays a plain note.
+ */
+export const SITE_HOSTS_ENV_VAR = "MRONION_SITE_HOSTS";

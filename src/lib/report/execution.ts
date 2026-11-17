@@ -108,6 +108,12 @@ export function buildExecutionDescription(
 ) {
     const normalizedTitle = normalizeExecutionTitle(title);
 
+    // Phase 46 (TFP-297, Gate B's walkthrough): the payload test says what it checks, its fields and page from its title.
+    const payload = /script-shaped input is not executed: (.+) on (\S+)$/i.exec(title);
+    if (payload) {
+        return `Expected result: the script typed into ${payload[1]} on ${payload[2]} is not executed.`;
+    }
+
     if (/link protocols are safe and do not expose obvious xss vectors/i.test(title)) {
         return "Expected result: links should use safe protocols only and should not expose javascript: or other obvious XSS-style vectors.";
     }

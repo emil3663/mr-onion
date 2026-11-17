@@ -84,6 +84,18 @@ async function tfActiveGuarded(page: import('@playwright/test').Page, interact: 
   // Owner ruling (2026-11-16): a script from an uncovered host, stopped, means the page may not have run as it does for
   // its visitors, so the note says so (known limitation 14).
   const scripts: string[] = [];
+  // TFP-297: a read the guard stopped to one of the site's own hosts (same-site with the target, or a crawled page's
+  // host): the page may not have run as it does for visitors, and the host can be added to the confirmation. A beacon
+  // doesn't change the page, so it isn't counted; a third-party host stays plain. A breach to one names it too.
+  const siteHosts = (process.env.MRONION_SITE_HOSTS || '').split(',').map((host) => host.trim().toLowerCase()).filter((host) => host && !hosts.includes(host));
+  const ownStopped = new Set<string>();
+  const ownBreached = new Set<string>();
+  const noteOwn = (url: string, breach: boolean, beacon: boolean) => {
+    const host = hostOf(url);
+    if (!siteHosts.includes(host)) return;
+    if (breach) ownBreached.add(host);
+    else if (!beacon) ownStopped.add(host);
+  };
   const hostOf = (url: string) => { try { return new URL(url).hostname.toLowerCase(); } catch { return ''; } };
   const covered = (url: string) => {
     let parsed: URL;
@@ -98,7 +110,7 @@ async function tfActiveGuarded(page: import('@playwright/test').Page, interact: 
   };
   // What can carry the test's input to another host: a page's navigation, or a write (any method but GET, HEAD and QUERY).
   const carries = (request: import('@playwright/test').Request, method: string) => topLevel(request) || !['GET', 'HEAD', 'QUERY'].includes(method.toUpperCase());
-  const judge = (method: string, url: string, type: string, navigation: boolean) => {
+  const judge = (method: string, url: string, type: string, navigation: boolean, fromPage = false) => {
     if (covered(url)) {
       stopped.push(method + ' ' + url + ' (' + type + ', which the guard can\'t follow)');
       return;
@@ -106,8 +118,10 @@ async function tfActiveGuarded(page: import('@playwright/test').Page, interact: 
     const breach = navigation || (type !== 'ping' && !['GET', 'HEAD', 'QUERY'].includes(method.toUpperCase()));
     (breach ? breaches : stopped).push(method + ' ' + url + ' (' + (navigation ? 'navigation' : type) + ') to ' + hostOf(url));
     if (!breach && type === 'script') scripts.push(method + ' ' + url);
+    // From the page's wrappers: a beacon, a keepalive fetch or a fetchLater.
+    noteOwn(url, breach, fromPage || type === 'ping');
   };
-  await context.exposeBinding('__tfActiveRequest', (_source, method: string, url: string, type: string) => judge(method, url, type, false));
+  await context.exposeBinding('__tfActiveRequest', (_source, method: string, url: string, type: string) => judge(method, url, type, false, true));
   await context.route('**/*', async (route) => {
     const request = route.request();
     if (!covered(request.url())) {
@@ -135,6 +149,7 @@ async function tfActiveGuarded(page: import('@playwright/test').Page, interact: 
         const breach = carries(request, method);
         (breach ? breaches : stopped).push(what);
         if (!breach && request.resourceType() === 'script') scripts.push(method + ' ' + next);
+        noteOwn(next, breach, request.resourceType() === 'ping');
         return route.abort('blockedbyclient');
       }
       if ([301, 302, 303].includes(response.status()) && !['GET', 'HEAD'].includes(method)) {
@@ -155,7 +170,11 @@ async function tfActiveGuarded(page: import('@playwright/test').Page, interact: 
     failure = error;
   }
   const unrendered = scripts.length > 0 ? '; a script from an uncovered host was stopped (' + [...new Set(scripts)].join('; ') + '), so the result may not reflect the page as visitors see it' : '';
-  if (stopped.length > 0) test.info().annotations.push({ type: 'note', description: 'covered-host guard: stopped ' + stopped.length + ' request(s), not a breach: ' + [...new Set(stopped)].join('; ') + unrendered });
-  expect(breaches, 'covered-host guard breach, stopped: ' + breaches.join('; ') + ' (an active test reaches only the hosts the site\'s ownership confirmation covers: ' + hosts.join(', ') + ')').toEqual([]);
+  const ownOf = (set: Set<string>) => [...set].join(', ') + (set.size === 1 ? ' is one of this site\'s hosts' : ' are among this site\'s hosts');
+  // The script note above already says the result may not reflect the page: said once.
+  const ownWarning = ownStopped.size > 0 ? '; ' + ownOf(ownStopped) + (unrendered ? '' : ', so the result may not reflect the page as visitors see it') + ': add ' + [...ownStopped].join(', ') + ' to this site\'s confirmation' : '';
+  const ownHint = ownBreached.size > 0 ? '; ' + ownOf(ownBreached) + ': add ' + [...ownBreached].join(', ') + ' to this site\'s confirmation to test with ' + (ownBreached.size === 1 ? 'it' : 'them') : '';
+  if (stopped.length > 0) test.info().annotations.push({ type: 'note', description: 'covered-host guard: stopped ' + stopped.length + ' request(s), not a breach: ' + [...new Set(stopped)].join('; ') + unrendered + ownWarning });
+  expect(breaches, 'covered-host guard breach, stopped: ' + breaches.join('; ') + ' (an active test reaches only the hosts the site\'s ownership confirmation covers: ' + hosts.join(', ') + ')' + ownHint).toEqual([]);
   if (failure) throw failure;
 }`;

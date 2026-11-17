@@ -28,6 +28,8 @@ back, and remove it (with the date and commit) when it is cleared.
 | **W5. Node** (24, `.nvmrc`) | Node 24 patch releases and security releases; the next LTS | nodejs.org release schedule and security blog | Update `.nvmrc` and CI in a ticket |
 | **W6. Open alerts** | Anything open in Dependabot, code scanning or secret scanning | The repo's Security tab | One line each, with severity and a suggested ticket |
 | **W7. The nightly's audit** | `npm audit` with dev dependencies included (the nightly only checks production) | `npm audit` and `npm audit --omit=dev` on `main` | New high or critical findings become tickets |
+| **W8. tldts** (7.4.19, pinned, with `overrides.tldts-core` 7.4.19; TFP-297, owner-accepted 2026-11-17) | Its built-in Public Suffix List ages until it is bumped: a suffix added since 2026-10-20 isn't known, so two sites under it read as one site (a guard note may name a host that isn't the site's own) | `npm view tldts version` and `time`; take a release at least two weeks old | Bump `tldts` and the override together at the monthly check; run `src/lib/ownership/site-hosts.test.ts` |
+| **W9. npm audit's existing findings** (21 on 2026-11-17: 10 high, 11 moderate, none critical) | Triage at the next monthly check: shipped code against dev tooling. `npm audit --omit=dev` gave 0 on 2026-11-17, so all 21 are in dev tooling (ESLint and typescript-eslint, Allure, knip, through minimatch, picomatch, micromatch, glob and fast-glob) | `npm audit` and `npm audit --omit=dev` | Each finding kept with a reason or ticketed; any in shipped code first |
 
 ## TFP-290 - Next.js 16.4.3 to 16.4.6, for the November 3 security release
 

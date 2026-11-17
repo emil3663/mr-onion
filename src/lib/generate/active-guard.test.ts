@@ -187,6 +187,26 @@ test('a script from the uncovered host', async ({ page }) => {
   });
 });
 
+// TFP-297 (the fresh-context review's D2 and D3): an image from the site's host beside one from a third party, and a
+// beacon to the site's host. The third party's host is never resolved: the guard aborts it before it leaves.
+test('an image from the site and one from a third party', async ({ page }) => {
+  await tfActiveWrap(page);
+  await page.goto('/');
+  await tfActiveGuarded(page, async () => {
+    await page.evaluate((sources) => { for (const src of sources) { const img = document.createElement('img'); img.src = src; document.body.append(img); } }, ['${elsewhere}/pixel.gif?own', 'http://third-party.test/pixel.gif']);
+    await page.waitForTimeout(1000);
+  });
+});
+
+test('a beacon to the site host', async ({ page }) => {
+  await tfActiveWrap(page);
+  await page.goto('/');
+  await tfActiveGuarded(page, async () => {
+    await page.evaluate((url) => navigator.sendBeacon(url, 'stats'), '${elsewhere}/beacon');
+    await page.waitForTimeout(500);
+  });
+});
+
 test('without the guard, the control', async ({ page }) => {
   await page.goto('/');
   await page.locator('#ext input').fill('payload-control');
@@ -249,6 +269,32 @@ test('without the guard, the control', async ({ page }) => {
         assert.ok(notesSection.includes("a script from the uncovered host") && notesSection.includes(escapeReportHtml(scriptNote)), "the HTML report shows the note with its test");
         const imageOnly = guardNotes(report.suites).get("an image from the uncovered host") ?? [];
         assert.ok(imageOnly.every((note) => !note.includes("may not reflect")), "an image alone doesn't say so");
+        // TFP-297 (Gate B's walkthrough; the D1 ruling): the same stopped read, from one of the site's own hosts (the
+        // run passes them as MRONION_SITE_HOSTS: same-site with the target, or a crawled page's host), says the result
+        // may not reflect the page and to add the host to the confirmation; a third-party host stays plain.
+        const { report: ownSite } = await runPlaywrightSpec(code, "active-guard-own-site", ["--timeout=30000", "--workers=1"], { MRONION_ACTIVE_HOSTS: "127.0.0.1", MRONION_SITE_HOSTS: "localhost" });
+        const ownNotesOf = (title: string) => (guardNotes(ownSite.suites).get(title) ?? []).join(" | ");
+        const ownWarning = "localhost is one of this site's hosts, so the result may not reflect the page as visitors see it: add localhost to this site's confirmation";
+        assert.ok(ownNotesOf("an image from the uncovered host").includes(ownWarning), `the site's own host is named: ${ownNotesOf("an image from the uncovered host")}`);
+        // D2: in the same run, beside the site's host, a third party's stopped read is noted but not named as the site's.
+        const mixed = ownNotesOf("an image from the site and one from a third party");
+        assert.ok(mixed.includes("GET http://third-party.test/pixel.gif (image) to third-party.test") && mixed.includes(ownWarning), mixed);
+        assert.ok(!mixed.includes("third-party.test is") && !mixed.includes("add localhost, third-party.test"), `the third party stays plain: ${mixed}`);
+        // D3: a beacon doesn't change the page: stopped and noted, without the warning.
+        const beacon = ownNotesOf("a beacon to the site host");
+        assert.ok(beacon.includes(`POST ${elsewhere}/beacon (ping)`) && !beacon.includes("to this site's confirmation"), beacon);
+        // D4: a script from the site's host says "may not reflect" once.
+        const ownScript = ownNotesOf("a script from the uncovered host");
+        assert.equal(ownScript.split("may not reflect the page").length - 1, 1, ownScript);
+        assert.ok(ownScript.includes("; localhost is one of this site's hosts: add localhost to this site's confirmation"), ownScript);
+        // D5: a breach to the site's host names it too, in the failure.
+        const ownBreach = one(flattenSuites(ownSite.suites), "a form posting to the uncovered host");
+        assert.equal(ownBreach.status, "Failed");
+        assert.ok(ownBreach.rawMessage.includes("localhost is one of this site's hosts: add localhost to this site's confirmation to test with it"), ownBreach.rawMessage);
+        // The owner's acceptance (2026-11-18): a breach by a redirect to the site's host (a 307 carrying the form's body) too.
+        const ownRedirect = one(flattenSuites(ownSite.suites), "a 307 to the uncovered host");
+        assert.equal(ownRedirect.status, "Failed");
+        assert.ok(ownRedirect.rawMessage.includes(`redirected to ${elsewhere}/via307 (307) to localhost`) && ownRedirect.rawMessage.includes("localhost is one of this site's hosts: add localhost to this site's confirmation to test with it"), ownRedirect.rawMessage);
 
         assert.equal(one(records, "without the guard, the control").status, "Passed");
     } finally {

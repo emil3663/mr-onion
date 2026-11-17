@@ -210,3 +210,11 @@ test("flattenSuites: tests inside Option B's 'Local model (...)' block are label
     assert.equal(local.area, "Database");
     assert.match(local.remarks, /Written by the local model \(mr-onion-qwen7b:latest\)\.$/);
 });
+
+// Phase 46 (TFP-297, from Gate B's walkthrough, 2026-11-17): the payload test's expected result says what it checks,
+// with its fields and page, not a generic sentence.
+test("the payload test's expected result names what it checks: the script typed into its fields on its page", async () => {
+    const { buildExecutionDescription } = await import("./execution.ts");
+    assert.equal(buildExecutionDescription("TFSC-006: script-shaped input is not executed: Search on /", "Form"), "Expected result: the script typed into Search on / is not executed.");
+    assert.equal(buildExecutionDescription("script-shaped input is not executed: Name, Message on /contact", "Form"), "Expected result: the script typed into Name, Message on /contact is not executed.");
+});
