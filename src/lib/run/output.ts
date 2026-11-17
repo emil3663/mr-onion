@@ -1,6 +1,6 @@
 import { normalizeExecutionTitle, stripAnsi } from "@/lib/report/text";
 import type { ExecutionRecord, ReportArtifactItem } from "@/lib/report/types";
-import type { PlannedExecutionSnapshot, PlannedExecutionStatus, RunJob } from "@/lib/run/jobs";
+import { PLANNED_PLACEHOLDER, type PlannedExecutionSnapshot, type PlannedExecutionStatus, type RunJob } from "@/lib/run/jobs";
 
 const PROGRESS_PREFIX = "MRONION_PROGRESS ";
 
@@ -31,20 +31,29 @@ function updatePlannedExecutionStatus(
     }
 }
 
+/**
+ * Each Playwright pass's tests, added to the run's one planned list (TFP-296): a run can be two passes (the read-only
+ * units, then the serial group, TFP-156), and the second's start used to replace the first's list.
+ */
 function syncPlannedExecutions(job: RunJob, plannedTests: Array<{ id: string; title: string }>) {
     const uniqueExecutions = plannedTests.reduce((executions, test) => {
-        if (!executions.some((entry) => entry.id === test.id)) {
-            executions.push({
-                id: test.id,
-                title: test.title,
-                linkLabel: deriveLinkLabel(test.title),
-                status: "not-run" as PlannedExecutionStatus,
-                duration: null,
-            });
+        if (executions.some((entry) => entry.id === test.id)) return executions;
+        // A place seeded for this title, not yet taken: the reporter's test takes it, where it is in the list.
+        const place = executions.find((entry) => entry.id.startsWith(PLANNED_PLACEHOLDER) && entry.title === test.title);
+        if (place) {
+            place.id = test.id;
+            place.linkLabel = deriveLinkLabel(test.title);
+            return executions;
         }
-
+        executions.push({
+            id: test.id,
+            title: test.title,
+            linkLabel: deriveLinkLabel(test.title),
+            status: "not-run" as PlannedExecutionStatus,
+            duration: null,
+        });
         return executions;
-    }, [] as PlannedExecutionSnapshot[]);
+    }, [...job.progress.plannedExecutions] as PlannedExecutionSnapshot[]);
 
     if (uniqueExecutions.length > 0) {
         job.progress.plannedExecutions = uniqueExecutions;
@@ -89,6 +98,16 @@ function mapResultStatusToPlannedStatus(status: string | undefined): PlannedExec
     }
 
     return "failed";
+}
+
+/**
+ * TFP-296 (the fresh-context review): at the run's end, the seeded places no test took (a title the reporter wrote
+ * otherwise, or one no pass loaded) are dropped, so the list holds what ran. A stopped run keeps them: they are the
+ * tests it didn't get to, shown Not run.
+ */
+export function dropUntakenPlaces(job: RunJob) {
+    if (job.cancellationRequested) return;
+    job.progress.plannedExecutions = job.progress.plannedExecutions.filter((entry) => !entry.id.startsWith(PLANNED_PLACEHOLDER));
 }
 
 export function finalizeInterruptedPlannedExecutions(job: RunJob) {

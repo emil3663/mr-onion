@@ -6,7 +6,7 @@ import { recordCandidateRuns } from "@/lib/candidates/evidence";
 import { buildReport } from "@/lib/report/report";
 import { ownershipSection } from "@/lib/report/ownership";
 import type { GenerationRecord, JsonReport, RunReport } from "@/lib/report/types";
-import { buildConsoleSummary, collectArtifactFiles, finalizeInterruptedPlannedExecutions, withArtifactDownloadPath } from "@/lib/run/output";
+import { buildConsoleSummary, collectArtifactFiles, dropUntakenPlaces, finalizeInterruptedPlannedExecutions, withArtifactDownloadPath } from "@/lib/run/output";
 import type { LoginConfig } from "@/lib/run/auth";
 import { persistRunJob } from "@/lib/run/persistence";
 import { buildRedactor, redactDeep, scrubArtifactDirectory } from "@/lib/run/redact";
@@ -138,6 +138,22 @@ const globalRunJobs = globalThis as typeof globalThis & {
 };
 export const runJobs = globalRunJobs.__mrOnionRunJobs ?? (globalRunJobs.__mrOnionRunJobs = new Map());
 
+/**
+ * TFP-296: the planned list, seeded before the run from the suite's runnable titles, once per browser project, so it
+ * holds every test from the start: a run in two passes announces its serial tests only when the second begins. Each
+ * place is taken by the reporter's test of that title as its pass begins (output.ts).
+ */
+export const PLANNED_PLACEHOLDER = "planned:";
+export function plannedPlaceholders(titles: string[], projects: number): PlannedExecutionSnapshot[] {
+    const places: PlannedExecutionSnapshot[] = [];
+    for (let project = 0; project < Math.max(1, projects); project++) {
+        for (const title of titles) {
+            places.push({ id: `${PLANNED_PLACEHOLDER}${places.length}`, title, linkLabel: null, status: "not-run", duration: null });
+        }
+    }
+    return places;
+}
+
 export function createEmptyProgress(totalTests = 0): RunProgressSnapshot {
     return {
         totalTests,
@@ -221,6 +237,7 @@ async function finalizeRunJobUnredacted(job: RunJob) {
     }
 
     finalizeInterruptedPlannedExecutions(job);
+    dropUntakenPlaces(job);
     job.progress.completedTests = Math.min(job.progress.completedTests, Math.max(job.progress.totalTests, job.progress.completedTests));
     // Null (not "") when the suite source is gone: coverage then can't tell
     // which journeys were generated and falls back to execution records.

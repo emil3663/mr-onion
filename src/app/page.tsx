@@ -261,7 +261,7 @@ export default function Home() {
         crawl.crawlResult?.baseUrl,
         crawl.crawledPages
     );
-    const { runTotalTests, runCompletedTests, runProgressPercent, runElapsedLabel, runRemainingLabel } = deriveRunProgressDisplay(
+    const { runTotalTests, runCompletedTests, runProgressPercent, runElapsedLabel } = deriveRunProgressDisplay(
         activeRunProgress,
         run.runDurationMs,
         run.isCancellingRun
@@ -304,7 +304,7 @@ export default function Home() {
                     runTotalTests={runTotalTests}
                     runProgressPercent={runProgressPercent}
                     runElapsedLabel={runElapsedLabel}
-                    runRemainingLabel={runRemainingLabel}
+                    runDurationMs={run.runDurationMs}
                     handleStopRun={run.handleStopRun}
                     activeRunId={run.activeRunId}
                     busyInspectionTargetsPreview={busyInspectionTargetsPreview}

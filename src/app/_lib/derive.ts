@@ -377,16 +377,7 @@ export function deriveRunProgressDisplay(
         ? Math.min(100, Math.round((runCompletedTests / runTotalTests) * 100))
         : 0;
     const runElapsedLabel = formatMilliseconds(runDurationMs);
-    const estimatedRemainingMs =
-        runTotalTests > 0 && runCompletedTests > 0 && runCompletedTests < runTotalTests
-            ? Math.max(0, Math.round((runDurationMs / runCompletedTests) * (runTotalTests - runCompletedTests)))
-            : null;
-    const runRemainingLabel =
-        estimatedRemainingMs === null
-            ? isCancellingRun
-                ? "Stopping..."
-                : "Estimating..."
-            : formatMilliseconds(estimatedRemainingMs);
-
-    return { runTotalTests, runCompletedTests, runProgressPercent, runElapsedLabel, runRemainingLabel };
+    // TFP-296: the projected remaining time is the overlay's own (useProjectedRemaining), which counts down.
+    void isCancellingRun;
+    return { runTotalTests, runCompletedTests, runProgressPercent, runElapsedLabel };
 }

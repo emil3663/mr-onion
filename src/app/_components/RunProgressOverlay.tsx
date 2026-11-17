@@ -1,3 +1,4 @@
+import { useProjectedRemaining } from "@/app/_hooks/useProjectedRemaining";
 import { useEffect, useRef } from "react";
 import { Spinner } from "@/app/_components/Spinner";
 import { livePlannedExecutionStatusClasses, livePlannedExecutionStatusLabel, toSentenceCase } from "@/app/_lib/format";
@@ -15,7 +16,8 @@ interface RunProgressOverlayProps {
     runTotalTests: number;
     runProgressPercent: number;
     runElapsedLabel: string;
-    runRemainingLabel: string;
+    /** TFP-296: the run's time so far, from which the overlay projects what remains. */
+    runDurationMs: number;
     handleStopRun: () => void;
     activeRunId: string | null;
     busyInspectionTargetsPreview: BusyInspectionTarget[];
@@ -35,7 +37,7 @@ export function RunProgressOverlay({
     runTotalTests,
     runProgressPercent,
     runElapsedLabel,
-    runRemainingLabel,
+    runDurationMs,
     handleStopRun,
     activeRunId,
     busyInspectionTargetsPreview,
@@ -44,6 +46,7 @@ export function RunProgressOverlay({
     setIsBusyTargetListExpanded,
 }: RunProgressOverlayProps) {
     const activeRunPlannedExecutions = activeRunProgress?.plannedExecutions ?? [];
+    const runRemainingLabel = useProjectedRemaining(activeRunProgress, runDurationMs, isCancellingRun);
     const focusedPlannedExecutionId = activeRunPlannedExecutions.find((execution) => execution.status === "running")?.id ?? null;
     const plannedExecutionListRef = useRef<HTMLDivElement>(null);
     const plannedExecutionItemRefs = useRef<Record<string, HTMLDivElement | null>>({});

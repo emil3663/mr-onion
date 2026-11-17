@@ -98,7 +98,39 @@ repo as evidence for C and TFP-299.
 
 ## TFP-296 (C) — The projected time; "55 of 56" against "55 total"
 
-- **Status:** Not started.
+- **Status:** Built (2026-11-17). Stopped for the re-walk.
+- **Why "55 of 56" against "55 total":** a run is two Playwright passes,
+  the read-only units then the serial group (TFP-156). With active tests
+  on, the payload test runs in the second. The total came from the
+  suite's declared tests (56); the planned list from the first pass's
+  start (55), and the second pass's start then *replaced* it with its own
+  1 test, which is why the walkthrough's saved run had 1 planned test.
+  Reproduced on the build before, through a two-pass run: "0 of 12" with
+  "11 total".
+- **As built:**
+  - The planned list is seeded before the run with every runnable test
+    (`plannedPlaceholders`, from the run selection's titles, once per
+    browser project), and each pass's tests take their places by title;
+    a test no place is seeded for is added. So the list's total is the
+    progress's from the start.
+  - The projected remaining time (`src/app/_lib/projection.ts`, shown by
+    `useProjectedRemaining` in the overlay) counts down once a second, is
+    estimated again only when a test finishes, and moves only when the new
+    estimate differs from what's shown by more than 10 s or more than
+    10%. It is shown to the second ("1m 20s"), so the countdown shows; at
+    zero with tests still going, "Finishing...".
+- **Found by the fresh-context review and fixed:** a title the reporter
+  writes otherwise (an escape, a template) or a phantom match (`.test(`)
+  left a seeded place nothing took, raising the total: only plain
+  literal titles are seeded, the title regex no longer reads `.test(`,
+  and at a run's end untaken places are dropped (a stopped run keeps
+  them, Not run). Places are seeded in the order the passes run. The
+  overlay's old remaining label is gone from `derive.ts`.
+- **For the owner at the re-walk:** "more than 10 seconds or 10%" is read
+  as *either* (it moves past whichever is smaller), so near the end small
+  changes move it. Read as *both* (past the larger), it would hold
+  steadier. Which?
+- **Acceptance criteria:** RUN-78.
 - **Scope (the owner's words):** the projected remaining time counts down
   once a second, re-estimates as tests finish, and moves only when the
   new estimate differs by more than 10 seconds or 10%. Find and fix why

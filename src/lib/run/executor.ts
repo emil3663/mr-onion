@@ -4,14 +4,14 @@ import { randomUUID } from "crypto";
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import type { ContentProfile } from "@/lib/generate/mock/types";
-import { buildRunSnapshot, createEmptyProgress, finalizeRunJob, runJobs } from "@/lib/run/jobs";
+import { buildRunSnapshot, createEmptyProgress, plannedPlaceholders, finalizeRunJob, runJobs } from "@/lib/run/jobs";
 import { runEnv } from "@/lib/run/child-env";
 import { authDirFor, prepareRunLogin, removeAuthState, removeStaleAuthDirs, STORAGE_STATE_ENV_VAR } from "@/lib/run/auth";
 import type { LoginConfig } from "@/lib/run/auth";
 import { INTERACTIVE_ENV_VAR } from "@/lib/run/interactive";
 import type { RunJob } from "@/lib/run/jobs";
 import { appendProcessOutput } from "@/lib/run/output";
-import { buildRunSelection, estimateTestCount } from "@/lib/run/selection";
+import { buildRunSelection, estimateTestCount, extractSeedableTitles } from "@/lib/run/selection";
 import { createRunFolder, PLAYWRIGHT_RUNS_DIR, removeRunFolder, removeStaleRunFolders, STALE_RUN_FOLDER_MS } from "@/lib/run/run-folders";
 import { removeOrphanedArtifactFolders } from "@/lib/run/persistence";
 import { recheckSiteSuiteAfterRun } from "@/lib/run/stale-recheck";
@@ -54,6 +54,22 @@ export function buildProgressReporterSource() {
 
 module.exports = MrOnionProgressReporter;
 `;
+}
+
+/**
+ * TFP-296: the planned list's seed: the units' plain titles in the order the passes run them, each kept as often as the
+ * selection runs it (a Continue or a rerun runs fewer). A title it can't seed is added by the reporter as it runs.
+ */
+function seededTitles(units: Array<{ kind: string; code: string }>, runnable: string[]): string[] {
+    const left = new Map<string, number>();
+    for (const title of runnable) left.set(title, (left.get(title) ?? 0) + 1);
+    const ordered = [...units.filter((unit) => unit.kind !== "serial"), ...units.filter((unit) => unit.kind === "serial")];
+    return ordered.flatMap((unit) => extractSeedableTitles(unit.code)).filter((title) => {
+        const count = left.get(title) ?? 0;
+        if (count === 0) return false;
+        left.set(title, count - 1);
+        return true;
+    });
 }
 
 /** Ruling 5: a run on a capped host gets 60 minutes, whatever the suite's size. */
@@ -206,7 +222,9 @@ export async function startRunJob(
         finishedAt: null,
         pendingOutput: "",
         outputChunks: [],
-        progress: createEmptyProgress(runSelection.runnableTestCount * browserProjects.length),
+        // TFP-296: the planned list seeded with the runnable tests, in the order they run (the read-only units, then the
+        // serial group), so a second pass's tests are listed from the start.
+        progress: { ...createEmptyProgress(runSelection.runnableTestCount * browserProjects.length), plannedExecutions: plannedPlaceholders(seededTitles(units, runSelection.runnableTitles), browserProjects.length) },
         activeExecutions: new Map(),
         process: null,
         testFile,

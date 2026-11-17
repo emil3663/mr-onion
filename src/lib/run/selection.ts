@@ -14,9 +14,25 @@ export function estimateTestCount(code: string) {
     return Math.max(1, countDeclaredTests(code));
 }
 
+/**
+ * TFP-296: the titles a run's planned list can be seeded with: only plain literals, which the reporter reports as
+ * written. One with an escape, or a template's `${...}`, is left to the reporter (it is added when its pass begins).
+ */
+export function extractSeedableTitles(code: string) {
+    const titles: string[] = [];
+    const testTitlePattern = /(?<![.\w$])test(?:\.only)?\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g;
+    for (const match of code.matchAll(testTitlePattern)) {
+        const raw = match[2] ?? "";
+        if (raw.includes("\\") || (match[1] === "`" && raw.includes("${"))) continue;
+        titles.push(raw);
+    }
+    return titles;
+}
+
 export function extractDeclaredTestTitles(code: string) {
     const titles: string[] = [];
-    const testTitlePattern = /\btest(?:\.only|\.skip|\.fixme)?\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g;
+    // TFP-296 (the fresh-context review): not `.test(` or `xtest(`, as DECLARED_TEST counts them.
+    const testTitlePattern = /(?<![.\w$])test(?:\.only|\.skip|\.fixme)?\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g;
 
     for (const match of code.matchAll(testTitlePattern)) {
         const rawTitle = match[2] ?? "";
@@ -42,6 +58,8 @@ export function buildRunSelection(code: string, excludedTestTitles: string[], in
     if (uniqueExcludedTitles.length === 0 && uniqueIncludedTitles.length === 0) {
         return {
             runnableTestCount: declaredTitles.length > 0 ? declaredTitles.length : estimateTestCount(code),
+            // TFP-296: the titles that will run, to seed the run's planned list.
+            runnableTitles: declaredTitles,
             grepPattern: null,
             grepInvertPattern: null,
         };
@@ -55,6 +73,7 @@ export function buildRunSelection(code: string, excludedTestTitles: string[], in
     const runnableTestCount = declaredTitles.length > 0 ? runnableTitles.length : fallbackCount;
 
     return {
+        runnableTitles,
         runnableTestCount,
         grepPattern: uniqueIncludedTitles.length > 0 ? uniqueIncludedTitles.map(escapeRegexLiteral).join("|") : null,
         grepInvertPattern: uniqueExcludedTitles.map(escapeRegexLiteral).join("|"),
