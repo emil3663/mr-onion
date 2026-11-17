@@ -65,6 +65,9 @@ without renumbering the items below, which the tables' Order columns cite).
    - Uncovered runs still run, with their active tests Not run.
    - Tickets TFP-218 to TFP-221.
 3. **Phase 46: the app screens.**
+   - Reviewed against `main` on 2026-11-17 (its "Review before building"
+     section): the API masks the contact email (owner decision), and notes
+     in the app's report tabs are added as TFP-289.
    - A site lookup by URL, with exact match only, no list of sites and the
      email masked.
    - The confirmation form.

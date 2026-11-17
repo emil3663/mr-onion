@@ -17,6 +17,52 @@ Status: **Locked (Emil, 2026-10-20). Not started.** Decisions, acceptance criter
   (`deferred-work-register.md`).
 - Tickets TFP-232 to TFP-235.
 
+## Review before building (planning session, 2026-11-17)
+
+This record was locked before Phase 47 (CI), Phase 48 (the rename) and
+Phase 43 as built. Checked against `main` at `32b965a`. The design stands;
+these amendments apply and override older wording below.
+
+1. **Names (Phase 48).** The product is Mr Onion; the run switch is
+   `MRONION_ACTIVE`, and the run request's field is `enableActive`
+   (TFP-219). "TestForge never writes into the repo" reads "Mr Onion".
+2. **The contact email is masked in the API too (owner decision,
+   2026-11-17).** `GET /api/site-ownership` returns it masked
+   (`e***@gmail.com`); the full address stays in the local file only, and
+   nothing in the app receives it. A POST still takes it in full. TFP-232
+   makes the change, with a test that no GET response holds the full
+   address.
+3. **The screen shows the confirmation's fixed wording** from the API
+   (TFP-218's `wording`, one text per basis, sent back unchanged). The
+   legal note (Phase 35 Decision 8) is shown beside it. The practice-site
+   rule is already in the written-permission text.
+4. **A host the site doesn't use yet is refused** (TFP-218's reading of
+   Decision 2: the site's own host plus those its saved suite recorded).
+   When the API refuses one, the form says a host is accepted once a
+   Standard run has recorded it.
+5. **The active switch asks the API, not its own copy of the rules.**
+   `GET /api/site-ownership` gains the gate a run would get for the URL
+   (`decideActiveGate`, asked for active tests): open, or which of Phase
+   43's reasons closes it. The switch shows that. The run itself still
+   decides at its start (Decision 4).
+6. **Saved suites and their last run** have no API yet. TFP-232 adds them
+   to the lookup's read, by site only.
+7. **"No listing" means no route that lists sites or confirmations.**
+   `GET /api/candidates` names the hosts each candidate ran on, by Decision
+   3's choice; AC1's test allows that route and no other.
+8. **Notes in the app's report tabs (Phase 43 Gate B ruling 3).** The
+   run's notes (`notes` on each record: the guards' stopped requests, and
+   ruling 4's "the result may not reflect the page" warning) are shown in
+   the app with their test, as the HTML report shows them. This becomes
+   Decision 6, with an acceptance criterion and a ticket, TFP-289.
+9. **Gate B's walkthrough** confirms the local Toolshop and, as the remote
+   site, this machine's LAN address (as TFP-219's runs did), not a hosted
+   practice site, which needs its terms checked first (Phase 43 Decision
+   12).
+10. **What stays from Phase 43, not built here:** CI never asks for active
+    tests (TFP-249); the CLI has no switch.
+
+## Context
 ## Context
 
 - **API only today:**
