@@ -2,6 +2,7 @@ import { CollapsibleSection } from "@/app/_components/CollapsibleSection";
 import { ContentRulesSection } from "@/app/_components/ContentRulesSection";
 import { DiscoveredPagesSection } from "@/app/_components/DiscoveredPagesSection";
 import { Spinner } from "@/app/_components/Spinner";
+import { SiteLookupDialog } from "@/app/_components/SiteLookupDialog";
 import { BEST_PRACTICE_OPTIONS, DEFAULT_BASE_URL, DEFAULT_DESCRIPTION_EXAMPLE, TEST_AUDIT_MODE_OPTIONS } from "@/app/_lib/constants";
 import type { BestPracticeArea, ContentProfile, CrawlLifecycleStatus, CrawlProgressSnapshot, CrawledPage, TestAuditMode } from "@/app/_lib/types";
 
@@ -225,16 +226,14 @@ export function CreationSection({
                                             {urlFieldNote.text}
                                         </p>
                                     ) : null}
-                                    {/* Phase 46 (TFP-232, Decision 1): the lookup, opened with this target already searched. A new
-                                        tab, so the run form keeps what's typed here. Every line is on one site: the first names it. */}
-                                    <a
-                                        href={`/sites?url=${encodeURIComponent(baseUrl.split(/\n/).map((line) => line.trim()).find(Boolean) ?? "")}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    {/* Phase 46 (TFP-232, Decision 1; TFP-294): the lookup, as a modal over the run form, with this
+                                        target already searched. Every line is on one site: the first names it. */}
+                                    <SiteLookupDialog
+                                        url={baseUrl.split(/\n/).map((line) => line.trim()).find(Boolean) ?? ""}
                                         className="inline-block text-xs font-medium text-indigo-600 hover:underline"
                                     >
-                                        This site&apos;s confirmation and settings (opens in a new tab)
-                                    </a>
+                                        This site&apos;s confirmation and settings
+                                    </SiteLookupDialog>
                                 </div>
 
                                 <div className="space-y-1.5">

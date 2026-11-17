@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmationForm } from "@/app/_components/ConfirmationForm";
+import { SITE_LOOKUP_CLOSED } from "@/app/_components/SiteLookupDialog";
 
 /**
  * Phase 46 (TFP-232, Decision 1, Acceptance Criteria 1): the site lookup. The tester names a site by its URL, in any
@@ -84,6 +85,16 @@ async function readEntry(url: string): Promise<Entry> {
     };
 }
 
+/** The site's port, said even where its address leaves the default out (TFP-294: http://192.168.1.17 is port 80). */
+function portOf(origin: string): string {
+    try {
+        const url = new URL(origin);
+        return url.port || (url.protocol === "https:" ? "443" : "80");
+    } catch {
+        return "?";
+    }
+}
+
 /** Nothing saved: no confirmation now or before, the gap writer off (its default), and no saved suite. */
 const nothingSaved = (entry: Entry) => entry.confirmation === null && entry.history.length === 0 && entry.gapWriter === "off" && entry.suites.length === 0;
 
@@ -107,7 +118,8 @@ function statusLine(entry: Entry) {
     }
 }
 
-export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
+/** `updateAddress`: the /sites page puts the searched site in its address; the run page's modal doesn't (TFP-294). */
+export function SiteLookup({ initialUrl = "", updateAddress = true }: { initialUrl?: string; updateAddress?: boolean }) {
     const [url, setUrl] = useState(initialUrl);
     const [searched, setSearched] = useState("");
     const [entry, setEntry] = useState<Entry | null>(null);
@@ -152,7 +164,7 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
                 setBusy(false);
                 // The address names the site searched, so a reload shows the same entry (AC1, the fresh-context
                 // review). Not a navigation: the page isn't rendered again, and nothing is searched twice.
-                window.history.replaceState(null, "", `/sites?url=${encodeURIComponent(target)}`);
+                if (updateAddress) window.history.replaceState(null, "", `/sites?url=${encodeURIComponent(target)}`);
             },
             (caught: unknown) => {
                 if (ticket !== latest.current) return;
@@ -162,7 +174,7 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
                 setBusy(false);
             },
         );
-    }, []);
+    }, [updateAddress]);
 
     const search = async (target: string, note = "") => {
         setBusy(true);
@@ -193,6 +205,8 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
         }
         // Read back from the API after every answer, refused or not: the entry shown is the one saved.
         await search(searched || entry.origin, refusal ? "" : note);
+        // TFP-294: a change here may open or close the run form's gate; the switch reads it again.
+        if (!refusal) window.dispatchEvent(new Event(SITE_LOOKUP_CLOSED));
         if (refusal) setActionError(refusal);
         statusRef.current?.focus();
     };
@@ -250,7 +264,7 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
                     <div className={`space-y-6 rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm transition-opacity ${busy ? "opacity-60" : ""}`}>
                         <div>
                             <h2 className="font-mono text-lg font-semibold text-zinc-950">{entry.origin}</h2>
-                            {nothingSaved(entry) ? <p className="mt-1 text-sm text-zinc-600">Nothing saved for this site.</p> : null}
+                            {nothingSaved(entry) ? <p className="mt-1 text-sm text-zinc-600">Nothing saved for {entry.origin} (port {portOf(entry.origin)})</p> : null}
                         </div>
 
                         <section aria-labelledby="confirmation-heading">
@@ -313,6 +327,7 @@ export function SiteLookup({ initialUrl = "" }: { initialUrl?: string }) {
                                     renewing={canRenew}
                                     onSending={setBusy}
                                     onSaved={() => {
+                                        window.dispatchEvent(new Event(SITE_LOOKUP_CLOSED));
                                         void search(searched || entry.origin, "The confirmation was saved.").then(() => statusRef.current?.focus());
                                     }}
                                     onCancel={() => {

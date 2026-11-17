@@ -100,7 +100,11 @@ test("TFP-235: on a remote host the switch is disabled for each of Phase 43's fi
         await expect(switchControl, label).toBeDisabled();
         await expect(switchControl, label).not.toBeChecked();
     }
-    await expect(page.getByRole("link", { name: "This site's ownership confirmation (opens in a new tab)" })).toHaveAttribute("href", `/sites?url=${encodeURIComponent(REMOTE)}`);
+    // TFP-294: it opens the site's entry as a modal, searched for the target.
+    await page.getByRole("button", { name: "This site's ownership confirmation", exact: true }).click();
+    const lookup = page.getByRole("dialog", { name: "Site lookup" });
+    await expect(lookup.getByRole("region", { name: "Results" }).getByRole("heading", { level: 2 })).toHaveText(REMOTE);
+    await lookup.getByRole("button", { name: "Close", exact: true }).click();
 
     // Covered, with the active tick: available, and the run asks for active tests. The run's request is only read here:
     // a real run against a host that doesn't exist is not this test's subject.
@@ -166,7 +170,7 @@ test("TFP-235: on a local host the switch is available with no confirmation at a
     const switchControl = page.getByRole("switch", { name: /^Run active tests/ });
     await expect(page.getByTestId("active-switch-state")).toHaveText("Available: 127.0.0.1 is a local host, which needs no ownership confirmation.");
     await expect(switchControl).toBeEnabled();
-    await expect(page.getByRole("link", { name: "This site's ownership confirmation (opens in a new tab)" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "This site's ownership confirmation", exact: true })).toHaveCount(0);
 });
 
 test("TFP-235: a suite with no active test has no active switch", async ({ page }) => {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useSessionState } from "@/app/_hooks/useSessionState";
+import { SiteHeader } from "@/app/_components/SiteHeader";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, getSiteUrl } from "@/lib/seo";
 import { CreationSection } from "@/app/_components/CreationSection";
 import { GeneratedSuiteSection } from "@/app/_components/GeneratedSuiteSection";
@@ -51,24 +52,24 @@ const websiteSchema = {
 };
 
 export default function Home() {
-    const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
-    const [isBaseUrlPlaceholderActive, setIsBaseUrlPlaceholderActive] = useState(true);
-    const [description, setDescription] = useState(DEFAULT_DESCRIPTION_EXAMPLE);
-    const [isDescriptionPlaceholderActive, setIsDescriptionPlaceholderActive] = useState(true);
-    const [selectedPractices, setSelectedPractices] = useState<BestPracticeArea[]>([]);
-    const [deselectedPractices, setDeselectedPractices] = useState<BestPracticeArea[]>([]);
+    const [baseUrl, setBaseUrl] = useSessionState("run.baseUrl", DEFAULT_BASE_URL);
+    const [isBaseUrlPlaceholderActive, setIsBaseUrlPlaceholderActive] = useSessionState("run.isBaseUrlPlaceholderActive", true);
+    const [description, setDescription] = useSessionState("run.description", DEFAULT_DESCRIPTION_EXAMPLE);
+    const [isDescriptionPlaceholderActive, setIsDescriptionPlaceholderActive] = useSessionState("run.isDescriptionPlaceholderActive", true);
+    const [selectedPractices, setSelectedPractices] = useSessionState<BestPracticeArea[]>("run.selectedPractices", []);
+    const [deselectedPractices, setDeselectedPractices] = useSessionState<BestPracticeArea[]>("run.deselectedPractices", []);
     const [step, setStep] = useState<Step>("idle");
     const [error, setError] = useState("");
-    const [contentPathsInput, setContentPathsInput] = useState("");
-    const [requiredHeadingsInput, setRequiredHeadingsInput] = useState("");
-    const [requiredTextInput, setRequiredTextInput] = useState("");
-    const [forbiddenTextInput, setForbiddenTextInput] = useState("");
-    const [namedFlowsInput, setNamedFlowsInput] = useState("");
-    const [auditMode, setAuditMode] = useState(DEFAULT_TEST_AUDIT_MODE);
+    const [contentPathsInput, setContentPathsInput] = useSessionState("run.contentPathsInput", "");
+    const [requiredHeadingsInput, setRequiredHeadingsInput] = useSessionState("run.requiredHeadingsInput", "");
+    const [requiredTextInput, setRequiredTextInput] = useSessionState("run.requiredTextInput", "");
+    const [forbiddenTextInput, setForbiddenTextInput] = useSessionState("run.forbiddenTextInput", "");
+    const [namedFlowsInput, setNamedFlowsInput] = useSessionState("run.namedFlowsInput", "");
+    const [auditMode, setAuditMode] = useSessionState("run.auditMode", DEFAULT_TEST_AUDIT_MODE);
     const [isCreationCollapsed, setIsCreationCollapsed] = useState(false);
     const [isContentRulesCollapsed, setIsContentRulesCollapsed] = useState(true);
     const [isHelpPanelOpen, setIsHelpPanelOpen] = useState(false);
-    const [selectedJourneyIds, setSelectedJourneyIds] = useState<string[]>([]);
+    const [selectedJourneyIds, setSelectedJourneyIds] = useSessionState<string[]>("run.selectedJourneyIds", []);
     const [isJourneysCollapsed, setIsJourneysCollapsed] = useState(false);
     // TFP-091: per-run opt-in for skipped-by-default interactive tests.
     const [enableInteractive, setEnableInteractive] = useState(false);
@@ -76,9 +77,9 @@ export default function Home() {
     const [loginInputs, setLoginInputs] = useState<LoginInputs>({ ...EMPTY_LOGIN_INPUTS });
     const [isLoginCollapsed, setIsLoginCollapsed] = useState(true);
     // Phase 35 (TFP-132): Standard (unchanged) or Comprehensive for one area.
-    const [runType, setRunType] = useState<RunTypeChoice>("standard");
-    const [comprehensiveArea, setComprehensiveArea] = useState<ComprehensiveArea>("security");
-    const [pageCapInput, setPageCapInput] = useState(String(DEFAULT_PAGE_CAP));
+    const [runType, setRunType] = useSessionState<RunTypeChoice>("run.runType", "standard");
+    const [comprehensiveArea, setComprehensiveArea] = useSessionState<ComprehensiveArea>("run.comprehensiveArea", "security");
+    const [pageCapInput, setPageCapInput] = useSessionState("run.pageCapInput", String(DEFAULT_PAGE_CAP));
     const [isRunTypeCollapsed, setIsRunTypeCollapsed] = useState(true);
 
     const pageCap = Number(pageCapInput);
@@ -179,7 +180,8 @@ export default function Home() {
     const effectiveSelectedJourneyIds = selectedJourneyIds.filter((id) => candidateJourneyIds.has(id));
     const isGenerating = step === "generating";
     const isRunning = step === "running";
-    const hasCode = step === "ready" || step === "done";
+    // TFP-294: a suite kept for the session counts on a fresh page too, where the step starts idle.
+    const hasCode = step === "ready" || step === "done" || (step === "idle" && generation.editedCode !== "");
     const effectiveDescriptionText = isDescriptionPlaceholderActive ? "" : description;
     const inferredPractices = inferBestPracticesFromDescription(effectiveDescriptionText);
     const effectiveSelectedPractices: BestPracticeArea[] = [...new Set([...selectedPractices, ...(selectedPractices.length > 0 ? [] : inferredPractices)])]
@@ -312,34 +314,9 @@ export default function Home() {
                 />
             )}
             <HelpPanel isOpen={isHelpPanelOpen} onClose={() => setIsHelpPanelOpen(false)} />
-            <header className="border-b border-white/70 bg-white/80 backdrop-blur">
-                <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-4">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-indigo-600 shadow-[0_10px_30px_rgba(79,70,229,0.25)]">
-                        <svg
-                            className="h-5 w-5 text-white"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" />
-                        </svg>
-                    </div>
-                    <div>
-                        <div className="text-lg font-semibold tracking-tight">Mr Onion</div>
-                        <div className="text-xs text-zinc-500">
-                            AI-native test creation with structured quality reporting
-                        </div>
-                    </div>
-                    {/* Phase 46 (TFP-232): the site lookup; (TFP-234): the promotion screen. */}
-                    <Link href="/sites" className="ml-auto text-sm font-medium text-indigo-600 hover:underline">
-                        Site lookup
-                    </Link>
-                    <Link href="/candidates" className="text-sm font-medium text-indigo-600 hover:underline">
-                        Candidate tests
-                    </Link>
+            {/* Phase 46 (TFP-294): the one header every page has, with this page's Help. */}
+            <SiteHeader
+                actions={
                     <button
                         type="button"
                         onClick={() => setIsHelpPanelOpen(true)}
@@ -348,8 +325,8 @@ export default function Home() {
                     >
                         ?
                     </button>
-                </div>
-            </header>
+                }
+            />
 
             <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
                 <script

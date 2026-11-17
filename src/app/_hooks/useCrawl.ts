@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSessionState } from "@/app/_hooks/useSessionState";
 import { getPathExtension, normalizeBaseUrl, typeSelectedPaths } from "@/app/_lib/derive";
 import type { RunMode } from "@/lib/comprehensive/run-mode";
 import { formatMilliseconds } from "@/lib/report/text";
@@ -86,16 +87,16 @@ export async function pollCrawlUntilDone(crawlId: string, deps: CrawlPollDeps): 
 }
 
 export function useCrawl(baseUrl: string, runMode: RunMode) {
-    const [crawlResult, setCrawlResult] = useState<CrawlResult | null>(null);
+    const [crawlResult, setCrawlResult] = useSessionState<CrawlResult | null>("crawl.crawlResult", null);
     // Phase 40 (TFP-172): null until the user changes the selection by hand,
     // so it follows the run type: Standard's pages by type, or
     // Comprehensive's for its page cap. A hand-made selection is kept as is.
-    const [manualCrawledPaths, setManualCrawledPaths] = useState<string[] | null>(null);
+    const [manualCrawledPaths, setManualCrawledPaths] = useSessionState<string[] | null>("crawl.manualCrawledPaths", null);
     const selectedCrawledPaths = manualCrawledPaths ?? (crawlResult ? typeSelectedPaths(crawlResult, runMode) : []);
     const setSelectedCrawledPaths = (update: string[] | ((current: string[]) => string[])) =>
         setManualCrawledPaths(typeof update === "function" ? update(selectedCrawledPaths) : update);
-    const [crawlSearchQuery, setCrawlSearchQuery] = useState("");
-    const [selectedCrawlExtensions, setSelectedCrawlExtensions] = useState<string[]>([]);
+    const [crawlSearchQuery, setCrawlSearchQuery] = useSessionState("crawl.crawlSearchQuery", "");
+    const [selectedCrawlExtensions, setSelectedCrawlExtensions] = useSessionState<string[]>("crawl.selectedCrawlExtensions", []);
     const [crawlStatus, setCrawlStatus] = useState<"idle" | "crawling">("idle");
     const [activeCrawlId, setActiveCrawlId] = useState<string | null>(null);
     const [crawlProgress, setCrawlProgress] = useState<CrawlProgressSnapshot | null>(null);
@@ -163,7 +164,8 @@ export function useCrawl(baseUrl: string, runMode: RunMode) {
                 window.clearTimeout(timer);
             }
         };
-    }, [activeCrawlId, crawlStatus]);
+        // TFP-294: the session-kept setters are stable (useSessionState), listed as the hooks rule asks.
+    }, [activeCrawlId, crawlStatus, setCrawlResult, setCrawlSearchQuery, setManualCrawledPaths, setSelectedCrawlExtensions]);
 
     async function handleCrawlPages() {
         const normalizedBaseUrl = normalizeBaseUrl(baseUrl);

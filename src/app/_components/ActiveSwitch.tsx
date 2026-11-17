@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { SITE_LOOKUP_CLOSED, SiteLookupDialog } from "@/app/_components/SiteLookupDialog";
 
 /**
  * Phase 46 (TFP-235, Decision 4, Acceptance Criteria 4): the active switch in the run form, under the interactive
@@ -39,11 +40,14 @@ export function ActiveSwitch({ baseUrl, enableActive, setEnableActive }: { baseU
         const again = () => {
             if (document.visibilityState === "visible") setReads((count) => count + 1);
         };
+        // TFP-294: and when the site lookup's modal closes, as the confirmation may have changed in it.
         document.addEventListener("visibilitychange", again);
         window.addEventListener("focus", again);
+        window.addEventListener(SITE_LOOKUP_CLOSED, again);
         return () => {
             document.removeEventListener("visibilitychange", again);
             window.removeEventListener("focus", again);
+            window.removeEventListener(SITE_LOOKUP_CLOSED, again);
         };
     }, []);
 
@@ -77,7 +81,6 @@ export function ActiveSwitch({ baseUrl, enableActive, setEnableActive }: { baseU
     }, [closed, enableActive, setEnableActive]);
 
     const host = hostOf(baseUrl);
-    const lookup = `/sites?url=${encodeURIComponent(baseUrl)}`;
 
     return (
         <div className="mt-3 text-xs text-zinc-400">
@@ -107,9 +110,11 @@ export function ActiveSwitch({ baseUrl, enableActive, setEnableActive }: { baseU
                 {closed && read?.state === "read" ? `Not available: ${(read.gate.reason ?? "the active gate is closed").replace(/^active test: /, "")}.` : null}
             </p>
             {read && !(read.state === "read" && read.gate.localHost) ? (
-                <a href={lookup} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block pl-7 font-medium text-indigo-300 hover:underline">
-                    This site&apos;s ownership confirmation (opens in a new tab)
-                </a>
+                <span className="mt-1 block pl-7">
+                    <SiteLookupDialog url={baseUrl} className="font-medium text-indigo-300 hover:underline">
+                        This site&apos;s ownership confirmation
+                    </SiteLookupDialog>
+                </span>
             ) : null}
         </div>
     );

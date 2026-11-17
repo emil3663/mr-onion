@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSessionState } from "@/app/_hooks/useSessionState";
 import { buildBusyInspectionTargets, buildSelectedPracticeDescription, normalizeBaseUrl, normalizeInspectionPaths, parseContentLines, parseNamedFlowLines } from "@/app/_lib/derive";
 import type { BestPracticeArea, BusyInspectionTarget, ContentProfile, CrawlResult, SavedSuiteResult, Step, TestAuditMode } from "@/app/_lib/types";
 import { STANDARD_RUN, type RunMode } from "@/lib/comprehensive/run-mode";
@@ -47,28 +48,28 @@ interface HandleGenerateParams {
 }
 
 export function useGeneration(defaultBaseUrl: string, defaultTestAuditMode: TestAuditMode) {
-    const [editedCode, setEditedCode] = useState("");
+    const [editedCode, setEditedCode] = useSessionState("suite.editedCode", "");
     // TFP-271: the selected journeys the last generation couldn't write a test for, and why.
-    const [droppedJourneys, setDroppedJourneys] = useState<DroppedJourney[]>([]);
+    const [droppedJourneys, setDroppedJourneys] = useSessionState<DroppedJourney[]>("suite.droppedJourneys", []);
     // Phase 34 (TFP-119): how the suite was generated (gap-fill outcome, gate
     // verdicts), passed on to /api/run so the run records it. Null when the
     // generate response carried none (template-only).
-    const [lastGeneration, setLastGeneration] = useState<Record<string, unknown> | null>(null);
+    const [lastGeneration, setLastGeneration] = useSessionState<Record<string, unknown> | null>("suite.lastGeneration", null);
     // Phase 35 (TFP-132): the run mode the suite on screen was generated for;
     // a run always uses this one, and changing the choice asks for a regenerate.
-    const [lastGeneratedRunMode, setLastGeneratedRunMode] = useState<RunMode>(STANDARD_RUN);
+    const [lastGeneratedRunMode, setLastGeneratedRunMode] = useSessionState<RunMode>("suite.lastGeneratedRunMode", STANDARD_RUN);
     const [editing, setEditing] = useState(false);
     const [copyLabel, setCopyLabel] = useState("Copy");
     const [saveLabel, setSaveLabel] = useState("Add to Test Explorer");
-    const [savedSuite, setSavedSuite] = useState<SavedSuiteResult | null>(null);
-    const [contentProfile, setContentProfile] = useState<ContentProfile | null>(null);
-    const [lastGeneratedContentSignature, setLastGeneratedContentSignature] = useState("");
-    const [lastGeneratedBaseUrl, setLastGeneratedBaseUrl] = useState(defaultBaseUrl);
-    const [lastGeneratedInspectionPaths, setLastGeneratedInspectionPaths] = useState<string[]>(["/"]);
-    const [lastGeneratedInspectionTargets, setLastGeneratedInspectionTargets] = useState<BusyInspectionTarget[]>([]);
-    const [lastGeneratedAuditMode, setLastGeneratedAuditMode] = useState<TestAuditMode>(defaultTestAuditMode);
-    const [lastGeneratedPracticeSignature, setLastGeneratedPracticeSignature] = useState("[]");
-    const [lastGeneratedJourneySignature, setLastGeneratedJourneySignature] = useState("[]");
+    const [savedSuite, setSavedSuite] = useSessionState<SavedSuiteResult | null>("suite.savedSuite", null);
+    const [contentProfile, setContentProfile] = useSessionState<ContentProfile | null>("suite.contentProfile", null);
+    const [lastGeneratedContentSignature, setLastGeneratedContentSignature] = useSessionState("suite.lastGeneratedContentSignature", "");
+    const [lastGeneratedBaseUrl, setLastGeneratedBaseUrl] = useSessionState("suite.lastGeneratedBaseUrl", defaultBaseUrl);
+    const [lastGeneratedInspectionPaths, setLastGeneratedInspectionPaths] = useSessionState<string[]>("suite.lastGeneratedInspectionPaths", ["/"]);
+    const [lastGeneratedInspectionTargets, setLastGeneratedInspectionTargets] = useSessionState<BusyInspectionTarget[]>("suite.lastGeneratedInspectionTargets", []);
+    const [lastGeneratedAuditMode, setLastGeneratedAuditMode] = useSessionState<TestAuditMode>("suite.lastGeneratedAuditMode", defaultTestAuditMode);
+    const [lastGeneratedPracticeSignature, setLastGeneratedPracticeSignature] = useSessionState("suite.lastGeneratedPracticeSignature", "[]");
+    const [lastGeneratedJourneySignature, setLastGeneratedJourneySignature] = useSessionState("suite.lastGeneratedJourneySignature", "[]");
     const [isGeneratedCollapsed, setIsGeneratedCollapsed] = useState(false);
     const codeRef = useRef<HTMLTextAreaElement>(null);
 

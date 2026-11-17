@@ -94,7 +94,9 @@ test("TFP-232: exact match only: a partial host, another port or another site's 
     ]) {
         const results = await lookUp(page, form);
         await expect(results.getByRole("heading", { level: 2 })).toHaveText(origin);
-        await expect(results.getByText("Nothing saved for this site.")).toBeVisible();
+        // TFP-294: an empty entry names its address and port, a default one included.
+        const port = new URL(origin).port || (origin.startsWith("https:") ? "443" : "80");
+        await expect(results.getByText(/^Nothing saved for /)).toHaveText(`Nothing saved for ${origin} (port ${port})`);
         await expect(results.getByTestId("confirmation-status")).toHaveText("None");
     }
     // There is nothing on the page to choose a site from: the search field suggests nothing (no datalist, autocomplete
@@ -142,20 +144,20 @@ test("TFP-232: the gap writer is set through the API, written in place and kept 
     await page.goto(`/sites?url=${encodeURIComponent(`${SHOP}/any/page`)}`);
     const results = page.getByRole("region", { name: "Results" });
     await expect(results.getByTestId("gap-writer-now")).toHaveText("Off");
-    await expect(results.getByText("Nothing saved for this site.")).toBeVisible();
+    await expect(results.getByText(`Nothing saved for ${SHOP} (port 443)`)).toBeVisible();
 
     await results.getByLabel("Who writes gap tests").selectOption("claude-code");
     await results.getByRole("button", { name: "Save gap writer" }).click();
     await expect(page.getByRole("status")).toHaveText("The gap writer was saved.");
     await expect(results.getByTestId("gap-writer-now")).toHaveText("Claude Code");
-    await expect(results.getByText("Nothing saved for this site.")).toHaveCount(0);
+    await expect(results.getByText(/^Nothing saved for /)).toHaveCount(0);
     expect((await (await page.request.get(`/api/site-settings?baseUrl=${encodeURIComponent(SHOP)}`)).json()).gapWriter).toBe("claude-code");
 
     await page.reload();
     await expect(page.getByRole("region", { name: "Results" }).getByTestId("gap-writer-now")).toHaveText("Claude Code");
 });
 
-test("TFP-232: after a real run, the run form's link opens the lookup on its site, with the saved suite and that run as its last", async ({ page, context }) => {
+test("TFP-232: after a real run, the run form's link opens the lookup on its site, with the saved suite and that run as its last", async ({ page }) => {
     test.setTimeout(300_000);
     await page.goto("/");
     await page.getByLabel("Base URL").fill(`${LOCAL_APP}/`);
@@ -169,17 +171,15 @@ test("TFP-232: after a real run, the run form's link opens the lookup on its sit
     await suitePanel.getByRole("button", { name: "Run suite" }).first().click();
     await expect(page.getByText("Release readiness at a glance")).toBeVisible({ timeout: 180_000 });
 
-    // The run form's link: a new tab, the target already searched. The form keeps its target. A run collapses the
-    // creation section (useRun), so it is opened again, as a tester would.
+    // The run form's lookup: a modal (TFP-294), the target already searched. The form keeps its target. A run collapses
+    // the creation section (useRun), so it is opened again, as a tester would.
     const creationToggle = page.getByRole("button", { name: /^Test Suite Creation/ });
     if ((await creationToggle.getAttribute("aria-expanded")) === "false") await creationToggle.click();
     // The app keeps the target as it normalised it for the run (no trailing slash): the link carries what the form holds.
     const target = await page.getByLabel("Base URL").inputValue();
     expect(target.replace(/\/$/, "")).toBe(LOCAL_APP);
-    const [lookup] = await Promise.all([
-        context.waitForEvent("page"),
-        page.getByRole("link", { name: "This site's confirmation and settings (opens in a new tab)" }).click(),
-    ]);
+    await page.getByRole("button", { name: "This site's confirmation and settings", exact: true }).click();
+    const lookup = page.getByRole("dialog", { name: "Site lookup" });
     await expect(page.getByLabel("Base URL")).toHaveValue(target);
     const results = lookup.getByRole("region", { name: "Results" });
     await expect(results.getByRole("heading", { level: 2 })).toHaveText(LOCAL_APP);
@@ -189,7 +189,7 @@ test("TFP-232: after a real run, the run form's link opens the lookup on its sit
     await expect(standard.first()).toContainText("last run");
 
     // That run, by its time: the API's last run for the suite finished after this test started it.
-    const body = (await (await lookup.request.get(`/api/site-suites?baseUrl=${encodeURIComponent(LOCAL_APP)}`)).json()) as { suites: Array<{ runType: string; lastRun: { finishedAt: string } | null }> };
+    const body = (await (await page.request.get(`/api/site-suites?baseUrl=${encodeURIComponent(LOCAL_APP)}`)).json()) as { suites: Array<{ runType: string; lastRun: { finishedAt: string } | null }> };
     const latest = Math.max(...body.suites.filter((suite) => suite.lastRun).map((suite) => Date.parse(suite.lastRun!.finishedAt)));
     expect(latest).toBeGreaterThanOrEqual(started - 1000);
 });

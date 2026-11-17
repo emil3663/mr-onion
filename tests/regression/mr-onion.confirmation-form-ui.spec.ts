@@ -61,13 +61,12 @@ async function fillValid(form: Locator, overrides: { hosts?: string; name?: stri
 const refusals = (form: Locator) => form.getByRole("list", { name: "Why it was refused" }).getByRole("listitem");
 const at = (day: string) => `${day} 00:00 UTC`;
 
-test("TFP-233: opened from the run form, the host field is empty, 90 days preselected, the picker stops at 1 year, the ticks off", async ({ page, context }) => {
+test("TFP-233: opened from the run form, the host field is empty, 90 days preselected, the picker stops at 1 year, the ticks off", async ({ page }) => {
     await page.goto("/");
     await page.getByLabel("Base URL").fill(`${SHOP}/shop`);
-    const [lookup] = await Promise.all([
-        context.waitForEvent("page"),
-        page.getByRole("link", { name: "This site's confirmation and settings (opens in a new tab)" }).click(),
-    ]);
+    // TFP-294: the run form's lookup is a modal over the form.
+    await page.getByRole("button", { name: "This site's confirmation and settings", exact: true }).click();
+    const lookup = page.getByRole("dialog", { name: "Site lookup" });
     const results = lookup.getByRole("region", { name: "Results" });
     await expect(results.getByRole("heading", { level: 2 })).toHaveText(SHOP);
     await results.getByRole("button", { name: "Confirm ownership" }).click();

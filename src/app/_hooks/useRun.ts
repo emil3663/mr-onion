@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { checksActiveGate } from "@/lib/run/active-gate-names";
+import { useSessionState } from "@/app/_hooks/useSessionState";
 import { buildReportHtmlDocument, buildResultHtmlDocument } from "@/lib/report/html";
 import type { ExecutionStatus, RunReport } from "@/lib/report/types";
 import { BASE_REPORT_TABS } from "@/app/_lib/constants";
@@ -47,7 +48,9 @@ export function useRun(
     const [selectedSeoPageKey, setSelectedSeoPageKey] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<"All" | ExecutionStatus>("All");
     const [selectedFailedRerunTitles, setSelectedFailedRerunTitles] = useState<string[]>([]);
-    const [activeRunId, setActiveRunId] = useState<string | null>(null);
+    // TFP-294: kept for the session, so a page left during a run, and come back to, follows that run again rather
+    // than offering Run while it goes on (the fresh-context review).
+    const [activeRunId, setActiveRunId] = useSessionState<string | null>("run.activeRunId", null);
     const [runProgress, setRunProgress] = useState<RunProgressSnapshot | null>(null);
     const [runStatus, setRunStatus] = useState<RunLifecycleStatus | null>(null);
     const [runDurationMs, setRunDurationMs] = useState(0);
@@ -56,6 +59,10 @@ export function useRun(
     const [isBusyTargetListExpanded, setIsBusyTargetListExpanded] = useState(false);
     const autoOpenedReportRunIdRef = useRef<string | null>(null);
     const reportWindowRef = useRef<Window | null>(null);
+
+    useEffect(() => {
+        if (step === "idle" && activeRunId) setStep("running");
+    }, [step, activeRunId, setStep]);
 
     useEffect(() => {
         if (step !== "running" || !activeRunId) {
@@ -118,7 +125,7 @@ export function useRun(
                 window.clearTimeout(timer);
             }
         };
-    }, [activeRunId, step, setError, setStep]);
+    }, [activeRunId, step, setError, setStep, setActiveRunId]);
 
     useEffect(() => {
         if (!openReportInNewPage || !result) {
