@@ -104,6 +104,27 @@ export function closedReason(closedBy: ActiveGateClosedBy, host: string, confirm
     }
 }
 
+/**
+ * Phase 46 (TFP-295, Gate B's walkthrough): the same reasons as the app shows them, beside the run form's switch. The
+ * tester fixes each in the site lookup, so they point there; a run's report keeps closedReason's, with the docs path.
+ */
+export function closedReasonInApp(closedBy: ActiveGateClosedBy, host: string, confirmation: RunOwnershipCopy | null): string {
+    switch (closedBy) {
+        case "missing":
+            return `active test: the site has no ownership confirmation; confirm it in the site lookup to run active tests on ${host}`;
+        case "expired":
+            return `active test: the site's ownership confirmation expired on ${day(confirmation?.expiresAt)}; renew it in the site lookup to run active tests`;
+        case "withdrawn":
+            return `active test: the site's ownership confirmation was withdrawn on ${day(confirmation?.withdrawnAt)}; confirm the site again in the site lookup to run active tests`;
+        case "host-not-covered":
+            return `active test: the site's ownership confirmation doesn't cover ${host}; add the host to it in the site lookup to run active tests there`;
+        case "no-active-tick":
+            return "active test: the site's ownership confirmation doesn't allow active tests; change it in the site lookup to tick active tests";
+        default:
+            return closedReason(closedBy, host, confirmation);
+    }
+}
+
 /** The gate for a run, from what it asked for and its target host's confirmation, as read when it starts. */
 export function decideActiveGate(request: ActiveRequest, baseUrl: string | undefined, confirmation: OwnershipConfirmation | null, now: Date = new Date()): ActiveGate {
     const requested = request === true;

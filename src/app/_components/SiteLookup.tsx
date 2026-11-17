@@ -321,10 +321,13 @@ export function SiteLookup({ initialUrl = "", updateAddress = true }: { initialU
                             {/* TFP-233: create, or renew (which replaces the current one, kept in the history). */}
                             {formOpen ? (
                                 <ConfirmationForm
+                                    // A change starts from this confirmation: another one read meanwhile starts it afresh.
+                                    key={canRenew && confirmation ? confirmation.confirmedAt : "new"}
                                     origin={entry.origin}
                                     wording={entry.wording}
                                     legalNote={entry.legalNote}
                                     renewing={canRenew}
+                                    start={canRenew && confirmation ? { hosts: confirmation.hosts, basis: confirmation.basis, name: confirmation.name, scopes: confirmation.scopes } : null}
                                     onSending={setBusy}
                                     onSaved={() => {
                                         window.dispatchEvent(new Event(SITE_LOOKUP_CLOSED));
@@ -337,7 +340,7 @@ export function SiteLookup({ initialUrl = "", updateAddress = true }: { initialU
                                 />
                             ) : (
                                 <button ref={openForm} type="button" disabled={busy} onClick={() => { setArmedWithdraw(false); setFormOpen(true); }} className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                                    {canRenew ? "Renew" : "Confirm ownership"}
+                                    {canRenew ? "Change or renew" : "Confirm ownership"}
                                 </button>
                             )}
                         </section>

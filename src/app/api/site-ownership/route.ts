@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { decideActiveGate } from "@/lib/run/active-gate";
+import { closedReasonInApp, decideActiveGate, hostOf } from "@/lib/run/active-gate";
 import { CONFIRMATION_WORDING, confirmationStatus, LEGAL_NOTE, loadOwnership, maskedOwnership, originOf, saveConfirmation, validateConfirmation } from "@/lib/ownership/confirmation";
 
 /**
@@ -25,7 +25,9 @@ export async function GET(req: NextRequest) {
     // Phase 46 (TFP-235, review item 5): Phase 43's decision for a run that asks for active tests on this URL, so the
     // run form's switch shows the API's answer. Only what the switch needs: never the run copy's hosts.
     const gate = decideActiveGate(true, baseUrl ?? undefined, file.current);
-    const activeGate = { open: gate.open, closedBy: gate.closedBy, reason: gate.reason, localHost: gate.localHost };
+    // TFP-295: the reason as the app shows it, pointing to the site lookup; a run's report keeps the docs path.
+    const reason = gate.closedBy ? closedReasonInApp(gate.closedBy, hostOf(baseUrl ?? undefined), gate.confirmation) : null;
+    const activeGate = { open: gate.open, closedBy: gate.closedBy, reason, localHost: gate.localHost };
     return NextResponse.json({ origin, status: confirmationStatus(file.current), confirmation: shown.current, history: shown.history, wording: CONFIRMATION_WORDING, legalNote: LEGAL_NOTE, activeGate });
 }
 

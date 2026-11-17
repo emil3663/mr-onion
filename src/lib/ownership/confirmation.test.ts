@@ -223,18 +223,21 @@ test("the read gives the active gate a run would get for the URL: each closed re
         else writeFileSync(join(dir, "ownership.json"), JSON.stringify({ current, history: [] }));
         return (await read(url)).activeGate;
     };
-    const cases: Array<[string, unknown, string, RegExp]> = [
-        ["none", undefined, "missing", /^active test: the site has no ownership confirmation; confirm the site/],
-        ["expired", { ...base, expiresAt: "2026-11-16T00:00:00.000Z" }, "expired", /^active test: the site's ownership confirmation expired on 2026-11-16; renew it/],
-        ["withdrawn", { ...base, withdrawnAt: "2026-11-16T12:00:00.000Z" }, "withdrawn", /^active test: the site's ownership confirmation was withdrawn on 2026-11-16/],
-        ["host not covered", { ...base, hosts: ["other.example.com"] }, "host-not-covered", /^active test: the site's ownership confirmation doesn't cover shop\.example\.com/],
-        ["no active tick", { ...base, scopes: { active: false, load: false } }, "no-active-tick", /^active test: the site's ownership confirmation doesn't allow active tests/],
+    // TFP-295 (Gate B's walkthrough): the app's reasons point to the site lookup, where the tester fixes them; a run's
+    // report keeps Phase 43's wording, with the docs path (src/lib/run/active-gate.test.ts).
+    const cases: Array<[string, unknown, string, string]> = [
+        ["none", undefined, "missing", "active test: the site has no ownership confirmation; confirm it in the site lookup to run active tests on shop.example.com"],
+        ["expired", { ...base, expiresAt: "2026-11-16T00:00:00.000Z" }, "expired", "active test: the site's ownership confirmation expired on 2026-11-16; renew it in the site lookup to run active tests"],
+        ["withdrawn", { ...base, withdrawnAt: "2026-11-16T12:00:00.000Z" }, "withdrawn", "active test: the site's ownership confirmation was withdrawn on 2026-11-16; confirm the site again in the site lookup to run active tests"],
+        ["host not covered", { ...base, hosts: ["other.example.com"] }, "host-not-covered", "active test: the site's ownership confirmation doesn't cover shop.example.com; add the host to it in the site lookup to run active tests there"],
+        ["no active tick", { ...base, scopes: { active: false, load: false } }, "no-active-tick", "active test: the site's ownership confirmation doesn't allow active tests; change it in the site lookup to tick active tests"],
     ];
     for (const [label, current, closedBy, reason] of cases) {
         const gate = await gateFor(current);
         assert.equal(gate.open, false, label);
         assert.equal(gate.closedBy, closedBy, label);
-        assert.match(gate.reason, reason, label);
+        assert.equal(gate.reason, reason, label);
+        assert.doesNotMatch(gate.reason, /SITE_OWNERSHIP\.md/, label);
         assert.equal(gate.localHost, false, label);
     }
     const covered = await gateFor(base);

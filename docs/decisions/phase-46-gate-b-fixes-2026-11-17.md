@@ -68,7 +68,26 @@ repo as evidence for C and TFP-299.
 
 ## TFP-295 (B) — "Change or renew", pre-filled; the lookup in a closed gate's reason
 
-- **Status:** Not started.
+- **Status:** Built (2026-11-17). Stopped for the re-walk.
+- **As built:**
+  - "Change or renew" (for a valid or an expired confirmation) opens the
+    form pre-filled from the current one: hosts, basis, name, the active
+    and load ticks; the expiry back to the 90-day default. The statement
+    tick starts off and the contact email empty (the API gives it masked
+    only); saving ("Save the change") makes a new confirmation, and the
+    API keeps the old one in the history, as it did.
+  - `closedReasonInApp` (`src/lib/run/active-gate.ts`): the reasons
+    `GET /api/site-ownership` gives the app's switch end "in the site
+    lookup", never the docs path. A run's own reasons, and its report's,
+    are unchanged (`closedReason`, with `docs/SITE_OWNERSHIP.md`).
+  - Found by the fresh-context review and fixed: a host from the current
+    confirmation that the site no longer records gets its own note, not
+    "a typing error"; the form starts afresh when another confirmation is
+    read while it is open; an expired confirmation's change is tested.
+- **For the owner at the re-walk:** a *withdrawn* confirmation isn't
+  changed or renewed: "Confirm ownership" starts empty, as before, and as
+  its closed reason ("confirm the site again") says. Pre-fill it too?
+- **Acceptance criteria:** RUN-74 (the change), RUN-75 (the reasons).
 - **Scope (the owner's words):** "Renew" becomes "Change or renew",
   pre-filled from the current confirmation (hosts, basis, name, ticks;
   expiry back to the 90-day default), except the statement tick and the

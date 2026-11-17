@@ -5,12 +5,16 @@ import { HOST_NOT_USED } from "@/lib/ownership/messages";
 
 /**
  * Phase 46 (TFP-233, Decision 2, Acceptance Criteria 2): the ownership confirmation form, in the site lookup's entry.
- * It keeps its friction:
+ * A new confirmation keeps its friction (a change starts from the current one, below):
  * - the hosts are typed by hand, one per line, never filled from the URL: typing them is naming what's covered;
  * - the basis is chosen, none preselected, and its statement is the API's fixed wording for it (TFP-218's `wording`,
  *   sent back unchanged), with Phase 35 Decision 8's legal note beside it (review item 3). The statement must be ticked;
  * - name and contact email; expiry 90 days unless another date is picked, the picker stopping at 1 year;
  * - the active and load ticks start off, each saying what it allows.
+ * TFP-295 (Gate B's walkthrough): "Change or renew" starts from the current confirmation (its hosts, basis, name and
+ * ticks; the expiry back to the 90-day default), but the statement tick and the contact email are retyped (the API
+ * gives the email masked, and confirming is the act the tick records). Saving makes a new confirmation; the API keeps
+ * the old one in the history.
  * Refusals come from the API and are shown as returned (Phase 43 Decision 13): the form doesn't repeat the rules, so it
  * sets noValidate and lets the API refuse an invalid email or a date past the picker's limit. A host the site doesn't
  * use yet is refused by the API; the form then says how a host comes to be accepted (review item 4).
@@ -36,11 +40,20 @@ function oneYearOn(now: Date): Date {
 
 const defaultExpiry = (now: Date) => isoDay(new Date(now.getTime() + 90 * DAY));
 
+/** What "Change or renew" starts from: the current confirmation, without its contact email. */
+export interface ConfirmationStart {
+    hosts: string[];
+    basis: Basis;
+    name: string;
+    scopes: { active: boolean; load: boolean };
+}
+
 export function ConfirmationForm({
     origin,
     wording,
     legalNote,
     renewing,
+    start,
     onSending,
     onSaved,
     onCancel,
@@ -49,6 +62,8 @@ export function ConfirmationForm({
     wording: Partial<Record<Basis, string>>;
     legalNote: string;
     renewing: boolean;
+    /** TFP-295: the confirmation a change starts from; none for a new one. */
+    start?: ConfirmationStart | null;
     /** The lookup's other actions wait while the confirmation is with the API (the fresh-context review). */
     onSending: (sending: boolean) => void;
     onSaved: () => void;
@@ -56,14 +71,14 @@ export function ConfirmationForm({
 }) {
     // When the form was opened, or its date last focused: a form left open for a day gets today's limits again.
     const [now, setNow] = useState(() => new Date());
-    const [hosts, setHosts] = useState("");
-    const [basis, setBasis] = useState<Basis | null>(null);
+    const [hosts, setHosts] = useState(() => (start ? start.hosts.join("\n") : ""));
+    const [basis, setBasis] = useState<Basis | null>(() => start?.basis ?? null);
     const [ticked, setTicked] = useState(false);
-    const [name, setName] = useState("");
+    const [name, setName] = useState(() => start?.name ?? "");
     const [email, setEmail] = useState("");
     const [expires, setExpires] = useState(() => defaultExpiry(now));
-    const [active, setActive] = useState(false);
-    const [load, setLoad] = useState(false);
+    const [active, setActive] = useState(() => start?.scopes.active ?? false);
+    const [load, setLoad] = useState(() => start?.scopes.load ?? false);
     const [reasons, setReasons] = useState<string[]>([]);
     const [sending, setSending] = useState(false);
     const hostsField = useRef<HTMLTextAreaElement>(null);
@@ -137,8 +152,12 @@ export function ConfirmationForm({
             }}
             className="mt-4 space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4"
         >
-            <h4 id="confirmation-form-heading" className="text-sm font-semibold text-zinc-900">{renewing ? "Renew the confirmation" : "Confirm ownership or permission"}</h4>
-            {renewing ? <p className="text-sm text-zinc-600">A renewal replaces the current confirmation, which is kept in the site&apos;s history.</p> : null}
+            <h4 id="confirmation-form-heading" className="text-sm font-semibold text-zinc-900">{renewing ? "Change or renew the confirmation" : "Confirm ownership or permission"}</h4>
+            {renewing ? (
+                <p className="text-sm text-zinc-600">
+                    It starts from the current confirmation. Tick the statement and type the contact email again: saving makes a new confirmation, and the current one is kept in the site&apos;s history.
+                </p>
+            ) : null}
 
             {reasons.length > 0 ? (
                 // Focused, and named by its heading, so it is read once when it appears.
@@ -149,6 +168,10 @@ export function ConfirmationForm({
                     </ul>
                     {reasons.some((reason) => reason.includes(HOST_NOT_USED)) ? (
                         <p className="mt-2">A host is accepted once a Standard run on this site has recorded it: run one, then confirm.</p>
+                    ) : null}
+                    {/* TFP-295: a host the change started with, that the site no longer records, wasn't mistyped. */}
+                    {start && reasons.some((reason) => start.hosts.some((host) => reason.startsWith(`"${host}" ${HOST_NOT_USED}`))) ? (
+                        <p className="mt-2">A host from the current confirmation is one this site no longer records: remove it from the list, or run a Standard run that reaches it.</p>
                     ) : null}
                 </div>
             ) : null}
@@ -257,7 +280,7 @@ export function ConfirmationForm({
 
             <div className="flex flex-wrap gap-3">
                 <button type="submit" disabled={!ticked || !canTick || sending} aria-describedby="confirmation-save-hint" className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                    {renewing ? "Save the renewal" : "Save the confirmation"}
+                    {renewing ? "Save the change" : "Save the confirmation"}
                 </button>
                 <button type="button" disabled={sending} onClick={onCancel} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:opacity-50">
                     Cancel

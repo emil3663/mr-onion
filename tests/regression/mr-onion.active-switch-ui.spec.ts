@@ -87,11 +87,11 @@ test("TFP-235: on a remote host the switch is disabled for each of Phase 43's fi
     await expect(switchControl).toHaveAccessibleDescription(/^(Checking|Not available)/);
 
     const cases: Array<[string, Record<string, unknown> | null, string]> = [
-        ["none", null, `Not available: the site has no ownership confirmation; confirm the site (docs/SITE_OWNERSHIP.md) to run active tests on ${HOST}.`],
-        ["expired", { ...VALID, expiresAt: "2026-11-16T00:00:00.000Z" }, "Not available: the site's ownership confirmation expired on 2026-11-16; renew it to run active tests."],
-        ["withdrawn", { ...VALID, withdrawnAt: "2026-11-16T12:00:00.000Z" }, "Not available: the site's ownership confirmation was withdrawn on 2026-11-16; confirm the site again to run active tests."],
-        ["host not covered", { ...VALID, hosts: ["other.example.com"] }, `Not available: the site's ownership confirmation doesn't cover ${HOST}; add the host to it to run active tests there.`],
-        ["no active tick", { ...VALID, scopes: { active: false, load: false } }, "Not available: the site's ownership confirmation doesn't allow active tests; confirm it again with the active tick."],
+        ["none", null, `Not available: the site has no ownership confirmation; confirm it in the site lookup to run active tests on ${HOST}.`],
+        ["expired", { ...VALID, expiresAt: "2026-11-16T00:00:00.000Z" }, "Not available: the site's ownership confirmation expired on 2026-11-16; renew it in the site lookup to run active tests."],
+        ["withdrawn", { ...VALID, withdrawnAt: "2026-11-16T12:00:00.000Z" }, "Not available: the site's ownership confirmation was withdrawn on 2026-11-16; confirm the site again in the site lookup to run active tests."],
+        ["host not covered", { ...VALID, hosts: ["other.example.com"] }, `Not available: the site's ownership confirmation doesn't cover ${HOST}; add the host to it in the site lookup to run active tests there.`],
+        ["no active tick", { ...VALID, scopes: { active: false, load: false } }, "Not available: the site's ownership confirmation doesn't allow active tests; change it in the site lookup to tick active tests."],
     ];
     for (const [label, current, reason] of cases) {
         await confirm(current);

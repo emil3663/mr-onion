@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve, sep } from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
@@ -174,13 +174,23 @@ test("TFP-233: a confirmation is created and renewed through the API, shown in p
     await page.reload();
     await expect(page.getByRole("region", { name: "Results" }).getByTestId("confirmation-status")).toHaveText(`Valid until ${at(expires)}`);
 
-    // Renew: the form starts empty again (hosts typed again), and the new one replaces the old, kept in the history.
-    await page.getByRole("region", { name: "Results" }).getByRole("button", { name: "Renew" }).click();
-    const renewal = page.getByRole("form", { name: "Renew the confirmation" });
-    await expect(renewal.getByLabel("Hosts, one per line")).toHaveValue("");
+    // TFP-295 (Gate B's walkthrough): "Change or renew", pre-filled from the current confirmation (hosts, basis, name,
+    // ticks; the expiry back to the 90-day default), but for the statement tick and the contact email, retyped.
+    await page.getByRole("region", { name: "Results" }).getByRole("button", { name: "Change or renew", exact: true }).click();
+    const renewal = page.getByRole("form", { name: "Change or renew the confirmation" });
+    await expect(renewal.getByLabel("Hosts, one per line")).toHaveValue(HOST);
+    await expect(renewal.getByRole("radio", { name: "I own this site" })).toBeChecked();
+    await expect(renewal.getByLabel("Your name")).toHaveValue("Tess Tester");
+    await expect(renewal.getByRole("checkbox", { name: /^Active tests:/ })).toBeChecked();
+    await expect(renewal.getByRole("checkbox", { name: /^Load testing:/ })).not.toBeChecked();
+    await expect(renewal.getByLabel("I confirm the statement above")).not.toBeChecked();
+    await expect(renewal.getByLabel("Contact email")).toHaveValue("");
+    const tomorrow = await renewal.getByLabel("Expires on").getAttribute("min");
+    await expect(renewal.getByLabel("Expires on")).toHaveValue(isoDay(new Date(Date.parse(`${tomorrow}T00:00:00Z`) - DAY + 90 * DAY)));
+    await expect(renewal.getByRole("button", { name: "Save the change", exact: true })).toBeDisabled();
     const later = isoDay(new Date(Date.now() + 200 * DAY));
     await fillValid(renewal, { name: "Robin Renewer", email: "robin@example.org", expires: later, basis: "I have written permission to test it" });
-    await renewal.getByRole("button", { name: "Save the renewal" }).click();
+    await renewal.getByRole("button", { name: "Save the change", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText("The confirmation was saved.");
     const after = page.getByRole("region", { name: "Results" });
     await expect(after.getByTestId("confirmation-status")).toHaveText(`Valid until ${at(later)}`);
@@ -188,10 +198,36 @@ test("TFP-233: a confirmation is created and renewed through the API, shown in p
     await expect(after.getByText("I have written permission to test it")).toBeVisible();
     const renewed = await ownership(page);
     expect(renewed.history.map((entry: { name: string }) => entry.name)).toEqual(["Tess Tester"]);
-    expect(renewed.confirmation.scopes).toEqual({ active: false, load: false });
+    // The active tick came pre-filled, and was kept.
+    expect(renewed.confirmation.scopes).toEqual({ active: true, load: false });
     await page.reload();
     await expect(page.getByRole("region", { name: "Results" }).getByText(/^Robin Renewer, on /)).toBeVisible();
     expect(await page.content()).not.toMatch(/tess@example\.com|robin@example\.org/);
+});
+
+test("TFP-295: an expired confirmation is changed or renewed from what it was, and the renewal makes it valid again", async ({ page }) => {
+    // Written as a confirmation made a year ago would be: the API can't save one that has already expired.
+    await mkdir(siteFolder, { recursive: true });
+    await writeFile(join(siteFolder, "ownership.json"), JSON.stringify({ current: { hosts: [HOST], basis: "written-permission", wording: CONFIRMATION_WORDING["written-permission"], name: "Old Owner", contactEmail: "old@example.com", confirmedAt: "2025-11-10T10:00:00.000Z", expiresAt: "2026-02-08T10:00:00.000Z", scopes: { active: false, load: true } }, history: [] }));
+    await page.goto(`/sites?url=${encodeURIComponent(SHOP)}`);
+    const results = page.getByRole("region", { name: "Results" });
+    await expect(results.getByTestId("confirmation-status")).toHaveText(/^Expired on 2026-02-08/);
+    await results.getByRole("button", { name: "Change or renew", exact: true }).click();
+    const form = page.getByRole("form", { name: "Change or renew the confirmation" });
+    await expect(form.getByLabel("Hosts, one per line")).toHaveValue(HOST);
+    await expect(form.getByRole("radio", { name: "I have written permission to test it" })).toBeChecked();
+    await expect(form.getByLabel("Your name")).toHaveValue("Old Owner");
+    await expect(form.getByRole("checkbox", { name: /^Active tests:/ })).not.toBeChecked();
+    await expect(form.getByRole("checkbox", { name: /^Load testing:/ })).toBeChecked();
+    await expect(form.getByLabel("Contact email")).toHaveValue("");
+    await form.getByLabel("Contact email").fill("new@example.com");
+    await form.getByLabel("I confirm the statement above").check();
+    await form.getByRole("button", { name: "Save the change", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("The confirmation was saved.");
+    await expect(results.getByTestId("confirmation-status")).toHaveText(/^Valid until /);
+    const saved = await ownership(page);
+    expect(saved.history.map((entry: { name: string }) => entry.name)).toEqual(["Old Owner"]);
+    expect(saved.confirmation).toMatchObject({ name: "Old Owner", basis: "written-permission", scopes: { active: false, load: true }, contactEmail: "n***@example.com" });
 });
 
 test("TFP-233: the expiry left at its default is the API's own 90 days from the moment confirmed", async ({ page }) => {
