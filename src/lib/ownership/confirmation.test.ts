@@ -86,7 +86,7 @@ test("a confirmation is created and read back with every field of Decision 1, in
     assert.equal(confirmation.basis, "owner");
     assert.equal(confirmation.wording, CONFIRMATION_WORDING.owner);
     assert.equal(confirmation.name, "Tess Tester");
-    assert.equal(confirmation.contactEmail, "tess@example.com");
+    assert.equal(confirmation.contactEmail, "t***@example.com", "the API shows the contact email masked (TFP-232, review item 2)");
     assert.deepEqual(confirmation.scopes, { active: true, load: false });
     assert.equal(confirmation.withdrawnAt, undefined);
     const confirmedAt = Date.parse(confirmation.confirmedAt);
@@ -95,7 +95,7 @@ test("a confirmation is created and read back with every field of Decision 1, in
 
     const file = join(process.env.MRONION_DATA_DIR!, "site-suites", siteFolderName(ORIGIN), "ownership.json");
     assert.ok(existsSync(file), file);
-    assert.deepEqual(JSON.parse(readFileSync(file, "utf8")).current, confirmation);
+    assert.deepEqual(JSON.parse(readFileSync(file, "utf8")).current, { ...confirmation, contactEmail: "tess@example.com" }, "the local file keeps the full address");
     assert.ok(!existsSync(join(process.cwd(), "ownership.json")) && !existsSync(join(process.cwd(), "site-suites")), "nothing is written in the repo");
 });
 
@@ -231,7 +231,7 @@ test("an unreadable or malformed confirmation file reads as missing: it fails cl
     writeFileSync(join(dir, "ownership.json"), JSON.stringify({ current: good, history: [{}, good] }));
     const body = await read();
     assert.equal(body.status, "valid");
-    assert.deepEqual(body.history, [good], "a malformed history entry is dropped");
+    assert.deepEqual(body.history, [{ ...good, contactEmail: "t***@example.com" }], "a malformed history entry is dropped (the email masked, TFP-232)");
 });
 
 test("confirmations saved at the same moment are all kept: none is lost from the history", async () => {
@@ -240,6 +240,40 @@ test("confirmations saved at the same moment are all kept: none is lost from the
     assert.deepEqual(responses.map((response) => response.status), [200, 200, 200, 200, 200]);
     const body = await read();
     assert.deepEqual([...body.history.map((entry: { name: string }) => entry.name), body.confirmation.name].sort(), [...names].sort());
+});
+
+// Phase 46 (TFP-232, review item 2, owner decision 2026-11-17): the full address stays in the local file only. Every
+// response the app can get from this API is checked: the read, a save, a replacement (the history), a withdrawal.
+test("no response of the ownership API holds the full contact email, the history's included; the file keeps it", async () => {
+    const bodies: string[] = [];
+    const keep = async (response: Response) => {
+        const text = await response.text();
+        bodies.push(text);
+        return JSON.parse(text);
+    };
+    const first = await keep(await confirm(valid({ contactEmail: "first.person@example.com" })));
+    assert.equal(first.confirmation.contactEmail, "f***@example.com");
+    const second = await keep(await confirm(valid({ contactEmail: "second@example.org" })));
+    assert.equal(second.confirmation.contactEmail, "s***@example.org");
+    assert.deepEqual(second.history.map((entry: { contactEmail: string }) => entry.contactEmail), ["f***@example.com"]);
+    const read = await keep(await route.GET(new NextRequest(`http://localhost/api/site-ownership?baseUrl=${encodeURIComponent(ORIGIN)}`)));
+    assert.equal(read.confirmation.contactEmail, "s***@example.org");
+    const withdrawn = await keep(await withdrawRoute.POST(new NextRequest("http://localhost/api/site-ownership/withdraw", { method: "POST", body: JSON.stringify({ baseUrl: ORIGIN }) })));
+    assert.equal(withdrawn.confirmation.contactEmail, "s***@example.org");
+    for (const body of bodies) assert.doesNotMatch(body, /first\.person@|second@/, body);
+
+    const file = JSON.parse(readFileSync(join(process.env.MRONION_DATA_DIR!, "site-suites", siteFolderName(ORIGIN), "ownership.json"), "utf8"));
+    assert.equal(file.current.contactEmail, "second@example.org");
+    assert.equal(file.history[0].contactEmail, "first.person@example.com");
+});
+
+test("the mask: the first letter and the domain, never the local part's length; no @ shows nothing", async () => {
+    const { maskEmail } = await import("./confirmation.ts");
+    assert.equal(maskEmail("emil@gmail.com"), "e***@gmail.com");
+    assert.equal(maskEmail("e@gmail.com"), "e***@gmail.com");
+    assert.equal(maskEmail("a.very.long.name@sub.example.co.uk"), "a***@sub.example.co.uk");
+    assert.equal(maskEmail("no-at-sign"), "***");
+    assert.equal(maskEmail("@example.com"), "***");
 });
 
 test("a request host the crawl recorded counts by its host alone, without a sample address", async () => {

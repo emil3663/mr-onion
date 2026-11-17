@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { confirmationStatus, originOf, withdrawConfirmation } from "@/lib/ownership/confirmation";
+import { confirmationStatus, maskedOwnership, originOf, withdrawConfirmation } from "@/lib/ownership/confirmation";
 
 /**
  * Phase 43 (TFP-218, Decision 6): withdraw a site's ownership confirmation. It is kept, with its withdrawal date, as
@@ -13,5 +13,7 @@ export async function POST(req: NextRequest) {
     if (!origin) return NextResponse.json({ error: "baseUrl must be a valid http(s) URL" }, { status: 400 });
     const file = await withdrawConfirmation(origin);
     if (!file) return NextResponse.json({ error: "this site has no confirmation to withdraw, or it is already withdrawn" }, { status: 404 });
-    return NextResponse.json({ origin, status: confirmationStatus(file.current), confirmation: file.current, history: file.history });
+    // The contact email masked, as every response of this API has it (TFP-232).
+    const shown = maskedOwnership(file);
+    return NextResponse.json({ origin, status: confirmationStatus(file.current), confirmation: shown.current, history: shown.history });
 }

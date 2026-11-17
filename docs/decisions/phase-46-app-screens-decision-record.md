@@ -292,6 +292,59 @@ these amendments apply and override older wording below.
 
 ### TFP-232 — The site lookup
 
+- **Status:** Built (2026-11-17). Stopped for verification.
+  - **Where:** a page of its own, `/sites` (`src/app/sites/page.tsx`,
+    `src/app/_components/SiteLookup.tsx`), reached from "Site lookup" in
+    the app's header and from the run form's Base URL field, which opens
+    it in a new tab with its target searched (`/sites?url=`).
+  - **It calls only the APIs by site:** `/api/site-ownership` (and its
+    withdraw), `/api/site-settings`, and a new `GET /api/site-suites`
+    (review item 6: each saved suite, its tests, and its last run, the
+    latest finished saved run whose record names that suite).
+  - **The email is masked in every response** of the ownership API, the
+    history's included (review item 2). The local file keeps it.
+  - **Tests:** RUN-71 (`tests/regression/mr-onion.site-lookup-ui.spec.ts`),
+    RUN-72 (`src/lib/ownership/confirmation.test.ts`), RUN-73
+    (`src/app/api/no-listing.test.ts`, `src/app/api/site-suites/route.test.ts`).
+- **Found by the fresh-context review and fixed before commit, red first:**
+  - A run on another site could be shown as a suite's last run: a run's
+    store comes from the client. A run counts only on its own site now.
+  - A suite saved for another origin in the same folder was listed (see
+    the folder names, below). Only this origin's suites are.
+  - The no-listing test didn't ask with a partial host, so a suggestions
+    route would have passed. It does now.
+  - A typed search didn't name its site in the address, so a reload lost
+    it. It does now.
+  - Accessibility:
+    - focus moves to the confirming button when "Withdraw" is clicked, then
+      to the status line once the API answers;
+    - one status line, always in the page, replaces a live entry that was
+      read aloud whole;
+    - a refusal is shown outside the entry, so it shows even when the
+      read-back fails;
+    - "Keep it" is disabled while the withdrawal is with the API;
+    - an entry being searched again is dimmed.
+- **Built against the record, as Claude Code read it.** For the owner:
+  - **Two origins can share a site's folder** (`siteFolderName` maps every
+    character outside `[a-z0-9.-]` to `_`, so `https://a.b:8080` and
+    `https://a.b_8080` share one), and with it the confirmation and the
+    gap writer. It is older than this phase, from Phase 42. The lookup now
+    shows only the suites saved for its origin; a folder name that can't
+    collide needs its own ticket and a move of existing folders.
+  - **`GET /api/runs` lists every saved run with its address**, which is
+    a list of the sites tested. It predates this phase, and the app doesn't
+    call it (the request-guard spec and `scripts/compare-generators.mjs`
+    do). Review item 7 allows `/api/candidates` "and no other", so this is
+    an owner decision: keep it as run history outside the rule, or
+    restrict it. Until then RUN-73 pins that it still lists, so the ruling
+    changes a test.
+  - **Creating and renewing a confirmation** are AC1's, but the form is
+    TFP-233's (Decision 2). The entry here shows, withdraws and sets the
+    gap writer; the form adds the rest.
+  - **The run form's link opens a new tab,** so the form keeps what was
+    typed.
+  - **"Nothing saved for this site"** shows when there is no confirmation
+    now or before, the gap writer is off and no suite is saved.
 - **Phase:** 46 · **Priority:** P2 · **Labels:** `ui`
 - **Scope:** Decision 1. Acceptance Criteria 1.
 - **Deliverables:**

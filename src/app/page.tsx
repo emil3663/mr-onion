@@ -333,8 +333,11 @@ export default function Home() {
                             AI-native test creation with structured quality reporting
                         </div>
                     </div>
-                    {/* Phase 46 (TFP-234): the promotion screen. */}
-                    <Link href="/candidates" className="ml-auto text-sm font-medium text-indigo-600 hover:underline">
+                    {/* Phase 46 (TFP-232): the site lookup; (TFP-234): the promotion screen. */}
+                    <Link href="/sites" className="ml-auto text-sm font-medium text-indigo-600 hover:underline">
+                        Site lookup
+                    </Link>
+                    <Link href="/candidates" className="text-sm font-medium text-indigo-600 hover:underline">
                         Candidate tests
                     </Link>
                     <button

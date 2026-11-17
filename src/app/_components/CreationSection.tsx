@@ -225,6 +225,16 @@ export function CreationSection({
                                             {urlFieldNote.text}
                                         </p>
                                     ) : null}
+                                    {/* Phase 46 (TFP-232, Decision 1): the lookup, opened with this target already searched. A new
+                                        tab, so the run form keeps what's typed here. Every line is on one site: the first names it. */}
+                                    <a
+                                        href={`/sites?url=${encodeURIComponent(baseUrl.split(/\n/).map((line) => line.trim()).find(Boolean) ?? "")}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-block text-xs font-medium text-indigo-600 hover:underline"
+                                    >
+                                        This site&apos;s confirmation and settings (opens in a new tab)
+                                    </a>
                                 </div>
 
                                 <div className="space-y-1.5">

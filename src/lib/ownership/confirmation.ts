@@ -126,6 +126,26 @@ function updateOwnership<T>(origin: string, change: (file: OwnershipFile) => { f
     return run;
 }
 
+/**
+ * Phase 46 (TFP-232, review item 2, owner decision 2026-11-17): the contact email as the API shows it, its first
+ * letter and its domain, `e***@gmail.com`. The local part's length isn't shown. Anything without an @ is shown as
+ * `***`.
+ */
+export function maskEmail(email: string): string {
+    const at = email.lastIndexOf("@");
+    if (at <= 0) return "***";
+    return `${email[0]}***${email.slice(at)}`;
+}
+
+/**
+ * The confirmation file as every API response carries it: each contact email masked, the current one's and every
+ * history entry's. The full address stays in the local file only, and nothing in the app receives it.
+ */
+export function maskedOwnership(file: OwnershipFile): OwnershipFile {
+    const mask = (confirmation: OwnershipConfirmation) => ({ ...confirmation, contactEmail: maskEmail(confirmation.contactEmail) });
+    return { current: file.current ? mask(file.current) : null, history: file.history.map(mask) };
+}
+
 /** Decisions 5 and 6: an expired or withdrawn confirmation counts as absent. */
 export function confirmationStatus(confirmation: OwnershipConfirmation | null, now: Date = new Date()): ConfirmationStatus {
     if (!confirmation) return "missing";
