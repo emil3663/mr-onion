@@ -15,7 +15,8 @@ Status: **Locked (Emil, 2026-10-20). Not started.** Decisions, acceptance criter
 - This is R5's second decision record (`post-phase-42-review-plan.md`).
 - Its build order: straight after Phase 43, before D1
   (`deferred-work-register.md`).
-- Tickets TFP-232 to TFP-235.
+- Tickets TFP-232 to TFP-235, and TFP-289 (Decision 6, added 2026-11-17
+  from the review's item 8).
 
 ## Review before building (planning session, 2026-11-17)
 
@@ -62,7 +63,6 @@ these amendments apply and override older wording below.
 10. **What stays from Phase 43, not built here:** CI never asks for active
     tests (TFP-249); the CLI has no switch.
 
-## Context
 ## Context
 
 - **API only today:**
@@ -172,7 +172,29 @@ these amendments apply and override older wording below.
 
 5. Scenario tests and candidates in the report keep their own sections.
 - They are unchanged in shape, outside the verdict.
-- This phase adds no new report screen.
+- This phase adds no new report screen. Decision 6 adds to the existing
+  tabs, not a screen.
+
+6. A test's notes are shown in the app's report tabs, with their test
+   (Phase 43 Gate B ruling 3, Emil, 2026-11-16; review item 8).
+- **What a note is:** what a test recorded that is neither a finding nor a
+  failure, kept on its record as `notes` since Phase 43's Gate B fix (PR
+  #47). Today:
+  - the covered-host guard's stopped requests;
+  - ruling 4's warning that a stopped script means "the result may not
+    reflect the page as visitors see it";
+  - the read-only guard's aborted beacons (TFP-199).
+- **Where:**
+  - in the Execution tab, on the test's own row or details, as the HTML
+    report shows them;
+  - in a Comprehensive run's view, the same way.
+- **Apart from findings:** never counted as a finding, never in the
+  verdict, the pass ratio or the Not-run count. Labelled as a note, with
+  its full text.
+- **Every note,** none summarised away. A test with none shows nothing
+  extra.
+- **The report's data is unchanged:** the screen reads `notes` as saved.
+  Runs saved before Phase 43's fix have none to show.
 
 ## Acceptance Criteria
 
@@ -225,6 +247,18 @@ these amendments apply and override older wording below.
   check's input set holds at the time, 166 when this was written, not a
   fixed number.
 
+6. Notes in the report tabs
+- **Shown with their test:** a run whose tests have notes shows each note,
+  in full, with its test in the Execution tab. That includes a stopped
+  script's "the result may not reflect the page as visitors see it". A
+  Comprehensive run's view shows them the same way.
+- **Apart from findings:** no finding count, verdict, pass ratio or Not-run
+  count changes when a test has notes.
+- **None:** a test with no notes shows nothing extra.
+- **Tested from a real run:** built from a run whose test has the
+  covered-host guard's stopped-script note, as Phase 43's RPT-23 is. Red
+  first: the tab without the change doesn't show it.
+
 ## Regression Policy
 
 - **`TEST_PLAN.md` cases:**
@@ -233,7 +267,9 @@ these amendments apply and override older wording below.
   - each confirmation-form rule;
   - the promotion screen's offer, reject and approve;
   - the "waiting to be committed" list;
-  - each active-switch state.
+  - each active-switch state;
+  - a test's notes in the Execution tab and the Comprehensive view, and none
+    shown for a test without.
 - **The regression suite** covers each screen, as Phase 20's login screen
   is covered.
 
@@ -293,12 +329,28 @@ these amendments apply and override older wording below.
   - regression and `TEST_PLAN.md` cases.
 - **Dependencies:** Phase 43's TFP-219; TFP-232.
 
+### TFP-289 — Notes in the app's report tabs
+
+- **Phase:** 46 · **Priority:** P2 · **Labels:** `ui`, `report`
+- **Problem it solves:** since Phase 43's Gate B fix (PR #47) a test's notes
+  are on its record and in the HTML exports, but not in the app's report
+  tabs. A tester reading the run in the app doesn't see what a guard
+  stopped, or that a payload test's result may not reflect the page
+  (Phase 43, TFP-221's finding 1; Gate B ruling 3).
+- **Scope:** Decision 6. Acceptance Criteria 6 and 5.
+- **Deliverables:**
+  - each test's notes in the Execution tab and the Comprehensive view;
+  - regression and `TEST_PLAN.md` cases.
+- **Dependencies:** Phase 43's Gate B fix (`4812e84`, the `notes` field).
+  None in this phase.
+
 ## Recommended Execution Order
 
 1. TFP-234.
 2. TFP-232.
 3. TFP-233.
 4. TFP-235.
+5. TFP-289 (added 2026-11-17, review item 8).
 
 ## Suggested Milestone Gates
 
@@ -306,6 +358,6 @@ these amendments apply and override older wording below.
 - TFP-232 to TFP-234 landed and independently verified.
 
 ### Gate B — The run form
-- TFP-235 landed and independently verified.
+- TFP-235 and TFP-289 landed and independently verified.
 - A walkthrough with Emil: confirm a local and a remote site, start a run
   with the switch, and approve a stand-in candidate.
