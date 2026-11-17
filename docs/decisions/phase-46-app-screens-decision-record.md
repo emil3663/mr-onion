@@ -11,7 +11,7 @@ Scope: Give the app screens for settings that are API-only today:
 What Emil sees and approves is decided here. TestForge still never writes
 into the repo.
 
-Status: **Locked (Emil, 2026-10-20). In progress: TFP-234 done (2026-11-17).** Decisions, acceptance criteria and tickets approved; AC1 revised to a site lookup at his request.
+Status: **Locked (Emil, 2026-10-20). In progress: TFP-234 and TFP-232 done (2026-11-17).** Decisions, acceptance criteria and tickets approved; AC1 revised to a site lookup at his request.
 - This is R5's second decision record (`post-phase-42-review-plan.md`).
 - Its build order: straight after Phase 43, before D1
   (`deferred-work-register.md`).
@@ -325,7 +325,11 @@ these amendments apply and override older wording below.
 
 ### TFP-232 — The site lookup
 
-- **Status:** Built (2026-11-17). Stopped for verification.
+- **Status:** Done 2026-11-17: `7a7e521` and `23235e7` (the owner's
+  rulings below), on `main` by fast-forward (PR #50). Every check passed
+  on its head `23235e7`: PR Validation, CodeQL and its alert check, and
+  Release Image. Verified by a planning session (2026-11-17). AC1's
+  creating and renewing are TFP-233's.
   - **Where:** a page of its own, `/sites` (`src/app/sites/page.tsx`,
     `src/app/_components/SiteLookup.tsx`), reached from "Site lookup" in
     the app's header and from the run form's Base URL field, which opens
