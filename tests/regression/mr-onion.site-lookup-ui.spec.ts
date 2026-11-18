@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve, sep } from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
@@ -115,6 +115,9 @@ test("TFP-232: withdrawing needs a second click, and the withdrawal is written i
     await page.goto(`/sites?url=${encodeURIComponent(SHOP)}`);
     const results = page.getByRole("region", { name: "Results" });
     await expect(results.getByTestId("confirmation-status")).toHaveText(/^Valid until/);
+    // R4 (the owner's re-walk, 2026-11-18): a valid confirmation "Allows"; a withdrawn one was "Allowed, until withdrawn".
+    const allowsTerm = (region: Locator) => region.locator("dt", { hasText: /^Allow/ });
+    await expect(allowsTerm(results)).toHaveText("Allows");
 
     await results.getByRole("button", { name: "Withdraw", exact: true }).click();
     // The first click withdraws nothing: the API still has it valid.
@@ -134,10 +137,24 @@ test("TFP-232: withdrawing needs a second click, and the withdrawal is written i
     await expect(status).toBeFocused();
     await expect(results.getByTestId("confirmation-status")).toHaveText(/^Withdrawn on \d{4}-\d{2}-\d{2}$/);
     await expect(results.getByRole("button", { name: "Withdraw", exact: true })).toHaveCount(0);
+    await expect(allowsTerm(results)).toHaveText("Allowed, until withdrawn");
+    // What it allowed, as before: only the term changes.
+    await expect(allowsTerm(results).locator("xpath=following-sibling::dd[1]")).toHaveText(/^Runs without the request limits/);
     expect((await (await page.request.get(`/api/site-ownership?baseUrl=${encodeURIComponent(SHOP)}`)).json()).status).toBe("withdrawn");
 
     await page.reload();
     await expect(page.getByRole("region", { name: "Results" }).getByTestId("confirmation-status")).toHaveText(/^Withdrawn on/);
+    await expect(allowsTerm(page.getByRole("region", { name: "Results" }))).toHaveText("Allowed, until withdrawn");
+});
+
+// R4 (the fresh-context review): only a withdrawn confirmation changes the term; an expired one still "Allows".
+test("R4: an expired confirmation's entry still reads \"Allows\"", async ({ page }) => {
+    await mkdir(siteFolder(SHOP), { recursive: true });
+    await writeFile(join(siteFolder(SHOP), "ownership.json"), JSON.stringify({ current: { hosts: ["lookup-shop.example.com"], basis: "owner", wording: CONFIRMATION_WORDING.owner, name: "Was Owner", contactEmail: "was@example.com", confirmedAt: "2025-01-01T10:00:00.000Z", expiresAt: "2025-03-01T10:00:00.000Z", scopes: { active: false, load: false } }, history: [] }));
+    await page.goto(`/sites?url=${encodeURIComponent(SHOP)}`);
+    const results = page.getByRole("region", { name: "Results" });
+    await expect(results.getByTestId("confirmation-status")).toHaveText(/^Expired/);
+    await expect(results.locator("dt", { hasText: /^Allow/ })).toHaveText("Allows");
 });
 
 test("TFP-232: the gap writer is set through the API, written in place and kept after a reload", async ({ page }) => {

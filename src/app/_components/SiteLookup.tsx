@@ -286,7 +286,8 @@ export function SiteLookup({ initialUrl = "", updateAddress = true }: { initialU
                                         <dd className="text-zinc-900">{confirmation.name}, on {day(confirmation.confirmedAt)}</dd>
                                         <dt className="text-zinc-500">Contact email</dt>
                                         <dd className="font-mono text-zinc-900">{confirmation.contactEmail}</dd>
-                                        <dt className="text-zinc-500">Allows</dt>
+                                        {/* R4 (the owner's re-walk, 2026-11-18): a withdrawn confirmation allows nothing now. */}
+                                        <dt className="text-zinc-500">{entry.status === "withdrawn" ? "Allowed, until withdrawn" : "Allows"}</dt>
                                         <dd className="text-zinc-900">
                                             Runs without the request limits
                                             {confirmation.scopes.active ? "; active tests (attack-shaped input)" : ""}

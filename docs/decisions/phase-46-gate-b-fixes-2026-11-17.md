@@ -269,7 +269,7 @@ R8 is folded into TFP-300 and R9. The items, in the owner's words:
 - **R3:** map API field names to labels on screen. *Built (2026-11-18):
   RUN-82.*
 - **R4:** a withdrawn confirmation's entry reads "Allowed, until
-  withdrawn".
+  withdrawn". *Built (2026-11-18): RUN-83.*
 - **R5:** "Approving as `<name>` (change)" once at the top; Approve on each
   candidate; "Reason to reject" beside Reject only.
 - **R6:** autofill off on Site URL, Base URL, hosts, both reason fields
