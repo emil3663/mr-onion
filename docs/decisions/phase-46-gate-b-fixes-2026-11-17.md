@@ -271,7 +271,8 @@ R8 is folded into TFP-300 and R9. The items, in the owner's words:
 - **R4:** a withdrawn confirmation's entry reads "Allowed, until
   withdrawn". *Built (2026-11-18): RUN-83.*
 - **R5:** "Approving as `<name>` (change)" once at the top; Approve on each
-  candidate; "Reason to reject" beside Reject only.
+  candidate; "Reason to reject" beside Reject only. *Built (2026-11-18):
+  RUN-84.*
 - **R6:** autofill off on Site URL, Base URL, hosts, both reason fields
   and the confirmation's name and email, verified in real Chrome.
 - **R7:** the waiting list reads "Next step: in your Mr Onion checkout,

@@ -128,6 +128,75 @@ test("TFP-234: an approval moves the candidate to waiting to be committed, with 
     expect(gitStatus(), "the working tree is unchanged after an approval").toBe(before);
 });
 
+// Phase 46 Gate B, R5 (the owner's re-walk, 2026-11-18): "Approving as <name> (change)" once at the top; Approve on each
+// candidate; "Reason to reject" beside Reject only. Partitions: no name yet / a name used / changed; two candidates.
+test("R5: the approver's name is asked once at the top, then reads \"Approving as <name> (change)\"", async ({ page }) => {
+    await page.goto("/candidates");
+    const offeredSection = page.getByRole("region", { name: "Offered for promotion" });
+    await expect(offeredSection.getByRole("listitem", { name: "Candidate checkout [button]" })).toBeVisible();
+    expect(await offeredSection.getByRole("listitem", { name: /^Candidate / }).count(), "more than one candidate is offered").toBeGreaterThan(1);
+    // One name field for the page, none per candidate.
+    await expect(page.getByLabel("Your name, for an approval")).toHaveCount(1);
+    await expect(page.getByText(/^Approving as /)).toHaveCount(0);
+    await page.getByLabel("Your name, for an approval").fill("Tess Tester");
+    await page.getByRole("button", { name: "Use this name" }).click();
+    const approving = page.getByTestId("approving-as");
+    await expect(approving).toHaveText("Approving as Tess Tester (change)");
+    // Focus goes to the line, a status (the fresh-context review: not lost with the form that went).
+    await expect(approving).toBeFocused();
+    await expect(approving).toHaveRole("status");
+    await expect(page.getByText(/^Approving as /)).toHaveCount(1);
+    await expect(page.getByLabel("Your name, for an approval")).toHaveCount(0);
+    // It sits above the candidates.
+    const [line, first] = [await approving.boundingBox(), await offeredSection.getByRole("listitem", { name: /^Candidate / }).first().boundingBox()];
+    expect(line!.y + line!.height, "the line is above the first candidate").toBeLessThanOrEqual(first!.y);
+    // change: the field again, with the name, focused.
+    await approving.getByRole("button", { name: "change the approver's name" }).click();
+    await expect(page.getByLabel("Your name, for an approval")).toHaveValue("Tess Tester");
+    await expect(page.getByLabel("Your name, for an approval")).toBeFocused();
+});
+
+test("R5: each candidate has its Approve, which approves as the name at the top", async ({ page }) => {
+    await page.goto("/candidates");
+    await page.getByLabel("Your name, for an approval").fill("Tess Tester");
+    await page.getByRole("button", { name: "Use this name" }).click();
+    for (const name of ["Candidate add to cart [button]", "Candidate checkout [button]"]) {
+        await expect(page.getByRole("listitem", { name }).getByRole("button", { name: "Approve" })).toHaveCount(1);
+    }
+    await page.getByRole("listitem", { name: "Candidate checkout [button]" }).getByRole("button", { name: "Approve" }).click();
+    await expect(page.getByRole("listitem", { name: "Waiting: checkout [button]" })).toContainText("approved by Tess Tester on");
+});
+
+test("R5: an Approve after the name is changed approves as the new name, and the line shows it", async ({ page }) => {
+    await page.goto("/candidates");
+    await page.getByLabel("Your name, for an approval").fill("Tess Tester");
+    await page.getByRole("button", { name: "Use this name" }).click();
+    await page.getByTestId("approving-as").getByRole("button", { name: /^change/ }).click();
+    await page.getByLabel("Your name, for an approval").fill("Sam Second");
+    // Approved without pressing "Use this name": the name in the field is the one used (the fresh-context review).
+    await page.getByRole("listitem", { name: "Candidate checkout [button]" }).getByRole("button", { name: "Approve" }).click();
+    await expect(page.getByRole("listitem", { name: "Waiting: checkout [button]" })).toContainText("approved by Sam Second on");
+    await expect(page.getByTestId("approving-as")).toHaveText("Approving as Sam Second (change)");
+});
+
+for (const width of [1280, 390]) test(`R5: "Reason to reject" is beside Reject only, apart from Approve, at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/candidates");
+    for (const name of ["Candidate add to cart [button]", "Candidate checkout [button]"]) {
+        const candidate = page.getByRole("listitem", { name });
+        const rejecting = candidate.getByRole("group", { name: "Reject this candidate" });
+        await expect(rejecting.getByLabel("Reason to reject")).toHaveCount(1);
+        await expect(rejecting.getByRole("button", { name: "Reject" })).toHaveCount(1);
+        await expect(rejecting.getByRole("button", { name: "Approve" })).toHaveCount(0);
+        // Beside: the reason's field and Reject on one line, the reason first, Approve not between them.
+        const [reason, reject, approve] = await Promise.all([rejecting.getByLabel("Reason to reject").boundingBox(), rejecting.getByRole("button", { name: "Reject" }).boundingBox(), candidate.getByRole("button", { name: "Approve" }).boundingBox()]);
+        expect(Math.abs((reason!.y + reason!.height / 2) - (reject!.y + reject!.height / 2)), "the reason and Reject on one line").toBeLessThan(reject!.height);
+        expect(reason!.x + reason!.width, "the reason just before Reject").toBeLessThanOrEqual(reject!.x);
+        const between = approve!.x > reason!.x && approve!.x < reject!.x && Math.abs(approve!.y - reject!.y) < reject!.height;
+        expect(between, "Approve isn't between the reason and Reject").toBe(false);
+    }
+});
+
 // The fresh-context review's three failure paths, each with the API's answer arranged by the test.
 test("TFP-234: a decision the server can't answer in JSON, or that never reaches it, is said so, and nothing is decided", async ({ page }) => {
     await page.goto("/candidates");
