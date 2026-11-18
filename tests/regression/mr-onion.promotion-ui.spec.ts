@@ -268,6 +268,26 @@ test("TFP-298: a candidate whose id isn't the one its pattern gives isn't offere
 });
 
 // Phase 46 Gate B, R6 (the owner's re-walk, 2026-11-18): autofill off on both reason fields.
+// R9 (the fresh-context review): approved, then a failure on a fourth site with no label, so below the rule; withdrawn
+// for it, it stays on the screen with the withdrawal, can be rejected, and isn't offered for approval.
+test("R9: a withdrawn candidate below the rule now is still shown, with its withdrawal, under Offered", async ({ page }) => {
+    const failedSince = candidate("aaaaaaaaaaa8", "filter", "approved", ["http://localhost:4200", "https://shop.example.com", "https://a.example.org"], {
+        approved: { by: "Tess Tester", at: "2026-11-10T09:00:00.000Z" },
+    });
+    failedSince.evidence.push({ ...run("https://b.example.net", "2026-11-11T00:00:00.000Z"), status: "Failed" });
+    await writeFile(join(pool(), `${failedSince.id}.json`), JSON.stringify(failedSince, null, 2));
+    await page.goto("/candidates");
+    const waiting = page.getByRole("listitem", { name: "Waiting: filter [button]" });
+    await waiting.getByLabel("Reason to withdraw").fill("failed on a fourth site");
+    await waiting.getByRole("button", { name: "Withdraw approval" }).click();
+    await expect(waiting).toHaveCount(0);
+    const shown = page.getByRole("region", { name: "Offered for promotion" }).getByRole("listitem", { name: "Withdrawn candidate filter [button]" });
+    await expect(shown.getByRole("list", { name: "Approvals withdrawn" }).getByRole("listitem")).toHaveText([/: failed on a fourth site$/]);
+    await expect(shown.getByRole("list", { name: "Why it isn't offered for approval" })).not.toBeEmpty();
+    await expect(shown.getByRole("button", { name: "Approve" })).toHaveCount(0);
+    await expect(shown.getByRole("group", { name: "Reject this candidate" })).toBeVisible();
+});
+
 test("R6: both reason fields have autofill off", async ({ page }) => {
     await page.goto("/candidates");
     await expect(page.getByRole("listitem", { name: "Candidate add to cart [button]" }).getByLabel("Reason to reject")).toHaveAttribute("autocomplete", "off");
@@ -284,6 +304,14 @@ test("TFP-298: an approval is withdrawn from the waiting list with a reason, thr
     await waiting.getByLabel("Reason to withdraw").fill("approved by mistake: a stand-in");
     await waiting.getByRole("button", { name: "Withdraw approval" }).click();
     await expect(page.getByRole("listitem", { name: "Waiting: search [button]" })).toHaveCount(0);
+    // R9 (the owner's re-walk, 2026-11-18): back in Offered, the withdrawal shown on it, and kept in the pool.
+    const offeredAgain = page.getByRole("region", { name: "Offered for promotion" }).getByRole("listitem", { name: "Candidate search [button]" });
+    await expect(offeredAgain).toBeVisible();
+    await expect(offeredAgain.getByRole("list", { name: "Approvals withdrawn" }).getByRole("listitem")).toHaveText([/^Withdrawn on \d{4}-\d{2}-\d{2}, approved by .+ on \d{4}-\d{2}-\d{2}: approved by mistake: a stand-in$/]);
     const saved = JSON.parse(await readFile(join(pool(), `${APPROVED.id}.json`), "utf8"));
-    expect(saved).toMatchObject({ status: "rejected", reason: "approved by mistake: a stand-in" });
+    expect(saved.status).toBe("candidate");
+    expect(saved.approved).toBeUndefined();
+    expect(saved.withdrawals.map((entry: { reason: string }) => entry.reason)).toEqual(["approved by mistake: a stand-in"]);
+    await page.reload();
+    await expect(page.getByRole("region", { name: "Offered for promotion" }).getByRole("listitem", { name: "Candidate search [button]" }).getByRole("list", { name: "Approvals withdrawn" })).toBeVisible();
 });

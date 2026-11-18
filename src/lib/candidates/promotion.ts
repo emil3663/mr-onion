@@ -79,17 +79,35 @@ export async function approveCandidate(id: string, by: string): Promise<Candidat
 
 /**
  * Also how an approval is withdrawn (TFP-298): `from: "approved"`, refused if the candidate is no longer approved (a
- * second tab, or the library step got there first). A withdrawn approval keeps `approved` on record, and says when.
+ * second tab, or the library step got there first).
+ * Gate B R9 (the owner's re-walk, 2026-11-18): a withdrawal returns the candidate to Offered (status "candidate"; it is
+ * offered again if it meets the rule, as it did when approved), with the withdrawal kept on it, in `withdrawals`: when,
+ * why, and the approval it undid. The live `approved` goes, so approving again records a new approval. It replaces
+ * TFP-298's withdrawal, which rejected the candidate. A reject with no `from` is a rejection, an approved candidate's
+ * too, its approval kept beside it.
  */
-export async function rejectCandidate(id: string, reason: string, from?: Candidate["status"]): Promise<Candidate> {
+export async function rejectCandidate(id: string, reason: string, from?: Candidate["status"], approvedAt?: string): Promise<Candidate> {
     const candidate = await loadCandidate(id);
     if (!candidate) throw new PromotionError(NO_SUCH_CANDIDATE);
     if (candidate.status === "promoted") throw new PromotionError("This candidate is already in the library: it can't be rejected, or its approval withdrawn, here. Remove its library entry in a reviewed commit.");
-    if (from === "approved" && candidate.status !== "approved") throw new PromotionError(`This approval was already withdrawn: the candidate is ${candidate.status} now. The list is read again.`);
+    if (from === "approved" && candidate.status !== "approved") {
+        throw new PromotionError(`This approval was already withdrawn: the candidate is ${candidate.status === "candidate" ? "offered again" : `${candidate.status} now`}. The list is read again.`);
+    }
+    // R9 (the fresh-context review): a withdrawal names the approval it withdraws, so a tab still showing an earlier
+    // approval can't withdraw one given since (approved, withdrawn, approved again by someone else).
+    if (from === "approved" && approvedAt !== undefined && candidate.approved?.at !== approvedAt) {
+        throw new PromotionError(`This candidate was approved again since you read it (by ${candidate.approved?.by ?? "someone"}), so that approval wasn't withdrawn. The list is read again.`);
+    }
     if (candidate.status === "rejected") throw new PromotionError("This candidate was already rejected.");
     if (!reason.trim()) throw new PromotionError("Type a reason first: it is kept with the candidate.");
-    const withdrawing = candidate.status === "approved";
-    const rejected: Candidate = { ...candidate, status: "rejected", reason: reason.trim(), ...(withdrawing ? { withdrawn: { at: new Date().toISOString(), reason: reason.trim() } } : {}) };
+    if (from === "approved") {
+        const { approved, ...rest } = candidate;
+        const withdrawal = { at: new Date().toISOString(), reason: reason.trim(), ...(approved ? { approved } : {}) };
+        const offeredAgain: Candidate = { ...rest, status: "candidate", withdrawals: [...(candidate.withdrawals ?? []), withdrawal] };
+        await saveCandidate(offeredAgain);
+        return offeredAgain;
+    }
+    const rejected: Candidate = { ...candidate, status: "rejected", reason: reason.trim() };
     await saveCandidate(rejected);
     return rejected;
 }
@@ -127,7 +145,12 @@ export const PROMOTED_DIR = join("src", "lib", "library", "promoted");
 export async function promoteApproved(libraryDir: string = join(process.cwd(), PROMOTED_DIR)): Promise<string[]> {
     const written: string[] = [];
     await mkdir(libraryDir, { recursive: true });
-    for (const candidate of (await loadPool()).filter((item) => item.status === "approved" && item.approved)) {
+    for (const listed of (await loadPool()).filter((item) => item.status === "approved" && item.approved)) {
+        // Gate B R9 (the fresh-context review): an approval can be withdrawn and given again, so the entry is written from
+        // the candidate as it is now, and only for the approval listed (not a newer one, nor none).
+        const sameApproval = (current: Candidate | null): current is Candidate => current?.status === "approved" && current.approved?.at === listed.approved!.at;
+        const candidate = await loadCandidate(listed.id);
+        if (!sameApproval(candidate)) continue;
         const entry: PromotedEntry = {
             id: candidate.id,
             pattern: candidate.pattern,
@@ -142,13 +165,14 @@ export async function promoteApproved(libraryDir: string = join(process.cwd(), P
         };
         const file = join(libraryDir, `${candidate.id}.json`);
         // TFP-298 (the fresh-context review): an approval withdrawn while this ran isn't promoted.
-        if ((await loadCandidate(candidate.id))?.status !== "approved") continue;
         await writeFile(file, `${JSON.stringify(entry, null, 2)}\n`, "utf8");
-        if ((await loadCandidate(candidate.id))?.status !== "approved") {
+        const now = await loadCandidate(candidate.id);
+        if (!sameApproval(now)) {
             await rm(file, { force: true });
             continue;
         }
-        await saveCandidate({ ...candidate, status: "promoted", reason: `library entry ${relative(process.cwd(), file).replace(/\\/g, "/")}` });
+        // Saved from what was just read, so evidence or a withdrawal saved meanwhile isn't written over.
+        await saveCandidate({ ...now, status: "promoted", reason: `library entry ${relative(process.cwd(), file).replace(/\\/g, "/")}` });
         written.push(file);
     }
     return written;

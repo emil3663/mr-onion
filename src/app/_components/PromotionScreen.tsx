@@ -113,6 +113,12 @@ export function PromotionScreen() {
             refusal = "Mr Onion didn't answer, so nothing was decided. Try again.";
         } finally {
             setRefusals((current) => ({ ...current, [id]: refusal }));
+            // R9 (the fresh-context review): a decision made clears its reasons, so an approval given again doesn't
+            // start with the last withdrawal's reason typed in.
+            if (!refusal) {
+                setReasons((current) => ({ ...current, [id]: "" }));
+                setWithdrawReasons((current) => ({ ...current, [id]: "" }));
+            }
             // Read back after every answer, refused or not: a refusal may mean it was decided elsewhere.
             setReads((count) => count + 1);
             setBusy("");
@@ -121,6 +127,7 @@ export function PromotionScreen() {
 
     const offeredCandidates = (candidates ?? []).filter((candidate) => offered.includes(candidate.id));
     const waiting = (candidates ?? []).filter((candidate) => candidate.status === "approved");
+    const withdrawnBelowRule = (candidates ?? []).filter((candidate) => candidate.status === "candidate" && (candidate.withdrawals?.length ?? 0) > 0 && !offered.includes(candidate.id));
 
     return (
         <div className="space-y-8">
@@ -176,6 +183,20 @@ export function PromotionScreen() {
                         <li key={candidate.id} aria-label={`Candidate ${describePattern(candidate)}`} className="rounded-2xl border border-zinc-200 p-4">
                             <h3 id={`candidate-${candidate.id}`} className="text-base font-semibold text-zinc-900">{describePattern(candidate)}</h3>
                             <p className="text-xs text-zinc-500">{candidate.pattern.kind} pattern · candidate {candidate.id} · {candidate.technique}</p>
+                            {/* R9 (the owner's re-walk, 2026-11-18): a withdrawn approval brings it back here, the withdrawal shown. */}
+                            {candidate.withdrawals?.length ? (
+                                <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                                    <p className="font-medium">Its approval was withdrawn before:</p>
+                                    <ul aria-label="Approvals withdrawn" className="mt-1 list-disc pl-5">
+                                        {candidate.withdrawals.map((entry, index) => (
+                                            <li key={`${index}-${entry.at}`}>
+                                                Withdrawn on {entry.at.slice(0, 10)}
+                                                {entry.approved ? `, approved by ${entry.approved.by} on ${entry.approved.at.slice(0, 10)}` : ""}: {entry.reason}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : null}
                             <h4 className="mt-3 text-sm font-medium text-zinc-700">Evidence</h4>
                             <ul className="list-disc pl-5 text-sm text-zinc-700">
                                 {candidate.verdict.reasons.map((reason) => <li key={reason}>{reason}</li>)}
@@ -228,6 +249,51 @@ export function PromotionScreen() {
                         </li>
                     ))}
                 </ul>
+                {/* R9 (the fresh-context review): a candidate whose approval was withdrawn comes back here even when it no
+                    longer meets the rule (a failure since its approval may be why), so the withdrawal is still shown. */}
+                {withdrawnBelowRule.length > 0 ? (
+                    <>
+                        <h3 className="mt-6 text-base font-semibold text-zinc-900">Withdrawn, and below the promotion rule now</h3>
+                        <ul className="mt-2 space-y-4">
+                            {withdrawnBelowRule.map((candidate) => (
+                                <li key={candidate.id} aria-label={`Withdrawn candidate ${describePattern(candidate)}`} className="rounded-2xl border border-zinc-200 p-4">
+                                    <p className="text-sm font-semibold text-zinc-900">{describePattern(candidate)}</p>
+                                    <ul aria-label="Why it isn't offered for approval" className="mt-1 list-disc pl-5 text-sm text-zinc-700">
+                                        {candidate.verdict.reasons.map((reason) => <li key={reason}>{reason}</li>)}
+                                    </ul>
+                                    <ul aria-label="Approvals withdrawn" className="mt-2 list-disc pl-5 text-sm text-amber-950">
+                                        {(candidate.withdrawals ?? []).map((entry, index) => (
+                                            <li key={`${index}-${entry.at}`}>
+                                                Withdrawn on {entry.at.slice(0, 10)}
+                                                {entry.approved ? `, approved by ${entry.approved.by} on ${entry.approved.at.slice(0, 10)}` : ""}: {entry.reason}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <div role="group" aria-label="Reject this candidate" className="mt-3 flex items-end gap-2">
+                                        <label className="min-w-0 flex-1 text-sm text-zinc-700 sm:max-w-72">
+                                            Reason to reject
+                                            <input
+                                                value={reasons[candidate.id] ?? ""}
+                                                autoComplete="off"
+                                                onChange={(event) => setReasons((current) => ({ ...current, [candidate.id]: event.target.value }))}
+                                                className="mt-1 block w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+                                            />
+                                        </label>
+                                        <button
+                                            type="button"
+                                            disabled={busy !== ""}
+                                            onClick={() => void decide(candidate.id, { action: "reject", reason: reasons[candidate.id] ?? "" })}
+                                            className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:opacity-50"
+                                        >
+                                            Reject
+                                        </button>
+                                    </div>
+                                    {refusals[candidate.id] ? <p role="alert" className="mt-2 text-sm text-rose-700">{refusals[candidate.id]}</p> : null}
+                                </li>
+                            ))}
+                        </ul>
+                    </>
+                ) : null}
             </section>
 
             {problems.length > 0 ? (
@@ -270,7 +336,7 @@ export function PromotionScreen() {
                                             type="button"
                                             disabled={busy !== ""}
                                             aria-describedby={`waiting-${candidate.id}`}
-                                            onClick={() => void decide(candidate.id, { action: "reject", from: "approved", reason: withdrawReasons[candidate.id] ?? "" })}
+                                            onClick={() => void decide(candidate.id, { action: "reject", from: "approved", reason: withdrawReasons[candidate.id] ?? "", ...(candidate.approved ? { approvedAt: candidate.approved.at } : {}) })}
                                             className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:opacity-50"
                                         >
                                             Withdraw approval

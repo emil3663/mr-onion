@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(await approveCandidate(id, body.by.trim()));
         }
         // TFP-298: `from: "approved"` withdraws an approval, refused if it changed meanwhile.
-        if (body.action === "reject") return NextResponse.json(await rejectCandidate(id, typeof body.reason === "string" ? body.reason : "", body.from === "approved" ? "approved" : undefined));
+        if (body.action === "reject") return NextResponse.json(await rejectCandidate(id, typeof body.reason === "string" ? body.reason : "", body.from === "approved" ? "approved" : undefined, typeof body.approvedAt === "string" ? body.approvedAt : undefined));
         if (body.action === "label") {
             if (body.label !== "real" && body.label !== "not a defect") return NextResponse.json({ error: 'Label it "real" or "not a defect".' }, { status: 400 });
             const bug = typeof body.bug === "number" && Number.isInteger(body.bug) && body.bug > 0 ? body.bug : undefined;

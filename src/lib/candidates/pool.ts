@@ -60,8 +60,11 @@ export interface Candidate {
     reason?: string;
     /** TFP-196: who approved it, and when. */
     approved?: { by: string; at: string };
-    /** TFP-298: an approval withdrawn (through reject), when and why; `approved` stays on record beside it. */
+    /** TFP-298: an approval withdrawn (through reject), when and why; `approved` stays on record beside it. Written
+     * before Gate B's R9 only: those candidates were rejected, and are read as they are. */
     withdrawn?: { at: string; reason: string };
+    /** Gate B R9: each approval withdrawn, in order: when, why, and the approval it undid. The candidate is offered again. */
+    withdrawals?: Array<{ at: string; reason: string; approved?: { by: string; at: string } }>;
     costUsd: number;
 }
 

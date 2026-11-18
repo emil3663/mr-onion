@@ -92,22 +92,74 @@ test("the API's refusals on the candidate screen are in plain words", async () =
     assert.deepEqual(await post({ action: "approve", id: offered.id, by: "Tess" }), { status: 409, body: { error: "This candidate was already approved, so it can't be approved again." } });
 });
 
-test("an approval is withdrawn with a reason, through reject from approved: kept on record, and refused once it changed", async () => {
+// Phase 46 Gate B, R9 (the owner's re-walk, 2026-11-18): a withdrawal returns the candidate to Offered, the withdrawal
+// kept and shown on it. It replaces TFP-298's withdrawal, which made the candidate rejected. State transitions:
+// candidate -> approved -> (withdrawn) candidate -> approved -> (withdrawn) candidate -> rejected.
+test("R9: a withdrawn approval returns the candidate to Offered, each withdrawal kept on it, and refused once it changed", async () => {
     const offered = meeting("compare");
     file(`${offered.id}.json`, offered);
     assert.equal((await post({ action: "approve", id: offered.id, by: "Tess" })).status, 200);
     assert.equal((await post({ action: "reject", id: offered.id, reason: "", from: "approved" })).status, 409, "a withdrawal needs its reason too");
     const withdrawn = await post({ action: "reject", id: offered.id, reason: "approved by mistake: a stand-in", from: "approved" });
     assert.equal(withdrawn.status, 200);
-    assert.equal(withdrawn.body.status, "rejected");
-    assert.equal(withdrawn.body.reason, "approved by mistake: a stand-in");
-    assert.equal(withdrawn.body.approved.by, "Tess", "the approval it withdrew stays on record");
-    assert.equal(withdrawn.body.withdrawn.reason, "approved by mistake: a stand-in");
-    const { candidates } = await read();
-    assert.equal((candidates as Array<{ id: string; status?: string }>).find((candidate) => candidate.id === offered.id)?.status, "rejected");
-    // A second withdrawal (another tab) doesn't overwrite the first reason: the candidate is no longer approved.
-    assert.deepEqual(await post({ action: "reject", id: offered.id, reason: "again", from: "approved" }), { status: 409, body: { error: "This approval was already withdrawn: the candidate is rejected now. The list is read again." } });
+    assert.equal(withdrawn.body.status, "candidate", "back to a candidate, not rejected");
+    assert.equal(withdrawn.body.approved, undefined, "no live approval: approving again records a new one");
+    assert.equal(withdrawn.body.reason, undefined, "not a rejection's reason");
+    assert.equal(withdrawn.body.withdrawals.length, 1);
+    assert.equal(withdrawn.body.withdrawals[0].reason, "approved by mistake: a stand-in");
+    assert.equal(withdrawn.body.withdrawals[0].approved.by, "Tess", "the approval it withdrew is kept with it");
+    assert.match(withdrawn.body.withdrawals[0].at, /^\d{4}-\d{2}-\d{2}T/);
+    assert.deepEqual((await read()).offered, [offered.id], "offered again");
+    // A second withdrawal (another tab) is refused: the candidate is no longer approved.
+    assert.deepEqual(await post({ action: "reject", id: offered.id, reason: "again", from: "approved" }), { status: 409, body: { error: "This approval was already withdrawn: the candidate is offered again. The list is read again." } });
+    // Approved again, and withdrawn again: both withdrawals kept, in order.
+    assert.equal((await post({ action: "approve", id: offered.id, by: "Sam" })).status, 200);
+    const again = await post({ action: "reject", id: offered.id, reason: "still not ready", from: "approved" });
+    assert.deepEqual(again.body.withdrawals.map((entry: { reason: string; approved: { by: string } }) => [entry.reason, entry.approved.by]), [["approved by mistake: a stand-in", "Tess"], ["still not ready", "Sam"]]);
+    // Rejected from Offered, its withdrawals stay on record.
+    const rejected = await post({ action: "reject", id: offered.id, reason: "duplicates the compare test" });
+    assert.equal(rejected.body.status, "rejected");
+    assert.equal(rejected.body.withdrawals.length, 2);
     assert.deepEqual(await post({ action: "reject", id: offered.id, reason: "again" }), { status: 409, body: { error: "This candidate was already rejected." } });
+});
+
+test("R9: a withdrawal names the approval it withdraws: a tab showing an earlier one can't undo one given since", async () => {
+    const offered = meeting("sort");
+    file(`${offered.id}.json`, offered);
+    const tess = (await post({ action: "approve", id: offered.id, by: "Tess" })).body.approved.at as string;
+    assert.equal((await post({ action: "reject", id: offered.id, reason: "not yet", from: "approved", approvedAt: tess })).status, 200);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const sam = (await post({ action: "approve", id: offered.id, by: "Sam" })).body.approved.at as string;
+    // The stale tab, still showing Tess's approval.
+    assert.deepEqual(await post({ action: "reject", id: offered.id, reason: "stale", from: "approved", approvedAt: tess }), { status: 409, body: { error: "This candidate was approved again since you read it (by Sam), so that approval wasn't withdrawn. The list is read again." } });
+    const ok = await post({ action: "reject", id: offered.id, reason: "Sam's, withdrawn", from: "approved", approvedAt: sam });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.body.withdrawals.map((entry: { approved: { by: string } }) => entry.approved.by), ["Tess", "Sam"]);
+});
+
+test("R9: library:promote writes the approval as it is now, after a withdrawal and a new approval", async () => {
+    const offered = meeting("filters");
+    file(`${offered.id}.json`, offered);
+    await post({ action: "approve", id: offered.id, by: "Tess" });
+    await post({ action: "reject", id: offered.id, reason: "not yet", from: "approved" });
+    await post({ action: "approve", id: offered.id, by: "Sam" });
+    const library = join(scratch, `library-${run++}`);
+    const written = await promoteApproved(library);
+    assert.equal(written.length, 1);
+    const { readFileSync } = await import("node:fs");
+    assert.equal(JSON.parse(readFileSync(written[0], "utf8")).approved.by, "Sam");
+    const saved = JSON.parse(readFileSync(join(process.env.MRONION_DATA_DIR!, "candidates", `${offered.id}.json`), "utf8"));
+    assert.equal(saved.status, "promoted");
+    assert.equal(saved.withdrawals.length, 1, "the withdrawal stays on the promoted candidate");
+});
+
+test("R9: an approved candidate rejected outright (no from) is still rejected, its approval kept beside", async () => {
+    const offered = meeting("wishlist");
+    file(`${offered.id}.json`, offered);
+    await post({ action: "approve", id: offered.id, by: "Tess" });
+    const rejected = await post({ action: "reject", id: offered.id, reason: "not wanted after all" });
+    assert.equal(rejected.body.status, "rejected");
+    assert.equal(rejected.body.approved.by, "Tess");
 });
 
 test("a misnamed or misfiled approved candidate isn't waiting, isn't promoted, and doesn't overwrite a well-formed one", async () => {
