@@ -14,7 +14,8 @@ import { HOST_NOT_USED } from "@/lib/ownership/messages";
  * TFP-295 (Gate B's walkthrough): "Change or renew" starts from the current confirmation (its hosts, basis, name and
  * ticks; the expiry back to the 90-day default), but the statement tick and the contact email are retyped (the API
  * gives the email masked, and confirming is the act the tick records). Saving makes a new confirmation; the API keeps
- * the old one in the history.
+ * the old one in the history. A withdrawn confirmation starts the same way (the owner, 2026-11-18), as a new
+ * confirmation ("Confirm ownership or permission"), the statement tick and the email again retyped.
  * Refusals come from the API and are shown as returned (Phase 43 Decision 13): the form doesn't repeat the rules, so it
  * sets noValidate and lets the API refuse an invalid email or a date past the picker's limit. A host the site doesn't
  * use yet is refused by the API; the form then says how a host comes to be accepted (review item 4).
@@ -156,6 +157,10 @@ export function ConfirmationForm({
             {renewing ? (
                 <p className="text-sm text-zinc-600">
                     It starts from the current confirmation. Tick the statement and type the contact email again: saving makes a new confirmation, and the current one is kept in the site&apos;s history.
+                </p>
+            ) : start ? (
+                <p className="text-sm text-zinc-600">
+                    It starts from the withdrawn confirmation. Tick the statement and type the contact email again: saving makes a new confirmation, and the withdrawn one is kept in the site&apos;s history.
                 </p>
             ) : null}
 

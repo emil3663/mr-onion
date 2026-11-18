@@ -215,6 +215,8 @@ export function SiteLookup({ initialUrl = "", updateAddress = true }: { initialU
     const canWithdraw = entry?.status === "valid" || entry?.status === "expired";
     // An expired one is renewed too: the run's closed reason says "renew it" (the fresh-context review).
     const canRenew = entry?.status === "valid" || entry?.status === "expired";
+    // The owner (2026-11-18): a withdrawn one is confirmed again from what it was too, as a new confirmation.
+    const startsFrom = confirmation && (canRenew || entry?.status === "withdrawn") ? confirmation : null;
 
     return (
         <div className="space-y-6">
@@ -322,12 +324,12 @@ export function SiteLookup({ initialUrl = "", updateAddress = true }: { initialU
                             {formOpen ? (
                                 <ConfirmationForm
                                     // A change starts from this confirmation: another one read meanwhile starts it afresh.
-                                    key={canRenew && confirmation ? confirmation.confirmedAt : "new"}
+                                    key={startsFrom ? `${startsFrom.confirmedAt}:${entry.status}` : "new"}
                                     origin={entry.origin}
                                     wording={entry.wording}
                                     legalNote={entry.legalNote}
                                     renewing={canRenew}
-                                    start={canRenew && confirmation ? { hosts: confirmation.hosts, basis: confirmation.basis, name: confirmation.name, scopes: confirmation.scopes } : null}
+                                    start={startsFrom ? { hosts: startsFrom.hosts, basis: startsFrom.basis, name: startsFrom.name, scopes: startsFrom.scopes } : null}
                                     onSending={setBusy}
                                     onSaved={() => {
                                         window.dispatchEvent(new Event(SITE_LOOKUP_CLOSED));

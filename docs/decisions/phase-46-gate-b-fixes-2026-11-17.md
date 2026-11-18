@@ -14,6 +14,12 @@ address (`192.168.1.17:4201`). Its temporary folders were removed
 afterwards; the run record the walkthrough left is kept outside the
 repo as evidence for C and TFP-299.
 
+The owner's answers before the re-walk (2026-11-18): B, a withdrawn
+confirmation opens pre-filled too (built, below); E, withdrawn approvals
+stay on record; C, either threshold; D, as built (the third-party script
+warning, ruling 4, kept). No version tag until TFP-292 is done: 0.5.0
+ships Phases 43 and 46 with that fix.
+
 ## TFP-294 (A) — One header; the site lookup as a modal; the suite kept for the session
 
 - **Status:** Built (2026-11-17). Stopped for the re-walk.
@@ -84,9 +90,11 @@ repo as evidence for C and TFP-299.
     confirmation that the site no longer records gets its own note, not
     "a typing error"; the form starts afresh when another confirmation is
     read while it is open; an expired confirmation's change is tested.
-- **For the owner at the re-walk:** a *withdrawn* confirmation isn't
-  changed or renewed: "Confirm ownership" starts empty, as before, and as
-  its closed reason ("confirm the site again") says. Pre-fill it too?
+- **The owner's answer (2026-11-18):** a *withdrawn* confirmation
+  opens pre-filled too, the statement tick and the email excepted. It is
+  a new confirmation, so the button stays "Confirm ownership" and the
+  form "Confirm ownership or permission", saying it starts from the
+  withdrawn one (`SiteLookup.tsx`, `ConfirmationForm.tsx`).
 - **Acceptance criteria:** RUN-74 (the change), RUN-75 (the reasons).
 - **Scope (the owner's words):** "Renew" becomes "Change or renew",
   pre-filled from the current confirmation (hosts, basis, name, ticks;
@@ -126,10 +134,8 @@ repo as evidence for C and TFP-299.
   and at a run's end untaken places are dropped (a stopped run keeps
   them, Not run). Places are seeded in the order the passes run. The
   overlay's old remaining label is gone from `derive.ts`.
-- **For the owner at the re-walk:** "more than 10 seconds or 10%" is read
-  as *either* (it moves past whichever is smaller), so near the end small
-  changes move it. Read as *both* (past the larger), it would hold
-  steadier. Which?
+- **The owner's answer (2026-11-18):** either threshold, as built: it
+  moves past 10 seconds or past 10%, whichever comes first.
 - **Acceptance criteria:** RUN-78.
 - **Scope (the owner's words):** the projected remaining time counts down
   once a second, re-estimates as tests finish, and moves only when the
@@ -211,8 +217,8 @@ repo as evidence for C and TFP-299.
   a withdrawn approval keeps `approved` and records `withdrawn`. The last
   technical refusals (labels, the route's own, the screen's fallbacks, a
   save that fails) are in words.
-- **For the owner at the re-walk:** a withdrawn approval is kept on
-  record beside the rejection (`approved` and `withdrawn`), not erased.
+- **The owner's answer (2026-11-18):** keep withdrawn approvals on
+  record beside the rejection (`approved` and `withdrawn`), as built.
 - **Acceptance criteria:** RUN-70 (updated), RUN-77.
 - **Scope (the owner's words):** the pool doesn't offer a candidate whose
   id isn't `candidateId(pattern)`; it reports it instead. API refusals on

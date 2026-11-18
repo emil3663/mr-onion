@@ -230,6 +230,34 @@ test("TFP-295: an expired confirmation is changed or renewed from what it was, a
     expect(saved.confirmation).toMatchObject({ name: "Old Owner", basis: "written-permission", scopes: { active: false, load: true }, contactEmail: "n***@example.com" });
 });
 
+// The owner's answer at the re-walk's set-up (2026-11-18): a withdrawn confirmation opens pre-filled too, the statement
+// tick and the email excepted. It is a new confirmation, so the button and the form say "Confirm".
+test("TFP-295: a withdrawn confirmation is confirmed again from what it was, the statement and email retyped", async ({ page }) => {
+    await mkdir(siteFolder, { recursive: true });
+    await writeFile(join(siteFolder, "ownership.json"), JSON.stringify({ current: { hosts: [HOST], basis: "owner", wording: CONFIRMATION_WORDING.owner, name: "Was Owner", contactEmail: "was@example.com", confirmedAt: "2026-11-01T10:00:00.000Z", expiresAt: "2027-01-30T10:00:00.000Z", scopes: { active: true, load: false }, withdrawnAt: "2026-11-10T10:00:00.000Z" }, history: [] }));
+    await page.goto(`/sites?url=${encodeURIComponent(SHOP)}`);
+    const results = page.getByRole("region", { name: "Results" });
+    await expect(results.getByTestId("confirmation-status")).toHaveText(/^Withdrawn on 2026-11-10/);
+    await results.getByRole("button", { name: "Confirm ownership", exact: true }).click();
+    const form = page.getByRole("form", { name: "Confirm ownership or permission" });
+    await expect(form.getByText("It starts from the withdrawn confirmation.", { exact: false })).toBeVisible();
+    await expect(form.getByLabel("Hosts, one per line")).toHaveValue(HOST);
+    await expect(form.getByRole("radio", { name: "I own this site" })).toBeChecked();
+    await expect(form.getByLabel("Your name")).toHaveValue("Was Owner");
+    await expect(form.getByRole("checkbox", { name: /^Active tests:/ })).toBeChecked();
+    await expect(form.getByRole("checkbox", { name: /^Load testing:/ })).not.toBeChecked();
+    await expect(form.getByLabel("Contact email")).toHaveValue("");
+    await expect(form.getByLabel("I confirm the statement above")).not.toBeChecked();
+    await form.getByLabel("Contact email").fill("again@example.com");
+    await form.getByLabel("I confirm the statement above").check();
+    await form.getByRole("button", { name: "Save the confirmation", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("The confirmation was saved.");
+    await expect(results.getByTestId("confirmation-status")).toHaveText(/^Valid until /);
+    const saved = await ownership(page);
+    expect(saved.history.map((entry: { name: string }) => entry.name)).toEqual(["Was Owner"]);
+    expect(saved.confirmation).toMatchObject({ name: "Was Owner", basis: "owner", scopes: { active: true, load: false }, contactEmail: "a***@example.com" });
+});
+
 test("TFP-233: the expiry left at its default is the API's own 90 days from the moment confirmed", async ({ page }) => {
     const form = await openForm(page);
     await fillValid(form);
