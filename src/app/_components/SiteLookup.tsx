@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmationForm } from "@/app/_components/ConfirmationForm";
 import { SITE_LOOKUP_CLOSED } from "@/app/_components/SiteLookupDialog";
+import { LOOKUP_LABELS, withLabels } from "@/app/_lib/field-labels";
 
 /**
  * Phase 46 (TFP-232, Decision 1, Acceptance Criteria 1): the site lookup. The tester names a site by its URL, in any
@@ -170,7 +171,7 @@ export function SiteLookup({ initialUrl = "", updateAddress = true }: { initialU
                 if (ticket !== latest.current) return;
                 setEntry(null);
                 setSaved("");
-                setError(caught instanceof TypeError ? "Mr Onion didn't answer." : `This site couldn't be looked up: ${caught instanceof Error ? caught.message : "no reason given"}.`);
+                setError(caught instanceof TypeError ? "Mr Onion didn't answer." : `This site couldn't be looked up: ${caught instanceof Error ? withLabels(caught.message, LOOKUP_LABELS) : "no reason given"}.`);
                 setBusy(false);
             },
         );
@@ -207,7 +208,8 @@ export function SiteLookup({ initialUrl = "", updateAddress = true }: { initialU
         await search(searched || entry.origin, refusal ? "" : note);
         // TFP-294: a change here may open or close the run form's gate; the switch reads it again.
         if (!refusal) window.dispatchEvent(new Event(SITE_LOOKUP_CLOSED));
-        if (refusal) setActionError(refusal);
+        // R3: shown with the lookup's labels for the API's field names.
+        if (refusal) setActionError(withLabels(refusal, LOOKUP_LABELS));
         statusRef.current?.focus();
     };
 

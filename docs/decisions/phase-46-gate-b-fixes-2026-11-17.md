@@ -266,7 +266,8 @@ R8 is folded into TFP-300 and R9. The items, in the owner's words:
   hint names only what's missing. *Built (2026-11-18): RUN-81. Only the
   required check is the browser's: the form keeps `noValidate`, so the
   API still judges the email and the date.*
-- **R3:** map API field names to labels on screen.
+- **R3:** map API field names to labels on screen. *Built (2026-11-18):
+  RUN-82.*
 - **R4:** a withdrawn confirmation's entry reads "Allowed, until
   withdrawn".
 - **R5:** "Approving as `<name>` (change)" once at the top; Approve on each

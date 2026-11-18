@@ -188,7 +188,9 @@ test.describe("Login config in the UI (TFP-097)", () => {
 
         await page.getByRole("button", { name: "Run suite" }).first().click();
 
-        await expect(page.getByText("Login config: \"usernameEnv\" is required.")).toBeVisible({ timeout: 30_000 });
+        // R3 (Gate B re-walk, 2026-11-18): the API's field name, shown as the login section labels it.
+        await expect(page.getByText("Login config: \"Username environment variable name\" is required.")).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByText("usernameEnv")).toHaveCount(0);
     });
 
     test("the section has no field that takes a password, and says so", async ({ page }) => {

@@ -157,6 +157,39 @@ test("TFP-232: the gap writer is set through the API, written in place and kept 
     await expect(page.getByRole("region", { name: "Results" }).getByTestId("gap-writer-now")).toHaveText("Claude Code");
 });
 
+// Phase 46 Gate B, R3 (the owner's re-walk, 2026-11-18): an API refusal naming one of its own fields is shown with the
+// screen's label for it. The page can't make the route refuse these (the form sends a valid URL and a listed writer), so
+// the route is asked directly for its refusal, and the page's save is answered with it (the fresh-context review: not a
+// copy of the wording, which could drift from the route's).
+for (const [field, label, body] of [
+    ["baseUrl", "Site URL", { baseUrl: "not a url", gapWriter: "claude-code" }],
+    ["gapWriter", "Who writes gap tests", { baseUrl: SHOP, gapWriter: "nobody" }],
+] as const) {
+    test(`R3: the lookup shows the route's "${field}" refusal with its label, "${label}"`, async ({ page }) => {
+        const reply = await page.request.post("/api/site-settings", { data: body });
+        expect(reply.status(), "the route refuses it").toBe(400);
+        const refusal = String((await reply.json()).error);
+        expect(refusal.startsWith(`${field} `), `the route's refusal names ${field}: ${refusal}`).toBe(true);
+        const shown = label + refusal.slice(field.length);
+        await page.route("**/api/site-settings", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: refusal }) }) : route.fallback()));
+        await page.goto(`/sites?url=${encodeURIComponent(SHOP)}`);
+        const results = page.getByRole("region", { name: "Results" });
+        await results.getByLabel("Who writes gap tests").selectOption("claude-code");
+        await results.getByRole("button", { name: "Save gap writer" }).click();
+        // The lookup's own alert, not Next's route announcer (also role alert, and empty).
+        await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveText(shown);
+    });
+}
+
+test("R3: a site that can't be looked up shows the route's refusal with the lookup's label", async ({ page }) => {
+    await page.goto("/sites");
+    await page.getByLabel("Site URL").fill("exa mple.com");
+    await page.getByLabel("Site URL").press("Enter");
+    const shown = page.getByRole("alert").filter({ hasText: /\S/ });
+    await expect(shown).toHaveText(/^This site couldn't be looked up: Site URL /);
+    await expect(shown).not.toContainText("baseUrl");
+});
+
 test("TFP-232: after a real run, the run form's link opens the lookup on its site, with the saved suite and that run as its last", async ({ page }) => {
     test.setTimeout(300_000);
     await page.goto("/");

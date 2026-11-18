@@ -6,6 +6,7 @@ import type { ExecutionStatus, RunReport } from "@/lib/report/types";
 import { BASE_REPORT_TABS } from "@/app/_lib/constants";
 import { getContinuationExcludedTitles } from "@/app/_lib/derive";
 import { pollRunUntilDone } from "@/app/_hooks/pollRun";
+import { RUN_FORM_LABELS, withLabels } from "@/app/_lib/field-labels";
 import { selectSeoPageGroup } from "@/app/_hooks/seoPageSelection";
 import type { ContentProfile, ReportTab, RunLifecycleStatus, RunProgressSnapshot, RunResult, RunStatusSnapshot, Step, TestAuditMode } from "@/app/_lib/types";
 import type { RunMode } from "@/lib/comprehensive/run-mode";
@@ -221,7 +222,8 @@ export function useRun(
             setRunStatus(snapshot.runStatus);
             setRunDurationMs(snapshot.duration);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            // R3 (Gate B re-walk, 2026-11-18): the API's field names, as the run form labels them.
+            setError(err instanceof Error ? withLabels(err.message, RUN_FORM_LABELS, { quoted: true }) : "Unknown error");
             setStep("ready");
             if (reportWindowRef.current && !reportWindowRef.current.closed) {
                 reportWindowRef.current.close();

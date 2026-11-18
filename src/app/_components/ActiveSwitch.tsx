@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { SITE_LOOKUP_CLOSED, SiteLookupDialog } from "@/app/_components/SiteLookupDialog";
+import { RUN_FORM_LABELS, withLabels } from "@/app/_lib/field-labels";
 
 /**
  * Phase 46 (TFP-235, Decision 4, Acceptance Criteria 4): the active switch in the run form, under the interactive
@@ -58,7 +59,7 @@ export function ActiveSwitch({ baseUrl, enableActive, setEnableActive }: { baseU
                 const data = (await response.json().catch(() => null)) as { activeGate?: Gate; error?: string } | null;
                 if (!current) return;
                 if (!response.ok || !data?.activeGate) {
-                    setReading({ for: baseUrl, state: "failed", message: data?.error ?? `the server answered ${response.status}` });
+                    setReading({ for: baseUrl, state: "failed", message: data?.error ? withLabels(data.error, RUN_FORM_LABELS) : `the server answered ${response.status}` });
                     return;
                 }
                 setReading({ for: baseUrl, state: "read", gate: data.activeGate });

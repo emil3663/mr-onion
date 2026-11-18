@@ -5,6 +5,7 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 import { setting } from "../../src/lib/settings";
 import { CONFIRMATION_WORDING, LEGAL_NOTE } from "../../src/lib/ownership/confirmation";
 import { siteFolderName } from "../../src/lib/site-suites/store";
+import { CONFIRMATION_LABELS } from "../../src/app/_lib/field-labels";
 
 // Phase 46 (TFP-233, Decision 2, Acceptance Criteria 2, and AC1's creating and renewing): the confirmation form in the
 // site lookup, in the real app, on the server's temporary data folder. Equivalence partitions and boundaries:
@@ -199,6 +200,16 @@ test("R2: a refusal about no field is in the summary only, and the summary is fo
     await expect(form.locator("[aria-invalid='true']")).toHaveCount(0);
 });
 
+// R3 (the fresh-context review): each label a refusal is shown with is the form's own, so the tester finds the field.
+test("R3: each label the API's field names are shown as is one the form shows", async ({ page }) => {
+    const form = await openForm(page);
+    const shown = (await form.locator("label, legend").allInnerTexts()).map((text) => text.toLowerCase());
+    for (const [field, label] of Object.entries(CONFIRMATION_LABELS)) {
+        if (field === "baseUrl") continue; // not a field of the form: the site the lookup searched
+        expect(shown.some((text) => text.includes(label.toLowerCase())), `"${label}" (${field}) is in a label or legend of the form`).toBe(true);
+    }
+});
+
 test("R2: the save button's hint names only what is still missing", async ({ page }) => {
     const form = await openForm(page);
     const hint = form.locator("#confirmation-save-hint");
@@ -221,13 +232,16 @@ test("TFP-233: a wildcard host, an invalid email and an expiry past 1 year are e
 
     await fillValid(form, { email: "tess at example" });
     await form.getByRole("button", { name: "Save the confirmation" }).click();
-    await expect(refusals(form)).toHaveText([`contactEmail "tess at example" isn't a valid email address`]);
+    // R3 (the owner's re-walk, 2026-11-18): the API's field names are shown as the form's labels.
+    await expect(refusals(form)).toHaveText([`Contact email "tess at example" isn't a valid email address`]);
+    await expect(form.getByLabel("Contact email")).toHaveAccessibleDescription(`Contact email "tess at example" isn't a valid email address`);
 
     // Past the picker's own limit (a date typed or pasted in): the API refuses it, and says its limit.
     await fillValid(form, { expires: isoDay(new Date(Date.now() + 2 * 365 * DAY)) });
     await form.getByRole("button", { name: "Save the confirmation" }).click();
     await expect(refusals(form)).toHaveCount(1);
-    await expect(refusals(form).first()).toHaveText(/^expiresAt is beyond 1 year from the date confirmed \(at most \d{4}-\d{2}-\d{2}T/);
+    await expect(refusals(form).first()).toHaveText(/^Expires on is beyond 1 year from the date confirmed \(at most \d{4}-\d{2}-\d{2}T/);
+    await expect(form).not.toContainText("expiresAt");
     expect((await ownership(page)).status).toBe("missing");
 });
 

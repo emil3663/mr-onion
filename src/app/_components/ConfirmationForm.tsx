@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { HOST_NOT_USED } from "@/lib/ownership/messages";
 import { CONFIRMATION_FIELDS, refusalField, type ConfirmationField } from "@/lib/ownership/refusal-fields";
+import { CONFIRMATION_LABELS, withLabels } from "@/app/_lib/field-labels";
 
 /**
  * Phase 46 (TFP-233, Decision 2, Acceptance Criteria 2): the ownership confirmation form, in the site lookup's entry.
@@ -137,7 +138,7 @@ export function ConfirmationForm({
     const errorId = (field: ConfirmationField) => `confirmation-${field}-error`;
     const describedBy = (field: ConfirmationField, ...others: string[]) => [...others, ...(refusedFields.has(field) ? [errorId(field)] : [])].join(" ") || undefined;
     const fieldError = (field: ConfirmationField) => (refusedFields.has(field)
-        ? <p id={errorId(field)} className="mt-1 text-xs font-medium text-rose-700">{refusedFields.get(field)!.join(" ")}</p>
+        ? <p id={errorId(field)} className="mt-1 text-xs font-medium text-rose-700">{refusedFields.get(field)!.map((reason) => withLabels(reason, CONFIRMATION_LABELS)).join(" ")}</p>
         : null);
 
     // Focus moves to the first refused field once the refusals are in the page, or to the summary when none has a field.
@@ -371,7 +372,8 @@ export function ConfirmationForm({
                 <div ref={refusals} tabIndex={-1} role="group" aria-labelledby="confirmation-refused" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900 focus:outline-none">
                     <p id="confirmation-refused" className="font-medium">Mr Onion refused the confirmation:</p>
                     <ul aria-label="Why it was refused" className="mt-1 list-disc pl-5">
-                        {reasons.map((reason, index) => <li key={`${index}-${reason}`}>{reason}</li>)}
+                        {/* R3: shown with the form's labels for the API's field names. */}
+                        {reasons.map((reason, index) => <li key={`${index}-${reason}`}>{withLabels(reason, CONFIRMATION_LABELS)}</li>)}
                     </ul>
                     {reasons.some((reason) => reason.includes(HOST_NOT_USED)) ? (
                         <p className="mt-2">A host is accepted once a Standard run on this site has recorded it: run one, then confirm.</p>
