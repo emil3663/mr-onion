@@ -210,6 +210,14 @@ test("R3: each label the API's field names are shown as is one the form shows", 
     }
 });
 
+// Phase 46 Gate B, R6 (the owner's re-walk, 2026-11-18): autofill off on the hosts and the confirmation's name and email.
+test("R6: the hosts, the name and the contact email have autofill off", async ({ page }) => {
+    const form = await openForm(page);
+    for (const field of [form.getByLabel("Hosts, one per line"), form.getByLabel("Your name"), form.getByLabel("Contact email")]) {
+        await expect(field).toHaveAttribute("autocomplete", "off");
+    }
+});
+
 test("R2: the save button's hint names only what is still missing", async ({ page }) => {
     const form = await openForm(page);
     const hint = form.locator("#confirmation-save-hint");

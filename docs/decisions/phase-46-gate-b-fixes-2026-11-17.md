@@ -274,7 +274,10 @@ R8 is folded into TFP-300 and R9. The items, in the owner's words:
   candidate; "Reason to reject" beside Reject only. *Built (2026-11-18):
   RUN-84.*
 - **R6:** autofill off on Site URL, Base URL, hosts, both reason fields
-  and the confirmation's name and email, verified in real Chrome.
+  and the confirmation's name and email, verified in real Chrome. *Built (2026-11-18): RUN-85,
+  the attributes. **Verified in real Chrome: not yet.** An automated
+  real-Chrome check couldn't make its own controls autofill, so it proves
+  nothing; the check is manual, for the owner (RUN-85 says how).*
 - **R7:** the waiting list reads "Next step: in your Mr Onion checkout,
   run npm run library:promote and commit the new entries under
   src/lib/library/promoted/, reviewed like any code. A coding agent can

@@ -208,6 +208,8 @@ export function PromotionScreen() {
                                         Reason to reject
                                         <input
                                             value={reasons[candidate.id] ?? ""}
+                                            // R6 (Gate B re-walk, 2026-11-18): no autofill.
+                                            autoComplete="off"
                                             onChange={(event) => setReasons((current) => ({ ...current, [candidate.id]: event.target.value }))}
                                             className="mt-1 block w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
                                         />
@@ -256,6 +258,7 @@ export function PromotionScreen() {
                                             Reason to withdraw
                                             <input
                                                 value={withdrawReasons[candidate.id] ?? ""}
+                                                autoComplete="off"
                                                 onChange={(event) => setWithdrawReasons((current) => ({ ...current, [candidate.id]: event.target.value }))}
                                                 className="mt-1 block w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
                                             />

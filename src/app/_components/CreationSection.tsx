@@ -192,6 +192,8 @@ export function CreationSection({
                                     <textarea
                                         id="base-url-input"
                                         aria-label="Base URL"
+                                        // R6 (Gate B re-walk, 2026-11-18): no autofill.
+                                        autoComplete="off"
                                         rows={Math.min(6, Math.max(1, baseUrl.split(/\n/).length))}
                                         value={baseUrl}
                                         onFocus={() => {

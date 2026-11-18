@@ -63,6 +63,14 @@ test("TFP-294: from the run form, the site lookup opens as a modal searched for 
     await expect(page.getByLabel("Base URL")).toHaveValue(`${REMOTE}/cart?item=3`);
 });
 
+// Phase 46 Gate B, R6 (the owner's re-walk, 2026-11-18): autofill off on the run form's Base URL and the lookup's Site URL.
+test("R6: the Base URL and the Site URL have autofill off", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByLabel("Base URL")).toHaveAttribute("autocomplete", "off");
+    await page.goto("/sites");
+    await expect(page.getByLabel("Site URL")).toHaveAttribute("autocomplete", "off");
+});
+
 // Phase 46 Gate B, R1 (the owner's re-walk, 2026-11-18): the modal is centred in the window, and scrolls inside.
 // Partitions: content shorter than the window -> equal gaps either side, above and below; content taller (the
 // confirmation form open in it) -> the modal fits the window, still centred, its body scrolls while its title and Close

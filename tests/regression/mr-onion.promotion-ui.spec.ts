@@ -264,6 +264,13 @@ test("TFP-298: a candidate whose id isn't the one its pattern gives isn't offere
     ]);
 });
 
+// Phase 46 Gate B, R6 (the owner's re-walk, 2026-11-18): autofill off on both reason fields.
+test("R6: both reason fields have autofill off", async ({ page }) => {
+    await page.goto("/candidates");
+    await expect(page.getByRole("listitem", { name: "Candidate add to cart [button]" }).getByLabel("Reason to reject")).toHaveAttribute("autocomplete", "off");
+    await expect(page.getByRole("listitem", { name: "Waiting: search [button]" }).getByLabel("Reason to withdraw")).toHaveAttribute("autocomplete", "off");
+});
+
 test("TFP-298: an approval is withdrawn from the waiting list with a reason, through the API's reject", async ({ page }) => {
     await page.goto("/candidates");
     const waiting = page.getByRole("listitem", { name: "Waiting: search [button]" });

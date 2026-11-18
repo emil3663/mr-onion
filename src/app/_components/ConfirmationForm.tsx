@@ -249,6 +249,8 @@ export function ConfirmationForm({
                     value={hosts}
                     onChange={(event) => { setHosts(event.target.value); corrected("hosts"); }}
                     rows={3}
+                    // R6 (Gate B re-walk, 2026-11-18): no autofill, on each of the fields the owner named.
+                    autoComplete="off"
                     autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
@@ -316,14 +318,14 @@ export function ConfirmationForm({
                 <div>
                     <label className="block text-sm font-medium text-zinc-700">
                         Your name<Required />
-                        <input ref={nameField} required value={name} onChange={(event) => { setName(event.target.value); corrected("name"); }} aria-invalid={refusedFields.has("name") || undefined} aria-describedby={describedBy("name")} autoComplete="name" className="mt-1 block w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+                        <input ref={nameField} required value={name} onChange={(event) => { setName(event.target.value); corrected("name"); }} aria-invalid={refusedFields.has("name") || undefined} aria-describedby={describedBy("name")} autoComplete="off" className="mt-1 block w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
                     </label>
                     {fieldError("name")}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-zinc-700">
                         Contact email<Required />
-                        <input ref={emailField} required type="email" value={email} onChange={(event) => { setEmail(event.target.value); corrected("contactEmail"); }} aria-invalid={refusedFields.has("contactEmail") || undefined} aria-describedby={describedBy("contactEmail")} autoComplete="email" className="mt-1 block w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+                        <input ref={emailField} required type="email" value={email} onChange={(event) => { setEmail(event.target.value); corrected("contactEmail"); }} aria-invalid={refusedFields.has("contactEmail") || undefined} aria-describedby={describedBy("contactEmail")} autoComplete="off" className="mt-1 block w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
                     </label>
                     {fieldError("contactEmail")}
                 </div>
