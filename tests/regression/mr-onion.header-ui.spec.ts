@@ -63,6 +63,71 @@ test("TFP-294: from the run form, the site lookup opens as a modal searched for 
     await expect(page.getByLabel("Base URL")).toHaveValue(`${REMOTE}/cart?item=3`);
 });
 
+// Phase 46 Gate B, R1 (the owner's re-walk, 2026-11-18): the modal is centred in the window, and scrolls inside.
+// Partitions: content shorter than the window -> equal gaps either side, above and below; content taller (the
+// confirmation form open in it) -> the modal fits the window, still centred, its body scrolls while its title and Close
+// stay in view, and the page behind doesn't move.
+async function boxGaps(page: Page) {
+    return page.getByRole("dialog", { name: "Site lookup" }).evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return { left: box.left, right: window.innerWidth - box.right, top: box.top, bottom: window.innerHeight - box.bottom };
+    });
+}
+
+test("R1: the site lookup modal is centred in the window", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/");
+    await page.getByLabel("Base URL").fill(REMOTE);
+    await page.getByRole("button", { name: "This site's confirmation and settings", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Site lookup" });
+    await expect(dialog.getByRole("region", { name: "Results" }).getByRole("heading", { level: 2 })).toHaveText(REMOTE);
+    const gaps = await boxGaps(page);
+    // This partition is content shorter than the window (the fresh-context review): not the clamped case below.
+    expect(gaps.top + gaps.bottom, "the modal is shorter than the window").toBeGreaterThan(32);
+    expect(gaps.left, "a gap at the left").toBeGreaterThan(16);
+    expect(Math.abs(gaps.left - gaps.right), `left ${gaps.left} against right ${gaps.right}`).toBeLessThanOrEqual(2);
+    expect(gaps.top, "a gap above").toBeGreaterThan(8);
+    expect(Math.abs(gaps.top - gaps.bottom), `top ${gaps.top} against bottom ${gaps.bottom}`).toBeLessThanOrEqual(2);
+});
+
+test("R1: with content taller than the window, the modal fits it and scrolls inside, its title and Close in view", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 600 });
+    await page.goto("/");
+    await page.getByLabel("Base URL").fill(REMOTE);
+    await page.getByRole("button", { name: "This site's confirmation and settings", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Site lookup" });
+    await dialog.getByRole("button", { name: "Confirm ownership" }).click();
+    await expect(dialog.getByLabel("Hosts, one per line")).toBeVisible();
+    // Read once the modal is open: clicking its button scrolled the page to the button.
+    const pageScroll = await page.evaluate(() => window.scrollY);
+
+    const gaps = await boxGaps(page);
+    expect(gaps.top, "the modal's top is in the window").toBeGreaterThanOrEqual(0);
+    expect(gaps.bottom, "the modal's bottom is in the window").toBeGreaterThanOrEqual(0);
+    expect(Math.abs(gaps.left - gaps.right), `left ${gaps.left} against right ${gaps.right}`).toBeLessThanOrEqual(2);
+    expect(Math.abs(gaps.top - gaps.bottom), `top ${gaps.top} against bottom ${gaps.bottom}`).toBeLessThanOrEqual(2);
+
+    // The form's last control, reached by scrolling inside the modal, with the title and Close still in view.
+    const body = dialog.getByTestId("site-lookup-dialog-body");
+    const sizes = await body.evaluate((element) => ({ scroll: element.scrollHeight, client: element.clientHeight }));
+    expect(sizes.scroll, "the body is taller than its box, so it scrolls").toBeGreaterThan(sizes.client);
+    // The wheel over the body's top-left inset, away from the hosts field (a scroller of its own).
+    const inset = (await body.boundingBox())!;
+    await page.mouse.move(inset.x + 12, inset.y + 12);
+    await page.mouse.wheel(0, 5000);
+    await expect.poll(() => body.evaluate((element) => element.scrollTop + element.clientHeight >= element.scrollHeight - 1), { message: "the body scrolled to its end" }).toBe(true);
+    await expect(dialog.getByRole("heading", { name: "Site lookup" })).toBeInViewport({ ratio: 1 });
+    await expect(dialog.getByRole("button", { name: "Close", exact: true })).toBeInViewport({ ratio: 1 });
+    // The page behind doesn't move (the fresh-context review): one wheel latches to the body, so a second gesture at its
+    // end, and one over the backdrop, are what would reach the page.
+    await page.waitForTimeout(300);
+    await page.mouse.wheel(0, 2000);
+    await page.mouse.move(5, 300);
+    await page.mouse.wheel(0, 2000);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.scrollY), "the page behind stays where it was").toBe(pageScroll);
+});
+
 /** A page with a form, as an inspection of the target would record it, so the real generator writes an active test. */
 function profileWithForm(origin: string) {
     const element = (elementType: string, locator: Record<string, string>, text = "") => ({

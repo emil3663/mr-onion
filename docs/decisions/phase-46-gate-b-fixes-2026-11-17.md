@@ -258,7 +258,8 @@ D and E passed it; C failed. Gate B now waits for R1 to R7, R9 and R10,
 one at a time, each seen failing first, then the owner's Gate B ruling.
 R8 is folded into TFP-300 and R9. The items, in the owner's words:
 
-- **R1:** centre the lookup modal, scrolling inside.
+- **R1:** centre the lookup modal, scrolling inside. *Built
+  (2026-11-18): RUN-80.*
 - **R2:** mark required fields (asterisk and "(required)", with the
   browser's required check); show API refusals beside their field and in
   a summary above the save button, with focus on the first; the button's
