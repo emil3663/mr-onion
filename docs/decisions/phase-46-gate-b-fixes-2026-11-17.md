@@ -4,7 +4,8 @@ Status: **Owner decision (Emil, 2026-11-17).** Gate B waits for these
 fixes, one at a time, each seen failing first, in the order A, B, E, C,
 D (D changes the template: its difference is shown and waits for the
 owner's acceptance). Then a short re-walk of the changed screens and the
-owner's Gate B ruling. TFP-292 follows.
+owner's Gate B ruling. TFP-292 follows. **The re-walk (2026-11-18):** C
+failed; Gate B waits for R1 to R7, R9 and R10 (below).
 
 Record: `phase-46-app-screens-decision-record.md` (Gate B). The
 walkthrough itself: the owner, on a production build of `152bd93`
@@ -245,3 +246,113 @@ ships Phases 43 and 46 with that fix.
   passes on the clean local Toolshop (`sprint5`), or the template stops
   asserting a name that isn't stable; a false failure recorded in
   `labelled-failures.md` with its evidence.
+- **Seen again (2026-11-18):** it failed in every run of the C
+  investigation below (6 runs through the app and 2 outside it, run 2's
+  suite on `192.168.1.17:4201`), the same locator each time; nothing
+  else failed in those runs.
+
+## The re-walk (owner, 2026-11-18)
+
+Status: **Owner decision (Emil, 2026-11-18).** The re-walk is done. A, B,
+D and E passed it; C failed. Gate B now waits for R1 to R7, R9 and R10,
+one at a time, each seen failing first, then the owner's Gate B ruling.
+R8 is folded into TFP-300 and R9. The items, in the owner's words:
+
+- **R1:** centre the lookup modal, scrolling inside.
+- **R2:** mark required fields (asterisk and "(required)", with the
+  browser's required check); show API refusals beside their field and in
+  a summary above the save button, with focus on the first; the button's
+  hint names only what's missing.
+- **R3:** map API field names to labels on screen.
+- **R4:** a withdrawn confirmation's entry reads "Allowed, until
+  withdrawn".
+- **R5:** "Approving as `<name>` (change)" once at the top; Approve on each
+  candidate; "Reason to reject" beside Reject only.
+- **R6:** autofill off on Site URL, Base URL, hosts, both reason fields
+  and the confirmation's name and email, verified in real Chrome.
+- **R7:** the waiting list reads "Next step: in your Mr Onion checkout,
+  run npm run library:promote and commit the new entries under
+  src/lib/library/promoted/, reviewed like any code. A coding agent can
+  do this for you."
+- **R9:** Withdraw approval returns the candidate to Offered, with the
+  withdrawal kept and shown on it.
+- **R10 (from C):** (a) the planned list shows every test running, and
+  the last finished, not the first running one; (b) the projected time,
+  once at zero, stays "Finishing" and names the tests still running, with
+  how long each has run, instead of counting down again.
+
+### Why C failed (investigation, 2026-11-18)
+
+The owner's second run (`fe7d02bd`, 6 min 59 s) against the first
+(`aab404f0`, 2 min 30 s), both on `http://192.168.1.17:4201`, lined up
+against the owner's recording (time-lapsed about 2.4 times; the
+recorder's own timer gives real time):
+
+- **7 minutes.** One unit (TFFU-028, 029, 032, 033, 034, 036) runs on
+  one worker and is the run's critical path. In run 2, TFFU-033, 034 and
+  036 passed the 30 s timeout, and in each "Close context" didn't finish
+  before Playwright's teardown limit (another 30 s), then closing the
+  browser took 11 to 49 s and a fresh worker started: about 1.5 minutes
+  a test. In run 1 the same three passed at 22, 16 and 27 s, close to the
+  limit, and TFFU-028 hung on close the same way. Every test was 2 to 20
+  times slower in run 2 (TFFU-040, a page read: 29 ms, then 595 ms). The
+  cause is TFP-301.
+- **"Finishing..." three times.** The estimate (time per finished test
+  times the tests left) comes mostly from the two fast workers, while the
+  tests left were one worker's chain of 60 s tests. It reached zero at
+  4.5 min (52 of 56), 5.3 min (54) and 6.6 min (55), and each next finish
+  gave a new estimate more than 10% from a shown zero.
+- **Test 1 running past 30 finished.** The list scrolls to its first
+  running entry, in unit order, so the stuck unit's test stayed in view
+  while the other workers' tests finished below it (R10 (a)).
+
+## TFP-300 — Rejected candidates: a searchable list, and "Return to candidates"
+
+- **Status:** Not placed; after Gate B (owner, 2026-11-18).
+- **Problem it solves:** a rejected candidate leaves the promotion
+  screen, and nothing shows whether the gap writer keeps proposing the
+  pattern it was rejected for.
+- **Scope (the owner's words):** a searchable rejected-candidates list
+  (name, type, reason, site) with "Return to candidates" (name and
+  reason, one or several at once; offered again only if it still meets
+  the rule), and the gap writer counting, for each rejected pattern, each
+  time it would have proposed it again (date and site), shown as "seen N
+  times on M sites since rejection". Includes R8.
+- **Acceptance criteria:** to be written when placed.
+
+## TFP-301 — In-app runs are slower than the same suite outside the app, causing timeouts
+
+- **Status:** Not placed; outside Gate B (owner, 2026-11-18: the slowdown
+  is on `32b965a`, before Phase 46).
+- **Priority:** P1 (false failures: tests pass the 30 s timeout only
+  while the app's run overlay is drawn).
+- **Problem it solves:** a run is three to four times slower while the
+  run overlay is on screen, so tests near the timeout fail.
+- **Cause (measured 2026-11-18):** the overlay's root
+  (`RunProgressOverlay.tsx`) is a full-screen layer with
+  `backdrop-blur-sm`, and its spinner (`Spinner.tsx`, `animate-spin`)
+  repaints every frame, so the browser blurs the whole page about 60
+  times a second and takes CPU from the run's own browsers. Either one
+  alone costs nothing measurable.
+- **Evidence:** run 2's own request and suite, on the re-walk's site,
+  with no screen recorder; production builds in worktrees, each with its
+  own data and runs folder; the overlay in real, headed Chrome.
+
+  | Run | `6a602fc` | `32b965a` |
+  | --- | --- | --- |
+  | Outside the app (3 units at once) | 31 s | |
+  | API, polled every 800 ms as the overlay does | 30.7 s | 30.0 s |
+  | Timing reporter off | 29.6 s | 26.7 s |
+  | Polling off | 28.8 s | 29.7 s |
+  | **Overlay drawn** | **107.9 s** | **135.0 s** (TFFU-036 failed, 51.5 s) |
+  | Overlay drawn, backdrop blur removed | 32.0 s | 31.5 s |
+  | Overlay drawn, spinner stopped | 32.1 s | |
+
+  Per test, overlay drawn against polled only (`6a602fc`): TFFU-033 28.7
+  s against 5.6 s, TFFU-036 34.3 s against 7.8 s, TFFU-047 7.3 s against
+  0.8 s. Two switches were measurement-only and not committed: a
+  variable that dropped the timing reporter, and on `32b965a` a query
+  parameter that let the page follow a run started through the API (as
+  `sessionStorage` does from TFP-294).
+- **Acceptance criteria:** to be written when placed. The measurement
+  above, repeated, is its check.
