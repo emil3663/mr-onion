@@ -281,7 +281,7 @@ R8 is folded into TFP-300 and R9. The items, in the owner's words:
 - **R7:** the waiting list reads "Next step: in your Mr Onion checkout,
   run npm run library:promote and commit the new entries under
   src/lib/library/promoted/, reviewed like any code. A coding agent can
-  do this for you."
+  do this for you." *Built (2026-11-18): RUN-86.*
 - **R9:** Withdraw approval returns the candidate to Offered, with the
   withdrawal kept and shown on it.
 - **R10 (from C):** (a) the planned list shows every test running, and

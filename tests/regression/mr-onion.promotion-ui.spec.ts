@@ -14,6 +14,7 @@ import { candidateId } from "../../src/lib/candidates/pool";
 //   reject with no reason                            -> refused by the API, shown, the candidate still offered
 //   approve, naming who                              -> waiting to be committed; nothing in the repo changed
 
+const NEXT_STEP = "Next step: in your Mr Onion checkout, run npm run library:promote and commit the new entries under src/lib/library/promoted/, reviewed like any code. A coding agent can do this for you.";
 const dataDir = setting("DATA_DIR");
 const pool = () => join(dataDir!, "candidates");
 
@@ -92,7 +93,8 @@ test("TFP-234: only a candidate that meets the rule is offered, with its pattern
     await expect(page.getByRole("listitem", { name: "Candidate search [button]" })).toHaveCount(0);
     const waiting = page.getByRole("listitem", { name: "Waiting: search [button]" });
     await expect(waiting).toContainText("approved by Tess Tester on 2026-11-10");
-    await expect(page.getByText("Ask Claude Code: run `npm run library:promote`")).toBeVisible();
+    // R7 (the owner's re-walk, 2026-11-18): the next step, word for word, for anyone, not only Claude Code.
+    await expect(page.getByTestId("next-step")).toHaveText(NEXT_STEP);
 });
 
 test("TFP-234: a rejection without a reason is refused, and the candidate stays offered", async ({ page }) => {
@@ -120,7 +122,8 @@ test("TFP-234: an approval moves the candidate to waiting to be committed, with 
 
     await expect(page.getByRole("listitem", { name: "Candidate add to cart [button]" })).toHaveCount(0);
     await expect(page.getByRole("listitem", { name: "Waiting: add to cart [button]" })).toContainText("approved by Emil on");
-    await expect(page.getByText("Ask Claude Code: run `npm run library:promote`")).toBeVisible();
+    // R7 (the owner's re-walk, 2026-11-18): the next step, word for word, for anyone, not only Claude Code.
+    await expect(page.getByTestId("next-step")).toHaveText(NEXT_STEP);
     await page.reload();
     await expect(page.getByRole("listitem", { name: "Waiting: add to cart [button]" })).toBeVisible();
     const saved = JSON.parse(await readFile(join(pool(), `${OFFERED.id}.json`), "utf8"));

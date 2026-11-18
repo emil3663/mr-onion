@@ -10,8 +10,8 @@ import type { PromotionVerdict } from "@/lib/candidates/promotion";
  * - it lists only the candidates the rule offers, each with its pattern, its code (read-only), its evidence in words
  *   (`promotionVerdict`'s reasons) and every site it ran on, named by host;
  * - approve (naming who approved) or reject (with a reason, which the API requires);
- * - approved candidates wait to be committed, with the one-line pointer for Claude Code, which runs
- *   `npm run library:promote` and commits the entries. The app never writes into the repo.
+ * - approved candidates wait to be committed, with the next step (Gate B R7): in a checkout, `npm run library:promote`
+ *   and a reviewed commit of the entries, which a coding agent can do. The app never writes into the repo.
  * TFP-298 (Gate B's walkthrough): a pool file that can't be decided (its id isn't candidateId(pattern), its file isn't
  * named for its id, or it isn't JSON) is listed under "Not offered" with why, as the API reports it; and an approval
  * still waiting can be withdrawn, with a reason, through the API's reject.
@@ -19,7 +19,6 @@ import type { PromotionVerdict } from "@/lib/candidates/promotion";
 
 type PooledCandidate = Candidate & { verdict: PromotionVerdict };
 
-export const CLAUDE_CODE_POINTER = "Ask Claude Code: run `npm run library:promote`, then commit the new library entries under src/lib/library/promoted/, reviewed like any code.";
 
 /**
  * Each site a candidate ran on, once each, in the order first seen: one per origin, as the rule counts them
@@ -246,7 +245,11 @@ export function PromotionScreen() {
                 <p className="mt-1 text-sm text-zinc-600">Approved candidates become library entries through a reviewed commit. Mr Onion never writes into the repository itself.</p>
                 {waiting.length === 0 ? <p className="mt-4 text-sm text-zinc-600">Nothing is waiting.</p> : (
                     <>
-                        <p className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 font-mono text-xs text-indigo-900">{CLAUDE_CODE_POINTER}</p>
+                        <p data-testid="next-step" className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+                            {/* R7 (the owner's re-walk, 2026-11-18): the next step in the owner's words, for anyone with a checkout; the
+                                command and the folder set as code. */}
+                            Next step: in your Mr Onion checkout, run <code className="font-mono text-xs">npm run library:promote</code> and commit the new entries under <code className="font-mono text-xs">src/lib/library/promoted/</code>, reviewed like any code. A coding agent can do this for you.
+                        </p>
                         <ul className="mt-4 space-y-2 text-sm text-zinc-800">
                             {waiting.map((candidate) => (
                                 <li key={candidate.id} aria-label={`Waiting: ${describePattern(candidate)}`} className="rounded-2xl border border-zinc-200 p-3">
