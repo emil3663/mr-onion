@@ -115,18 +115,102 @@ test("TFP-233: opened from the run form, the host field is empty, 90 days presel
     await expect(results.getByRole("button", { name: "Confirm ownership" })).toBeFocused();
 });
 
-test("TFP-233: no name and no email are refused by the API, each with its reason, and nothing is saved", async ({ page }) => {
+// Phase 46 Gate B, R2 (the owner's re-walk, 2026-11-18): required fields are marked, with the browser's required
+// check; the API's refusals are shown beside their field and in a summary above the save button, focus on the first;
+// the save button's hint names only what's missing. Partitions: a required control / an optional one; a required field
+// left empty / all filled; a refusal with its field / one with none; nothing missing / some missing.
+test("R2: each required control is marked with an asterisk and \"(required)\" and is required; the optional ones aren't", async ({ page }) => {
     const form = await openForm(page);
+    const required = [
+        form.getByLabel("Hosts, one per line"),
+        form.getByRole("radio", { name: "I own this site" }),
+        form.getByRole("radio", { name: "I have written permission to test it" }),
+        form.getByRole("checkbox", { name: /I confirm the statement above/ }),
+        form.getByLabel("Your name"),
+        form.getByLabel("Contact email"),
+    ];
+    for (const control of required) await expect(control).toHaveAttribute("required", "");
+    // Each label or legend, by how it begins (the save hint names some of the same words: the fresh-context review).
+    for (const start of [/^Hosts, one per line/, /^Basis: choose one/, /^I confirm the statement above/, /^Your name/, /^Contact email/]) {
+        const label = form.locator("label, legend").filter({ hasText: start });
+        await expect(label).toHaveCount(1);
+        await expect(label).toContainText("*");
+        await expect(label).toContainText("(required)");
+    }
+    for (const optional of [form.getByLabel("Expires on"), form.getByRole("checkbox", { name: /^Active tests:/ }), form.getByRole("checkbox", { name: /^Load testing:/ })]) {
+        await expect(optional).not.toHaveAttribute("required");
+    }
+    await expect(form.locator("label", { hasText: "Expires on" })).not.toContainText("(required)");
+});
+
+test("R2: a required field left empty is stopped by the browser's required check, focused, and nothing is sent", async ({ page }) => {
+    const form = await openForm(page);
+    const sent: string[] = [];
+    page.on("request", (request) => { if (request.method() === "POST" && request.url().includes("/api/site-ownership")) sent.push(request.url()); });
     await form.getByLabel("Hosts, one per line").fill(HOST);
     await form.getByRole("radio", { name: "I own this site" }).check();
-    await form.getByLabel("I confirm the statement above").check();
+    await form.getByLabel("Contact email").fill("tess@example.com");
+    await form.getByRole("checkbox", { name: /I confirm the statement above/ }).check();
     await form.getByRole("button", { name: "Save the confirmation" }).click();
-    await expect(refusals(form)).toHaveText([
-        "name is missing: the name of the person who confirms",
-        "contactEmail is missing: how to reach the person who confirms",
-    ]);
-    await expect(form.getByRole("group", { name: "Mr Onion refused the confirmation:" })).toBeFocused();
+    const name = form.getByLabel("Your name");
+    await expect(name).toBeFocused();
+    expect(await name.evaluate((input: HTMLInputElement) => input.validity.valueMissing), "the browser's own check found it empty").toBe(true);
+    expect(await name.evaluate((input: HTMLInputElement) => input.validationMessage), "with the browser's message").not.toBe("");
+    expect(sent, "nothing was sent to the API").toEqual([]);
     expect((await ownership(page)).status).toBe("missing");
+});
+
+test("R2: the API's refusals are shown beside their field and in a summary above the save button, focus on the first", async ({ page }) => {
+    const form = await openForm(page);
+    await fillValid(form, { hosts: `*.${HOST}`, email: "tess at example" });
+    const save = form.getByRole("button", { name: "Save the confirmation" });
+    await save.click();
+    const hosts = form.getByLabel("Hosts, one per line");
+    const email = form.getByLabel("Contact email");
+    // Beside each field: its own refusal, the field marked invalid and described by it.
+    await expect(hosts).toHaveAttribute("aria-invalid", "true");
+    await expect(hosts).toHaveAccessibleDescription(new RegExp(`"\\*\\.${HOST.replace(/\./g, "\\.")}" is a wildcard`));
+    await expect(email).toHaveAttribute("aria-invalid", "true");
+    await expect(email).toHaveAccessibleDescription(/"tess at example" isn't a valid email address/);
+    await expect(form.getByLabel("Your name")).not.toHaveAttribute("aria-invalid", "true");
+    // The summary lists both, above the save button.
+    await expect(refusals(form)).toHaveCount(2);
+    const summary = form.getByRole("group", { name: "Mr Onion refused the confirmation:" });
+    const [summaryBox, saveBox] = [await summary.boundingBox(), await save.boundingBox()];
+    expect(summaryBox!.y + summaryBox!.height, "the summary ends above the save button").toBeLessThanOrEqual(saveBox!.y);
+    // Focus on the first refused field, in the form's order.
+    await expect(hosts).toBeFocused();
+    expect((await ownership(page)).status).toBe("missing");
+
+    // A field corrected loses its refusal, beside it and in the summary; focus stays where the tester types.
+    await email.fill("tess@example.com");
+    await expect(email).not.toHaveAttribute("aria-invalid", "true");
+    await expect(refusals(form)).toHaveCount(1);
+    await expect(email).toBeFocused();
+});
+
+test("R2: a refusal about no field is in the summary only, and the summary is focused", async ({ page }) => {
+    const form = await openForm(page);
+    await page.route("**/api/site-ownership", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, body: "" }) : route.fallback()));
+    await fillValid(form);
+    await form.getByRole("button", { name: "Save the confirmation" }).click();
+    await expect(refusals(form)).toHaveText(["the server answered 500, with no reason given"]);
+    await expect(form.getByRole("group", { name: "Mr Onion refused the confirmation:" })).toBeFocused();
+    await expect(form.locator("[aria-invalid='true']")).toHaveCount(0);
+});
+
+test("R2: the save button's hint names only what is still missing", async ({ page }) => {
+    const form = await openForm(page);
+    const hint = form.locator("#confirmation-save-hint");
+    await expect(hint).toHaveText("Still needed to save: the hosts, a basis, the statement's tick, your name and the contact email.");
+    await form.getByLabel("Hosts, one per line").fill(HOST);
+    await form.getByLabel("Your name").fill("Tess Tester");
+    await expect(hint).toHaveText("Still needed to save: a basis, the statement's tick and the contact email.");
+    await form.getByRole("radio", { name: "I own this site" }).check();
+    await form.getByLabel("Contact email").fill("tess@example.com");
+    await expect(hint).toHaveText("Still needed to save: the statement's tick.");
+    await form.getByRole("checkbox", { name: /I confirm the statement above/ }).check();
+    await expect(hint).toHaveText("");
 });
 
 test("TFP-233: a wildcard host, an invalid email and an expiry past 1 year are each refused with the API's reason", async ({ page }) => {

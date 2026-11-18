@@ -263,7 +263,9 @@ R8 is folded into TFP-300 and R9. The items, in the owner's words:
 - **R2:** mark required fields (asterisk and "(required)", with the
   browser's required check); show API refusals beside their field and in
   a summary above the save button, with focus on the first; the button's
-  hint names only what's missing.
+  hint names only what's missing. *Built (2026-11-18): RUN-81. Only the
+  required check is the browser's: the form keeps `noValidate`, so the
+  API still judges the email and the date.*
 - **R3:** map API field names to labels on screen.
 - **R4:** a withdrawn confirmation's entry reads "Allowed, until
   withdrawn".
