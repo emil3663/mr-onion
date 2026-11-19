@@ -171,6 +171,39 @@ The gates catch failures that are mechanical. Quality is judged by reading.
 
 ## 4. Phase and ticket gates
 
+### Screens (owner decision, 2026-11-19, from Phase 46's Gate B walkthrough)
+
+Red-first tests prove a screen does what was specified. Phase 46's
+walkthrough found 13, then 10 more, things nobody had specified, or that
+no automated browser shows. Three rules catch those earlier:
+
+1. **Wireframes before building a new screen.** The planning session
+   draws each new screen, low-fidelity, in each of its states (empty,
+   filled, refused, loading, done), and the owner approves them with the
+   decision record. A small change to an existing screen needs none.
+2. **A first look after the first screen ticket** of a phase: the owner
+   walks that screen in his own Chrome before the next screen is built.
+3. **Every screen ticket answers the screen checklist** in its
+   acceptance criteria, and names which items only the owner's Chrome can
+   show:
+   - **getting around:** the shared header, the way back, and whether a
+     link leaves the page (and loses work) or opens over it;
+   - **state:** what survives a refresh or a trip to another page;
+   - **errors:** shown beside the field and next to the action, in the
+     screen's own words, never an API name;
+   - **required fields:** marked, and checked by the browser before
+     sending;
+   - **autofill:** off where a suggestion is wrong or would list sites;
+     checked in the owner's Chrome, since automated Chrome doesn't
+     autofill;
+   - **layout:** at a normal window size, each field beside the action it
+     belongs to, dialogs centred;
+   - **keyboard and screen reader:** reachable, named, focus moved to
+     what needs attention;
+   - **cost:** anything shown during a run (animation, blur) checked
+     for its effect on the run's own timing in a visible browser
+     (TFP-301).
+
 - **Milestone gates.** Each decision record ends with "Suggested Milestone
   Gates". Code is not pushed past a gate until the gate has been
   independently verified. The current handover in `docs/` says which gate

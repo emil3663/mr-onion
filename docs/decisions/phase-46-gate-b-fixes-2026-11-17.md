@@ -322,7 +322,9 @@ recorder's own timer gives real time):
 
 ## TFP-300 — Rejected candidates: a searchable list, and "Return to candidates"
 
-- **Status:** Not placed; after Gate B (owner, 2026-11-18).
+- **Status:** Not placed; after Gate B (owner, 2026-11-18). The first
+  ticket under the Screens rules (`QUALITY_GATES.md` §4; owner decision,
+  2026-11-19): not built until its wireframes are approved.
 - **Problem it solves:** a rejected candidate leaves the promotion
   screen, and nothing shows whether the gap writer keeps proposing the
   pattern it was rejected for.

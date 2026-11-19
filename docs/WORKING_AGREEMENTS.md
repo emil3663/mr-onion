@@ -78,7 +78,8 @@ owner decision ─► decision record ─► tickets ─► handover ─► buil
    `docs/decisions/phase-NN-*-decision-record.md` before it is built
    (`phase-decision-record` skill). Its Acceptance criteria must be
    checkable; if they can't be written, the work isn't understood well
-   enough to start.
+   enough to start. A record that adds a screen includes its wireframes,
+   approved by the owner (`QUALITY_GATES.md` §4, Screens).
 2. **Break it into tickets.** `TFP-NNN`, in the record or a backlog file
    beside it (`implementation-backlog` skill). Each ticket has a
    problem it solves, scope, acceptance criteria and explicit dependencies.
@@ -89,7 +90,9 @@ owner decision ─► decision record ─► tickets ─► handover ─► buil
    commit; its history stays in git. The owner points Claude Code at the
    file; nobody pastes its contents into chat.
 4. **Build.** Claude Code builds one ticket at a time, runs its checks,
-   and shows evidence, not assertions (`QUALITY_GATES.md` §1).
+   and shows evidence, not assertions (`QUALITY_GATES.md` §1). In a phase
+   with screens, the owner takes a first look after its first screen
+   ticket, before the next screen is built.
 5. **Verify.** A fresh session checks the report against the ticket before
    the next ticket starts at a gate, and on the highest-risk ticket of a
    phase.
