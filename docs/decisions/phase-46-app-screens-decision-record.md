@@ -11,7 +11,7 @@ Scope: Give the app screens for settings that are API-only today:
 What Emil sees and approves is decided here. TestForge still never writes
 into the repo.
 
-Status: **Locked (Emil, 2026-10-20). In progress: TFP-232 to TFP-235 done, Gate A passed (2026-11-17).** Decisions, acceptance criteria and tickets approved; AC1 revised to a site lookup at his request.
+Status: **Locked (Emil, 2026-10-20). Complete 2026-11-19: TFP-232 to TFP-235 and TFP-289 done; Gate A passed (2026-11-17); Gate B passed after its fixes (owner, 2026-11-19: "mark Phase 46 complete").** Gate B's fixes are in `phase-46-gate-b-fixes-2026-11-17.md`: TFP-294 to TFP-298 from the walkthrough, then R1 to R7 and R9 to R11 from the re-walk (R8 folded into TFP-300 and R9). Merged to `main` as PRs #54 to #59, ending at `6cd39ee`; every check passed on #59's head, CodeQL's alert check included. Not released: no version tag until TFP-292 (owner, 2026-11-18). Next: TFP-301 (P1, the run overlay's slowdown), then TFP-292; TFP-300 waits for its wireframes. No tracking issue was opened for this phase. Decisions, acceptance criteria and tickets approved; AC1 revised to a site lookup at his request.
 - This is R5's second decision record (`post-phase-42-review-plan.md`).
 - Its build order: straight after Phase 43, before D1
   (`deferred-work-register.md`).

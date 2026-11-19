@@ -64,7 +64,7 @@ without renumbering the items below, which the tables' Order columns cite).
      and the script-payload test runs again.
    - Uncovered runs still run, with their active tests Not run.
    - Tickets TFP-218 to TFP-221.
-3. **Phase 46: the app screens.**
+3. **Phase 46: the app screens.** **Complete 2026-11-19** (Gates A and B passed; PRs #54 to #59, ending `6cd39ee`). Its follow-ups: D47 (TFP-300, waits for its wireframes), D48 (TFP-301, P1).
    - Reviewed against `main` on 2026-11-17 (its "Review before building"
      section): the API masks the contact email (owner decision), and notes
      in the app's report tabs are added as TFP-289.
