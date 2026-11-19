@@ -67,6 +67,9 @@ test("TFP-294: from the run form, the site lookup opens as a modal searched for 
 test("R6: the Base URL and the Site URL have autofill off", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByLabel("Base URL")).toHaveAttribute("autocomplete", "off");
+    // The owner's check in Chrome (2026-11-19): the Base URL still offered saved addresses. Of the seven fields it was the
+    // only textarea outside a form; the hosts, a textarea in a form with autofill off, passed. So it is given the same.
+    await expect(page.getByLabel("Base URL").locator("xpath=ancestor::form[1]")).toHaveAttribute("autocomplete", "off");
     await page.goto("/sites");
     await expect(page.getByLabel("Site URL")).toHaveAttribute("autocomplete", "off");
 });

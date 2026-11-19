@@ -186,6 +186,10 @@ export function CreationSection({
                         <div className="grid items-start gap-4 lg:grid-cols-[0.95fr_1.05fr]">
                             <div className="space-y-5">
                                 <div className="space-y-1.5">
+                                    {/* R6, from the owner's check in Chrome (2026-11-19): Chrome still offered saved addresses on the Base URL,
+                                        then the only one of the named fields that was a textarea outside a form. The hosts, a textarea in a form
+                                        with autofill off, passed, so the Base URL is given the same. The form only holds it: nothing submits. */}
+                                    <form autoComplete="off" onSubmit={(event) => event.preventDefault()} className="space-y-1.5">
                                     <label htmlFor="base-url-input" className="block text-sm font-medium text-zinc-700">
                                         Base URL
                                     </label>
@@ -223,6 +227,7 @@ export function CreationSection({
                                     <p className="text-xs text-zinc-500">
                                         Accepts local addresses like localhost:3000 and full URLs. To run exactly some pages, put one page URL per line, all on one site.
                                     </p>
+                                    </form>
                                     {urlFieldNote ? (
                                         <p data-testid="url-field-note" className={`text-xs ${urlFieldNote.kind === "invalid" ? "text-rose-600" : "text-sky-800"}`}>
                                             {urlFieldNote.text}

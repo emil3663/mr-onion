@@ -167,6 +167,9 @@ export function PromotionScreen() {
                             <input
                                 ref={approverField}
                                 value={approver}
+                                // R6, from the owner's check in Chrome (2026-11-19): it offered saved addresses; off, as the
+                                // confirmation's name, which passed.
+                                autoComplete="off"
                                 onChange={(event) => setApprover(event.target.value)}
                                 className="mt-1 block w-72 rounded-xl border border-zinc-300 px-3 py-2 text-sm"
                             />

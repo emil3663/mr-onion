@@ -292,6 +292,8 @@ test("R6: both reason fields have autofill off", async ({ page }) => {
     await page.goto("/candidates");
     await expect(page.getByRole("listitem", { name: "Candidate add to cart [button]" }).getByLabel("Reason to reject")).toHaveAttribute("autocomplete", "off");
     await expect(page.getByRole("listitem", { name: "Waiting: search [button]" }).getByLabel("Reason to withdraw")).toHaveAttribute("autocomplete", "off");
+    // The owner's check in Chrome (2026-11-19): the approval's name offered saved addresses; off, as the confirmation's name.
+    await expect(page.getByLabel("Your name, for an approval")).toHaveAttribute("autocomplete", "off");
 });
 
 test("TFP-298: an approval is withdrawn from the waiting list with a reason, through the API's reject", async ({ page }) => {
