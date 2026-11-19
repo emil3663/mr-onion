@@ -299,8 +299,8 @@ R8 is folded into TFP-300 and R9. The items, in the owner's words:
   once at zero, stays "Finishing" and names the tests still running, with
   how long each has run, instead of counting down again. *Built (2026-11-18):
   RUN-88. (a) is a "Running now" panel above the list, with every running
-  row marked in the list: **[for Emil]** confirm that reading. (b) holds
-  only in the run's tail (nothing left to start).*
+  row marked in the list; the owner ruled it meets R10 (a) (2026-11-19).
+  (b) holds only in the run's tail (nothing left to start).*
 
 ### Why C failed (investigation, 2026-11-18)
 
@@ -345,8 +345,10 @@ recorder's own timer gives real time):
 
 ## TFP-301 — In-app runs are slower than the same suite outside the app, causing timeouts
 
-- **Status:** Not placed; outside Gate B (owner, 2026-11-18: the slowdown
-  is on `32b965a`, before Phase 46).
+- **Status:** **Done (2026-11-19):** `d463e93`, merged as PR #60 (owner,
+  2026-11-19), every check passed on its head, CodeQL's alert check
+  included. It was outside Gate B (owner, 2026-11-18: the slowdown is on
+  `32b965a`, before Phase 46).
 - **Priority:** P1 (false failures: tests pass the 30 s timeout only
   while the app's run overlay is drawn).
 - **Problem it solves:** a run is three to four times slower while the

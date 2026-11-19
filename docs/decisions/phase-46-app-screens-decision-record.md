@@ -11,7 +11,7 @@ Scope: Give the app screens for settings that are API-only today:
 What Emil sees and approves is decided here. TestForge still never writes
 into the repo.
 
-Status: **Locked (Emil, 2026-10-20). Complete 2026-11-19: TFP-232 to TFP-235 and TFP-289 done; Gate A passed (2026-11-17); Gate B passed after its fixes (owner, 2026-11-19: "mark Phase 46 complete").** Gate B's fixes are in `phase-46-gate-b-fixes-2026-11-17.md`: TFP-294 to TFP-298 from the walkthrough, then R1 to R7 and R9 to R11 from the re-walk (R8 folded into TFP-300 and R9). Merged to `main` as PRs #54 to #59, ending at `6cd39ee`; every check passed on #59's head, CodeQL's alert check included. Not released: no version tag until TFP-292 (owner, 2026-11-18). Next: TFP-301 (P1, the run overlay's slowdown), then TFP-292; TFP-300 waits for its wireframes. No tracking issue was opened for this phase. Decisions, acceptance criteria and tickets approved; AC1 revised to a site lookup at his request.
+Status: **Locked (Emil, 2026-10-20). Complete 2026-11-19: TFP-232 to TFP-235 and TFP-289 done; Gate A passed (2026-11-17); Gate B passed after its fixes (owner, 2026-11-19: "mark Phase 46 complete").** Gate B's fixes are in `phase-46-gate-b-fixes-2026-11-17.md`: TFP-294 to TFP-298 from the walkthrough, then R1 to R7 and R9 to R11 from the re-walk (R8 folded into TFP-300 and R9). Merged to `main` as PRs #54 to #59, ending at `6cd39ee`; every check passed on #59's head, CodeQL's alert check included. Not released: no version tag until TFP-292 (owner, 2026-11-18). TFP-301 (P1, the run overlay's slowdown) done 2026-11-19 (PR #60). Next: TFP-292; TFP-300 waits for its wireframes. Tracking issue #61, opened after the phase (owner, 2026-11-19), with both gates' rulings, closed. Decisions, acceptance criteria and tickets approved; AC1 revised to a site lookup at his request.
 - This is R5's second decision record (`post-phase-42-review-plan.md`).
 - Its build order: straight after Phase 43, before D1
   (`deferred-work-register.md`).
@@ -665,3 +665,32 @@ reported) and PR #52's checks (reported green on `342b357`).
 - TFP-235 and TFP-289 landed and independently verified.
 - A walkthrough with Emil: confirm a local and a remote site, start a run
   with the switch, and approve a stand-in candidate.
+
+**Gate B verification (planning session, 2026-11-17; it built neither
+ticket): every checked criterion met. The walkthrough and the owner's
+ruling: pending.**
+
+| Check | How | Result |
+|---|---|---|
+| TFP-235: the switch asks the API (review item 5) | Read `ActiveSwitch.tsx`, the ownership route's gate preview | Disabled and off when the API's gate is closed, with Phase 43's reason and a link to the site's entry; available on a local or covered host |
+| TFP-235: the run decides (AC4) | Read `readRunRequest` and its test | Only `enableActive: true` asks for active tests; red first with a truthy check |
+| TFP-289: notes in the tabs (Decision 6) | Read `TestNotes.tsx`, `ExecutionTable.tsx`, `ComprehensiveReportView.tsx` | Notes shown whole with their test, apart from the observed outcome and findings; the Comprehensive view's section before "What this run did not test" |
+| Notes reach Comprehensive records | Read `src/lib/report/execution.ts` | One `flattenSuites` builds every run's records, Standard and Comprehensive, with `notesOf`; the display test's added note stands in only for a note no Comprehensive test yet writes |
+
+Not checked here: the suites (887 unit, 5 self-test, 97 regression
+reported) and PR #54's checks (reported green on `152bd93`).
+
+**For the owner's ruling:**
+1. **The Comprehensive display test's substitute note** is accepted
+   (recommended): the record-building code is shared, and Phase 43's Gate
+   B fix proved it on a real run.
+2. **The counts unchanged** rests on reading the code (recommended:
+   accept; no count reads `notes`).
+3. **Gate B passes** after the walkthrough.
+
+**The owner's ruling (2026-11-19):**
+1. The Comprehensive display test's substitute note: **accepted**.
+2. The counts unchanged, resting on reading the code: **accepted**.
+3. **Gate B passed (2026-11-19)**, after the walkthrough, the re-walk and
+   its fixes (`phase-46-gate-b-fixes-2026-11-17.md`), merged as PRs #54
+   to #59.
