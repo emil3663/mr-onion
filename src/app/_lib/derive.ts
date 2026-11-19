@@ -152,30 +152,49 @@ export type UrlField =
     | { kind: "list"; site: string; pages: string[]; urls: string[] }
     | { kind: "invalid"; message: string };
 
+/**
+ * Phase 46 Gate B, R11 (the owner, 2026-11-19): what the Base URL accepts, said with each of its refusals, and the
+ * refusal names the field as the form does, with the line (as the tester sees it, blank lines counted) when there are
+ * several.
+ */
+export const BASE_URL_ACCEPTS = "It accepts a full http or https address (https://shop.example.com/page), an address without http:// (read as http), or a local one with its port (localhost:3000); for several pages, one per line, all on one site.";
+/** The server's reading of one address (normalizeBaseUrl, and every route's): a scheme only with "://"; anything else is http. */
+const asTheServerReadsIt = (text: string) => (/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(text) ? text : `http://${text}`);
+const baseUrlRefusal = (line: number | null, why: string): UrlField => ({ kind: "invalid", message: `Base URL${line === null ? "" : `, line ${line}`}: ${why} ${BASE_URL_ACCEPTS}` });
+
 export function parseUrlField(value: string): UrlField {
-    const lines = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    if (lines.length <= 1) return { kind: "single", value };
-    const parsed: URL[] = [];
+    const lines = value.split(/\r?\n/).map((text, index) => ({ text: text.trim(), number: index + 1 })).filter((line) => line.text);
+    const several = lines.length > 1;
+    const parsed: Array<{ url: URL; number: number }> = [];
     for (const line of lines) {
-        // A scheme ("https://", "javascript:") is kept; "localhost:3000/x" is a host and port, read as http.
-        const withProtocol = /^[a-zA-Z][a-zA-Z\d+.-]*:(\/\/|(?!\d))/.test(line) ? line : `http://${line}`;
+        // R11 (the fresh-context review): "https:shop.example.com" or "https:/..." isn't the address meant: the server
+        // would read "https" as its host.
+        if (/^https?:(?!\/\/)/i.test(line.text)) {
+            return baseUrlRefusal(several ? line.number : null, `"${line.text}" isn't a URL: an address starts with http:// or https://.`);
+        }
+        // One line is read exactly as the server reads it, so the check and the request can't disagree. In a list (the
+        // pages are sent as this reads them) a scheme ("https://", "javascript:") is kept; "localhost:3000/x" is a host
+        // and port, read as http.
+        const withProtocol = !several ? asTheServerReadsIt(line.text) : /^[a-zA-Z][a-zA-Z\d+.-]*:(\/\/|(?!\d))/.test(line.text) ? line.text : `http://${line.text}`;
         let url: URL;
         try {
             url = new URL(withProtocol);
         } catch {
-            return { kind: "invalid", message: `"${line}" is not a valid URL. Enter one page URL per line.` };
+            return baseUrlRefusal(several ? line.number : null, `"${line.text}" isn't a URL.`);
         }
         if (url.protocol !== "http:" && url.protocol !== "https:") {
-            return { kind: "invalid", message: `${line} is not an http or https URL.` };
+            return baseUrlRefusal(several ? line.number : null, `"${line.text}" isn't an http or https address.`);
         }
-        parsed.push(url);
+        parsed.push({ url, number: line.number });
     }
-    const site = parsed[0].origin;
-    const other = parsed.find((url) => url.origin !== site);
+    // R11: one line is checked as above, by the rule the server reads it by, then kept as typed.
+    if (!several) return { kind: "single", value };
+    const site = parsed[0].url.origin;
+    const other = parsed.find((entry) => entry.url.origin !== site);
     if (other) {
-        return { kind: "invalid", message: `${other.toString()} is on another site than the first URL (${site}). Every page in the list must be on the same origin.` };
+        return baseUrlRefusal(other.number, `${other.url.toString()} is on another site than line ${parsed[0].number} (${site}).`);
     }
-    const pages = [...new Set(parsed.map((url) => `${url.pathname}${url.search}${url.hash}`))];
+    const pages = [...new Set(parsed.map(({ url }) => `${url.pathname}${url.search}${url.hash}`))];
     return { kind: "list", site, pages, urls: pages.map((page) => `${site}${page}`) };
 }
 
@@ -191,9 +210,7 @@ export function normalizeBaseUrl(value: string) {
         return { ok: true as const, value: DEFAULT_BASE_URL };
     }
 
-    const withProtocol = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmed)
-        ? trimmed
-        : `http://${trimmed}`;
+    const withProtocol = asTheServerReadsIt(trimmed);
 
     try {
         const normalized = new URL(withProtocol);
@@ -203,9 +220,11 @@ export function normalizeBaseUrl(value: string) {
             value: normalized.toString().replace(/\/$/, ""),
         };
     } catch {
+        // R11 (the fresh-context review): the same words as the field's own refusal, where this is still reached.
+        const refusal = baseUrlRefusal(null, `"${trimmed}" isn't a URL.`);
         return {
             ok: false as const,
-            message: "Enter a valid base URL like http://localhost:3000",
+            message: refusal.kind === "invalid" ? refusal.message : "",
         };
     }
 }

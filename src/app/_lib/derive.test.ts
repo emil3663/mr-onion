@@ -117,6 +117,8 @@ test("every field a login block accepts has a UI label, and the section has no f
     assert.ok(!Object.values(LOGIN_FIELD_LABELS).some((label) => /^(username|password)$/i.test(label)));
 });
 
+const ACCEPTS = "It accepts a full http or https address (https://shop.example.com/page), an address without http:// (read as http), or a local one with its port (localhost:3000); for several pages, one per line, all on one site.";
+
 // Phase 40 Decision 8 (TFP-174): the URL field takes one URL, as before, or a list of pages on one site.
 test("parseUrlField: one URL behaves as today; a list keeps each page's path and hash route on the first URL's origin; another origin is rejected, naming it", async () => {
     const { parseUrlField } = await import("./derive.ts");
@@ -124,7 +126,7 @@ test("parseUrlField: one URL behaves as today; a list keeps each page's path and
     assert.deepEqual(parseUrlField("  localhost:3000/notes \n\n"), { kind: "single", value: "  localhost:3000/notes \n\n" }, "one line with blank lines is still one URL");
     assert.deepEqual(parseUrlField("https://site.example/#/contact\r\nhttps://site.example/product/1?x=2\n\nhttps://site.example/#/contact\nsite.example/a"), {
         kind: "invalid",
-        message: "http://site.example/a is on another site than the first URL (https://site.example). Every page in the list must be on the same origin.",
+        message: `Base URL, line 5: http://site.example/a is on another site than line 1 (https://site.example). ${ACCEPTS}`,
     }, "a line without a protocol reads as http, so it is another origin than https");
     assert.deepEqual(parseUrlField("https://site.example/#/contact\r\nhttps://site.example/product/1?x=2\n\nhttps://site.example/#/contact\nhttps://site.example/"), {
         kind: "list",
@@ -132,7 +134,42 @@ test("parseUrlField: one URL behaves as today; a list keeps each page's path and
         pages: ["/#/contact", "/product/1?x=2", "/"],
         urls: ["https://site.example/#/contact", "https://site.example/product/1?x=2", "https://site.example/"],
     });
-    assert.deepEqual(parseUrlField("https://site.example/a\nhttps://other.example/b"), { kind: "invalid", message: "https://other.example/b is on another site than the first URL (https://site.example). Every page in the list must be on the same origin." });
-    assert.deepEqual(parseUrlField("https://site.example/a\njavascript:alert(1)"), { kind: "invalid", message: "javascript:alert(1) is not an http or https URL." });
-    assert.deepEqual(parseUrlField("https://site.example/a\nhttp://[bad"), { kind: "invalid", message: "\"http://[bad\" is not a valid URL. Enter one page URL per line." });
+    assert.deepEqual(parseUrlField("https://site.example/a\nhttps://other.example/b"), { kind: "invalid", message: `Base URL, line 2: https://other.example/b is on another site than line 1 (https://site.example). ${ACCEPTS}` });
+    assert.deepEqual(parseUrlField("https://site.example/a\njavascript:alert(1)"), { kind: "invalid", message: `Base URL, line 2: "javascript:alert(1)" isn't an http or https address. ${ACCEPTS}` });
+    assert.deepEqual(parseUrlField("https://site.example/a\nhttp://[bad"), { kind: "invalid", message: `Base URL, line 2: "http://[bad" isn't a URL. ${ACCEPTS}` });
+});
+
+// Phase 46 Gate B, R11 (the owner, 2026-11-19): the Base URL's refusal names the field "Base URL", says which line is
+// wrong when there are several, and says what's accepted. One line is checked too, by the rule the server reads it by
+// (no scheme is http). Partitions: one line / several; not a URL / not http(s) / another site; accepted forms.
+test("R11: a Base URL refusal names the field, the line when there are several, and what is accepted", async () => {
+    const { parseUrlField } = await import("./derive.ts");
+    assert.deepEqual(parseUrlField("http://[bad"), { kind: "invalid", message: `Base URL: "http://[bad" isn't a URL. ${ACCEPTS}` }, "one line, no line number");
+    assert.deepEqual(parseUrlField("ftp://files.example.com"), { kind: "invalid", message: `Base URL: "ftp://files.example.com" isn't an http or https address. ${ACCEPTS}` });
+    assert.deepEqual(parseUrlField("localhost:3000/notes"), { kind: "single", value: "localhost:3000/notes" }, "a local address with its port is accepted");
+    assert.deepEqual(parseUrlField("shop.example.com"), { kind: "single", value: "shop.example.com" }, "no scheme reads as http, as the server reads it");
+    assert.deepEqual(parseUrlField(""), { kind: "single", value: "" }, "empty is the form's own case, not a refusal");
+    // The line as the tester sees it, blank lines counted.
+    assert.equal((parseUrlField("https://a.example/x\n\n\nhttps://a.example/y\nnot a url at all") as { message: string }).message, `Base URL, line 5: "not a url at all" isn't a URL. ${ACCEPTS}`);
+    assert.ok(!/baseUrl/.test(JSON.stringify(parseUrlField("http://[bad"))), "the field is named as the form names it");
+});
+
+// R11 (the fresh-context review): one line is read exactly as the server reads it (normalizeBaseUrl: a scheme only
+// with "://", anything else is http), so the check and the request can't disagree; and an address that starts "http:"
+// or "https:" without "//" is refused, as the server would read "https" as its host.
+test("R11: one line is read as the server reads it, and a scheme without // is refused", async () => {
+    const { parseUrlField, normalizeBaseUrl } = await import("./derive.ts");
+    const wrongStart = (line: string) => `Base URL: "${line}" isn't a URL: an address starts with http:// or https://. ${ACCEPTS}`;
+    assert.deepEqual(parseUrlField("https:shop.example.com"), { kind: "invalid", message: wrongStart("https:shop.example.com") });
+    assert.deepEqual(parseUrlField("https:/shop.example.com"), { kind: "invalid", message: wrongStart("https:/shop.example.com") });
+    assert.deepEqual(parseUrlField("admin:secret@staging.example.com"), { kind: "single", value: "admin:secret@staging.example.com" }, "the server reads it as http, with a login");
+    // Whatever one line the check accepts, the server's reading of it is a URL, and an http or https one.
+    for (const line of ["localhost:3000", "192.168.1.10:8080", "[::1]:3000", "http://localhost:3000/#/x", "bücher.example:8080", "shop.example.com", "admin:secret@staging.example.com"]) {
+        assert.equal(parseUrlField(line).kind, "single", line);
+        const read = normalizeBaseUrl(line);
+        assert.ok(read.ok && /^https?:\/\//.test(read.value), `${line} -> ${JSON.stringify(read)}`);
+    }
+    // The client's own refusal, where it is still reached, says the same.
+    const refused = normalizeBaseUrl("http://[bad");
+    assert.equal(refused.ok ? "" : refused.message, `Base URL: "http://[bad" isn't a URL. ${ACCEPTS}`);
 });

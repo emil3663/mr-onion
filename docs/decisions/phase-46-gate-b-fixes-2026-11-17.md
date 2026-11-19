@@ -256,6 +256,7 @@ ships Phases 43 and 46 with that fix.
 Status: **Owner decision (Emil, 2026-11-18).** The re-walk is done. A, B,
 D and E passed it; C failed. Gate B now waits for R1 to R7, R9 and R10,
 one at a time, each seen failing first, then the owner's Gate B ruling.
+R11 was added by the owner on 2026-11-19.
 R8 is folded into TFP-300 and R9. The items, in the owner's words:
 
 - **R1:** centre the lookup modal, scrolling inside. *Built
@@ -289,6 +290,10 @@ R8 is folded into TFP-300 and R9. The items, in the owner's words:
   TFP-298's withdrawal, which rejected the candidate (the owner's answer of
   2026-11-18, "keep withdrawn approvals on record", still holds: in
   `withdrawals`).*
+- **R11 (owner, 2026-11-19):** Base URL's refusal names the field as
+  "Base URL" (not baseUrl), says which line is wrong when there are
+  several, and says what's accepted. *Built (2026-11-19): RUN-89. One line
+  is checked too, by the rule the server reads it by.*
 - **R10 (from C):** (a) the planned list shows every test running, and
   the last finished, not the first running one; (b) the projected time,
   once at zero, stays "Finishing" and names the tests still running, with

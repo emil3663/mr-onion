@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { startRecordedFixture } from "../../src/test-support/comparison-fixture";
+import { BASE_URL_ACCEPTS } from "../../src/app/_lib/derive";
 
 // Phase 40 (TFP-172, TFP-173): through the real UI. A crawl of the fixture's
 // /types shop (15 pages, 11 types) selects Standard's 8 pages by type; the
@@ -101,8 +102,20 @@ test.describe("Page types in the run report (TFP-173)", () => {
         await page.goto("/");
         await page.getByLabel("Base URL").fill(`${fixture.origin}/types\nhttps://other.example/types`);
         await page.getByLabel("What do you want to test?").fill("Check the security headers of every page.");
-        await expect(page.getByTestId("url-field-note")).toHaveText(`https://other.example/types is on another site than the first URL (${fixture.origin}). Every page in the list must be on the same origin.`);
+        // R11 (Gate B, 2026-11-19): the field named as the form names it, the line, and what is accepted.
+        await expect(page.getByTestId("url-field-note")).toHaveText(`Base URL, line 2: https://other.example/types is on another site than line 1 (${fixture.origin}). ${BASE_URL_ACCEPTS}`);
         await expect(page.getByRole("button", { name: "Generate test suite" })).toBeDisabled();
+    });
+
+    test("R11: one line that isn't an http or https address is refused before any request, as the Base URL", async ({ page }) => {
+        const sent: string[] = [];
+        page.on("request", (request) => { if (request.method() === "POST") sent.push(request.url()); });
+        await page.goto("/");
+        await page.getByLabel("Base URL").fill("http://[bad");
+        await page.getByLabel("What do you want to test?").fill("Check the security headers of every page.");
+        await expect(page.getByTestId("url-field-note")).toHaveText(`Base URL: "http://[bad" isn't a URL. ${BASE_URL_ACCEPTS}`);
+        await expect(page.getByRole("button", { name: "Generate test suite" })).toBeDisabled();
+        expect(sent, "nothing was sent").toEqual([]);
     });
 
     test("pages chosen by hand are recorded as an override, and 'Select by page type' returns to the type selection", async ({ page }) => {
