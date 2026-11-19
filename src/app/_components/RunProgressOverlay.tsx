@@ -1,5 +1,6 @@
 import { useProjectedRemaining } from "@/app/_hooks/useProjectedRemaining";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { formatRemaining } from "@/app/_lib/projection";
 import { Spinner } from "@/app/_components/Spinner";
 import { livePlannedExecutionStatusClasses, livePlannedExecutionStatusLabel, toSentenceCase } from "@/app/_lib/format";
 import { formatMilliseconds } from "@/lib/report/text";
@@ -47,22 +48,36 @@ export function RunProgressOverlay({
 }: RunProgressOverlayProps) {
     const activeRunPlannedExecutions = activeRunProgress?.plannedExecutions ?? [];
     const runRemainingLabel = useProjectedRemaining(activeRunProgress, runDurationMs, isCancellingRun);
-    const focusedPlannedExecutionId = activeRunPlannedExecutions.find((execution) => execution.status === "running")?.id ?? null;
-    const plannedExecutionListRef = useRef<HTMLDivElement>(null);
-    const plannedExecutionItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
+    // Gate B R10 (a) (C's investigation, 2026-11-18): every test running, and the last finished. The list used to scroll to
+    // its first running entry, in unit order, so one worker's slow test stayed in view while the others' finished below.
+    const running = activeRunPlannedExecutions.map((execution, index) => ({ execution, number: index + 1 })).filter(({ execution }) => execution.status === "running");
+    // By id, as one title can be a test in two browsers (the fresh-context review); by title for a server before it.
+    const lastId = activeRunProgress?.lastCompletedId ?? null;
+    const lastTitle = activeRunProgress?.lastCompletedTitle ?? null;
+    const lastFinished = lastId
+        ? activeRunPlannedExecutions.find((execution) => execution.id === lastId) ?? null
+        : lastTitle ? [...activeRunPlannedExecutions].reverse().find((execution) => execution.title === lastTitle && execution.status !== "running" && execution.status !== "not-run") ?? null : null;
+    // How long each has run, from when it began, on the server's clock: each snapshot says the server's time
+    // (`sampledAt`), so the page's own clock only counts the seconds since. Once a second, while something runs.
+    const [serverNow, setServerNow] = useState(() => Date.now());
+    const clockOffset = useRef(0);
+    const sampledAt = activeRunProgress?.sampledAt;
     useEffect(() => {
-        if (!focusedPlannedExecutionId) {
-            return;
-        }
-
-        const activeRow = plannedExecutionItemRefs.current[focusedPlannedExecutionId];
-        if (!activeRow) {
-            return;
-        }
-
-        activeRow.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
-    }, [focusedPlannedExecutionId, activeRunProgress?.completedTests]);
+        if (sampledAt !== undefined) clockOffset.current = sampledAt - Date.now();
+    }, [sampledAt]);
+    const anyRunning = running.length > 0;
+    useEffect(() => {
+        if (!anyRunning) return;
+        const tick = () => setServerNow(Date.now() + clockOffset.current);
+        const first = window.setTimeout(tick, 0);
+        const every = window.setInterval(tick, 1000);
+        return () => {
+            window.clearTimeout(first);
+            window.clearInterval(every);
+        };
+    }, [anyRunning]);
+    const runningFor = (startedAt: number | undefined) => (startedAt === undefined ? "" : formatRemaining(Math.max(0, serverNow - startedAt)));
+    const finishing = runRemainingLabel === "Finishing...";
 
     return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 px-6 backdrop-blur-sm">
@@ -147,9 +162,36 @@ export function RunProgressOverlay({
                                     </div>
                                     <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2">
                                         <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Projected remaining</div>
-                                        <div className="mt-1 text-base font-semibold text-zinc-900">{runRemainingLabel}</div>
+                                        <div data-testid="projected-remaining" className="mt-1 text-base font-semibold text-zinc-900">{runRemainingLabel}</div>
+                                        {/* R10 (b): at zero it stays Finishing, naming what is still running and for how long. */}
+                                        {finishing && running.length > 0 ? (
+                                            <div data-testid="finishing-running" className="mt-1 text-xs text-zinc-600">
+                                                Still running: {running.map(({ execution }) => `${execution.title}${execution.startedAt !== undefined ? ` (${runningFor(execution.startedAt)})` : ""}`).join("; ")}
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
+
+                                {/* R10 (a): every test running now, and the last to finish. */}
+                                {running.length > 0 || lastFinished ? (
+                                    <section aria-label="Running now" className="rounded-xl border border-indigo-200 bg-indigo-50/60 px-3 py-2">
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-700">Running now ({running.length})</div>
+                                        {/* Capped, so many workers can't squeeze the planned list out (the fresh-context review). */}
+                                        <ul aria-label="Tests running now" className="mt-1 max-h-24 space-y-0.5 overflow-y-auto text-xs text-zinc-800">
+                                            {running.map(({ execution, number }) => (
+                                                <li key={execution.id}>
+                                                    Test {number}: {execution.title}
+                                                    {execution.startedAt !== undefined ? <span className="text-zinc-500"> · running for {runningFor(execution.startedAt)}</span> : null}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        {lastFinished ? (
+                                            <div data-testid="last-finished" className="mt-1 text-xs text-zinc-600">
+                                                Last finished: {lastFinished.title} ({livePlannedExecutionStatusLabel(lastFinished.status)}{lastFinished.duration !== null ? `, ${formatMilliseconds(lastFinished.duration)}` : ""})
+                                            </div>
+                                        ) : null}
+                                    </section>
+                                ) : null}
 
                                 {activeRunPlannedExecutions.length > 0 ? (
                                     <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-white px-3 py-3">
@@ -162,20 +204,17 @@ export function RunProgressOverlay({
                                         <div className="mt-1 text-[11px] leading-5 text-zinc-500">
                                             These are the exact test titles queued for the current run, shown in execution order.
                                         </div>
-                                        <div ref={plannedExecutionListRef} className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                                        <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                                             {activeRunPlannedExecutions.map((execution, index) => (
                                                 <div
                                                     key={execution.id}
-                                                    ref={(element) => {
-                                                        plannedExecutionItemRefs.current[execution.id] = element;
-                                                    }}
-                                                    className={`flex items-start justify-between gap-3 rounded-xl border px-3 py-2 transition ${execution.id === focusedPlannedExecutionId
+                                                    className={`flex items-start justify-between gap-3 rounded-xl border px-3 py-2 transition ${execution.status === "running"
                                                         ? "border-indigo-300 bg-indigo-50 shadow-sm"
                                                         : "border-zinc-200 bg-zinc-50"
                                                         }`}
                                                 >
                                                     <div className="min-w-0 flex-1">
-                                                        <div className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${execution.id === focusedPlannedExecutionId ? "text-indigo-600" : "text-zinc-500"}`}>
+                                                        <div className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${execution.status === "running" ? "text-indigo-600" : "text-zinc-500"}`}>
                                                             Test {index + 1}
                                                         </div>
                                                         <div className="mt-1 break-words text-sm font-medium text-zinc-900">

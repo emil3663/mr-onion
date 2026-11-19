@@ -11,6 +11,12 @@ export interface Projection {
     atMs: number;
     /** The finished-test count the estimate was last checked at. */
     completed: number;
+    /**
+     * Gate B R10 (b) (C's investigation, 2026-11-18): it reached zero with tests still running. It stays so, shown as
+     * "Finishing", until the run ends: an estimate from the time per finished test can't see a slow last test, so a
+     * countdown after it only reached zero again (three times in the owner's second run).
+     */
+    finishing?: boolean;
 }
 
 export interface ProgressSample {
@@ -18,7 +24,12 @@ export interface ProgressSample {
     total: number;
     /** The run's time so far, as the server reported it with this count. */
     durationMs: number;
+    /** R10 (the fresh-context review): the tests running now. With it, finishing is only the run's tail. */
+    running?: number;
 }
+
+/** R10: nothing is left to start: every test has finished or is running (the run's tail, not an early zero). */
+const inTail = (sample: ProgressSample) => sample.running === undefined || sample.completed + sample.running >= sample.total;
 
 const MOVE_MS = 10_000;
 const MOVE_SHARE = 0.1;
@@ -32,6 +43,14 @@ function estimate(sample: ProgressSample): number | null {
 
 /** The projection after a sample: unchanged unless a test finished and its estimate is far enough from what's shown. */
 export function advanceProjection(previous: Projection | null, sample: ProgressSample, nowMs: number): Projection | null {
+    if (sample.total > 0 && sample.completed >= sample.total) return null;
+    // R10 (b): once at zero in the run's tail, finishing until the run ends; a test still to start (a second pass) ends it.
+    if (previous?.finishing) {
+        if (inTail(sample)) return previous;
+        previous = { ...previous, finishing: false, remainingMs: 0, atMs: nowMs, completed: -1 };
+    } else if (previous && shownRemainingMs(previous, nowMs) === 0 && inTail(sample)) {
+        return { ...previous, finishing: true };
+    }
     const fresh = estimate(sample);
     if (fresh === null) return previous && sample.completed < sample.total ? previous : null;
     if (previous === null) return { remainingMs: fresh, atMs: nowMs, completed: sample.completed };

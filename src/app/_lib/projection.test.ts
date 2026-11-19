@@ -70,3 +70,43 @@ test("the remaining time is shown to the second, so its countdown shows", async 
     assert.equal(formatRemaining(0), "0s");
     assert.equal(formatRemaining(-5), "0s");
 });
+
+// Phase 46 Gate B, R10 (b) (C's investigation, 2026-11-18): once the projection reaches zero it stays "Finishing" until
+// the run ends, rather than counting down again after each late finish. Run 2's own finishes, as the owner's recording
+// showed them (finished count against elapsed time): it reached zero at 52 of 56, then counted down again at 53, 54 and
+// 55, so "Finishing..." showed three times.
+test("R10: once at zero it is finishing until the run ends, through run 2's late finishes", () => {
+    const finishes: Array<[number, number]> = [[10, 1], [27, 4], [40, 8], [54, 12], [78, 23], [102, 28], [126, 31], [180, 38], [216, 45], [252, 52], [300, 53], [312, 54], [390, 55]];
+    let projection = null as ReturnType<typeof advanceProjection>;
+    const states: string[] = [];
+    for (let second = 1; second <= 410; second++) {
+        const completed = [...finishes].reverse().find(([at]) => at <= second)?.[1] ?? 0;
+        projection = advanceProjection(projection, sample(completed, 56, second * 1000), second * 1000);
+        const state = projection === null ? "estimating" : projection.finishing ? "finishing" : shownRemainingMs(projection, second * 1000) === 0 ? "zero" : "counting";
+        if (states.at(-1) !== state) states.push(state);
+    }
+    assert.deepEqual(states, ["estimating", "counting", "finishing"], "it reaches finishing once and stays there");
+});
+
+test("R10: a finish that leaves tests to go doesn't start a countdown again; the run's last finish ends it", () => {
+    const counting = advanceProjection(null, sample(52, 56, 252_000), 252_000)!; // about 19 s to go
+    const zero = advanceProjection(counting, sample(52, 56, 280_000), 280_000)!;
+    assert.equal(zero.finishing, true, "at zero it is finishing");
+    const late = advanceProjection(zero, sample(53, 56, 300_000), 300_000)!;
+    assert.equal(late.finishing, true, "a late finish doesn't re-estimate");
+    assert.equal(advanceProjection(late, sample(56, 56, 414_000), 414_000), null, "and all finished ends it");
+});
+
+// R10 (the fresh-context review): only the run's tail is "finishing": a zero reached with tests still to start (an
+// early estimate that was too short, or the gap before the serial pass) counts down again as before.
+test("R10: a zero with tests still to start isn't finishing; with none left to start, it is", () => {
+    const early = advanceProjection(null, { completed: 5, total: 56, durationMs: 10_000, running: 3 }, 10_000)!; // ~102 s
+    const atZero = advanceProjection(early, { completed: 5, total: 56, durationMs: 120_000, running: 3 }, 120_000)!;
+    assert.notEqual(atZero.finishing, true, "48 tests still to start: not finishing");
+    const tail = advanceProjection(null, { completed: 52, total: 56, durationMs: 252_000, running: 4 }, 252_000)!;
+    const tailZero = advanceProjection(tail, { completed: 52, total: 56, durationMs: 280_000, running: 4 }, 280_000)!;
+    assert.equal(tailZero.finishing, true, "all started: finishing");
+    // A test that begins after the latch (a second pass) ends it: there was more to start after all.
+    const more = advanceProjection(tailZero, { completed: 54, total: 60, durationMs: 300_000, running: 1 }, 300_000)!;
+    assert.notEqual(more.finishing, true);
+});

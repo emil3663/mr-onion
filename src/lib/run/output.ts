@@ -155,6 +155,9 @@ function handleProgressEvent(job: RunJob, line: string) {
                 linkLabel: deriveLinkLabel(event.title),
             });
             updatePlannedExecutionStatus(job, event.id, "running", null);
+            // Gate B R10: when it began, for the overlay's "running for" (kept when it ends).
+            const began = job.progress.plannedExecutions.find((entry) => entry.id === event.id);
+            if (began) began.startedAt = Date.now();
             updateActiveExecutions(job);
             return true;
         }
@@ -166,6 +169,7 @@ function handleProgressEvent(job: RunJob, line: string) {
 
             job.progress.completedTests += 1;
             job.progress.lastCompletedTitle = event.title;
+            job.progress.lastCompletedId = event.id;
             updatePlannedExecutionStatus(job, event.id, mapResultStatusToPlannedStatus(event.status), event.duration ?? null);
             updateCompletedCounts(job, event.status);
             updateActiveExecutions(job);

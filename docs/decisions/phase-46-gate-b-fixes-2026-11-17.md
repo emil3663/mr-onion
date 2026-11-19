@@ -290,7 +290,10 @@ R8 is folded into TFP-300 and R9. The items, in the owner's words:
 - **R10 (from C):** (a) the planned list shows every test running, and
   the last finished, not the first running one; (b) the projected time,
   once at zero, stays "Finishing" and names the tests still running, with
-  how long each has run, instead of counting down again.
+  how long each has run, instead of counting down again. *Built (2026-11-18):
+  RUN-88. (a) is a "Running now" panel above the list, with every running
+  row marked in the list: **[for Emil]** confirm that reading. (b) holds
+  only in the run's tail (nothing left to start).*
 
 ### Why C failed (investigation, 2026-11-18)
 

@@ -43,6 +43,9 @@ export interface RunProgressSnapshot {
     currentTestTitle: string | null;
     currentLinkLabel: string | null;
     lastCompletedTitle: string | null;
+    /** Gate B R10: see src/lib/run/jobs.ts. */
+    lastCompletedId?: string | null;
+    sampledAt?: number;
     activeExecutions: {
         id: string;
         title: string;
@@ -54,6 +57,8 @@ export interface RunProgressSnapshot {
         linkLabel: string | null;
         status: "not-run" | "running" | "passed" | "failed" | "flaky" | "blocked" | "interrupted";
         duration: number | null;
+        /** Gate B R10: when the test began, the server's clock (ms since the epoch). */
+        startedAt?: number;
     }[];
 }
 
@@ -172,6 +177,9 @@ export interface CrawlProgressSnapshot {
     currentTitle: string | null;
     lastCompletedPath: string | null;
     lastCompletedTitle: string | null;
+    /** Gate B R10: see src/lib/run/jobs.ts. */
+    lastCompletedId?: string | null;
+    sampledAt?: number;
 }
 
 export interface CrawlStatusSnapshot {

@@ -31,6 +31,8 @@ export interface PlannedExecutionSnapshot {
     linkLabel: string | null;
     status: PlannedExecutionStatus;
     duration: number | null;
+    /** Gate B R10: when the test began (ms since the epoch, the server's clock), for the overlay's "running for". */
+    startedAt?: number;
 }
 
 export interface RunProgressSnapshot {
@@ -44,6 +46,10 @@ export interface RunProgressSnapshot {
     currentTestTitle: string | null;
     currentLinkLabel: string | null;
     lastCompletedTitle: string | null;
+    /** Gate B R10: the last finished test's id, as a title can be one test in two browsers. */
+    lastCompletedId?: string | null;
+    /** Gate B R10: the server's clock when this was sent, so the overlay's "running for" uses the server's time. */
+    sampledAt?: number;
     activeExecutions: ActiveExecution[];
     plannedExecutions: PlannedExecutionSnapshot[];
 }
@@ -176,7 +182,7 @@ export function buildRunSnapshot(job: RunJob): RunStatusPayload {
         runId: job.id,
         runStatus: job.status,
         duration: (job.finishedAt ?? Date.now()) - job.createdAt,
-        progress: job.progress,
+        progress: { ...job.progress, sampledAt: Date.now() },
         cancellationRequested: job.cancellationRequested,
         result: job.result ?? undefined,
     };

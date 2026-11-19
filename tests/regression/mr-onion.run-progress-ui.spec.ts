@@ -114,3 +114,101 @@ test("TFP-296: the projected remaining time counts down by the second between es
     expect(longest, `the remaining time, read once a second: ${JSON.stringify(readings)}`).toBeGreaterThanOrEqual(3);
     await expect(page.getByText("Release readiness at a glance")).toBeVisible({ timeout: 240_000 });
 });
+
+// Phase 46 Gate B, R10 (C's investigation, 2026-11-18): the overlay of the owner's second run, from its own shape. The
+// page follows a run kept for the session (TFP-294), and the run's polls are answered with snapshots this test sets, on
+// a clock it moves (page.clock), so the moments the recording showed can be staged exactly. The clock still runs
+// between moves (page.clock.install doesn't stop it), so a time is read as at least what it was set to.
+const RUN_ID = "0b0e6c1e-2f4a-4c35-9d55-7a3a2f9e1b10";
+const title = (n: number) => `TFFU-${String(n).padStart(3, "0")}: test ${n}`;
+type Planned = { id: string; title: string; linkLabel: null; status: string; duration: number | null; startedAt?: number };
+function snapshot(planned: Planned[], completed: number, durationMs: number, lastCompletedTitle: string | null) {
+    const passed = planned.filter((entry) => entry.status === "passed").length;
+    return {
+        runId: RUN_ID, runStatus: "running", duration: durationMs, cancellationRequested: false, result: null,
+        progress: {
+            totalTests: planned.length, startedTests: completed + planned.filter((entry) => entry.status === "running").length, completedTests: completed,
+            passedTests: passed, failedTests: completed - passed, flakyTests: 0, blockedTests: 0,
+            currentTestTitle: null, currentLinkLabel: null, lastCompletedTitle, activeExecutions: [], plannedExecutions: planned,
+        },
+    };
+}
+async function followScriptedRun(page: import("@playwright/test").Page, current: () => unknown) {
+    await page.route("**/api/run?runId=*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(current()) }));
+    await page.addInitScript((id) => sessionStorage.setItem("mronion.run.activeRunId", JSON.stringify(id)), RUN_ID);
+}
+
+test("R10 (a): every test running is shown, and the last finished, not only the first running one", async ({ page }) => {
+    const start = new Date("2026-11-18T19:37:00Z").getTime();
+    await page.clock.install({ time: start + 150_000 });
+    // The recording at 2.5 min: test 1 (one worker's unit) still running, tests 7 to 36 finished, 37 and 38 running.
+    const planned: Planned[] = Array.from({ length: 56 }, (_, index) => {
+        const n = index + 1;
+        const status = n === 1 || n === 37 || n === 38 ? "running" : n >= 7 && n <= 36 ? "passed" : "not-run";
+        return { id: `t${n}`, title: title(n), linkLabel: null, status, duration: status === "passed" ? 900 : null, ...(status === "running" ? { startedAt: n === 1 ? start + 5_000 : start + 140_000 } : {}) };
+    });
+    await followScriptedRun(page, () => snapshot(planned, 30, 150_000, title(36)));
+    await page.goto("/");
+    const now = page.getByRole("region", { name: "Running now" });
+    await expect(now.getByRole("list", { name: "Tests running now" }).getByRole("listitem")).toHaveText([
+        new RegExp(String.raw`^Test 1: TFFU-001: test 1 · running for 2m [2-5]\ds$`),
+        new RegExp(String.raw`^Test 37: TFFU-037: test 37 · running for [1-4]\ds$`),
+        new RegExp(String.raw`^Test 38: TFFU-038: test 38 · running for [1-4]\ds$`),
+    ]);
+    await expect(now).toContainText("Running now (3)");
+    await expect(page.getByTestId("last-finished")).toHaveText(`Last finished: ${title(36)} (Passed, 900ms)`);
+});
+
+// R10 (the fresh-context review): one title, a test in two browsers; the last finished is the one the server names.
+test("R10 (a): the last finished is the test the server names, when two share a title", async ({ page }) => {
+    const planned: Planned[] = [
+        { id: "chromium-1", title: title(1), linkLabel: null, status: "failed", duration: 2000 },
+        { id: "chromium-2", title: title(2), linkLabel: null, status: "running", duration: null, startedAt: Date.now() - 3000 },
+        { id: "firefox-1", title: title(1), linkLabel: null, status: "passed", duration: 1000 },
+        { id: "firefox-2", title: title(2), linkLabel: null, status: "not-run", duration: null },
+    ];
+    await followScriptedRun(page, () => ({ ...snapshot(planned, 2, 10_000, title(1)), progress: { ...snapshot(planned, 2, 10_000, title(1)).progress, lastCompletedId: "chromium-1" } }));
+    await page.goto("/");
+    await expect(page.getByTestId("last-finished")).toHaveText(`Last finished: ${title(1)} (Failed, 2.0s)`);
+    // Every running row is marked as running, in the list itself.
+    await expect(page.getByText("Test 2", { exact: true })).toHaveClass(/text-indigo-600/);
+    await expect(page.getByText("Test 1", { exact: true })).not.toHaveClass(/text-indigo-600/);
+});
+
+test("R10 (b): once the projection reaches zero it stays Finishing, naming what's still running, through later finishes", async ({ page }) => {
+    const start = new Date("2026-11-18T19:37:00Z").getTime();
+    await page.clock.install({ time: start + 252_000 });
+    // Paused: only runFor moves the clock, so a countdown can't run on between readings.
+    await page.clock.pauseAt(start + 252_000);
+    const planned = (done: number): Planned[] => Array.from({ length: 56 }, (_, index) => {
+        const n = index + 1;
+        const status = n <= done ? "passed" : n <= done + 3 ? "running" : "not-run";
+        return { id: `t${n}`, title: title(n), linkLabel: null, status, duration: status === "passed" ? 1000 : null, ...(status === "running" ? { startedAt: start + 200_000 } : {}) };
+    });
+    // Run 2's tail: 52 of 56 at 4.2 min (an estimate of about 19 s), 53 at 5.0 min.
+    let current = snapshot(planned(52), 52, 252_000, title(52));
+    await followScriptedRun(page, () => current);
+    await page.goto("/");
+    const remaining = page.getByTestId("projected-remaining");
+    // The first poll's answer on screen, then the ticks, on the paused clock (the answer comes over the network, so
+    // moving the clock first would tick before there is anything to estimate from).
+    await expect(page.getByText("52 of 56 tests finished")).toBeVisible();
+    await page.clock.runFor(2_000);
+    await expect(remaining).toHaveText(/^\d+s$/);
+    await page.clock.runFor(30_000);
+    await expect(remaining).toHaveText("Finishing...");
+    const ran = String.raw`\(\d+m \d{2}s\)`;
+    await expect(page.getByTestId("finishing-running")).toHaveText(new RegExp(`^Still running: TFFU-053: test 53 ${ran}; TFFU-054: test 54 ${ran}; TFFU-055: test 55 ${ran}$`));
+    // A late finish: before R10 a new estimate counted down again ("17s"); now it stays Finishing. Read once a second
+    // without retrying (an assertion that waits would see a countdown reach zero again, and pass).
+    current = snapshot(planned(53), 53, 300_000, title(53));
+    await page.clock.runFor(18_000);
+    await expect(page.getByText("53 of 56 tests finished")).toBeVisible();
+    const readings: string[] = [];
+    for (let second = 0; second < 5; second++) {
+        await page.clock.runFor(1_000);
+        readings.push((await remaining.textContent()) ?? "");
+    }
+    expect(readings, "each second after the late finish").toEqual(Array(5).fill("Finishing..."));
+    await expect(page.getByTestId("finishing-running")).toContainText("Still running: TFFU-054: test 54 (");
+});

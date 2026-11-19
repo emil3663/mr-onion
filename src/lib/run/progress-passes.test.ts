@@ -96,3 +96,30 @@ test("at the run's end the places no test took are dropped; a stopped run keeps 
     assert.deepEqual(stopped.progress.plannedExecutions.map((entry) => entry.status), ["not-run", "not-run", "not-run"], "the tests it didn't get to stay listed");
     assert.equal(stopped.progress.plannedExecutions.length, 3);
 });
+
+// Phase 46 Gate B, R10 (C's investigation, 2026-11-18): the overlay shows every test running and how long each has run,
+// so a planned test records when it began; a finished one keeps it.
+test("R10: a test's place records when it began, and keeps it when it ends", () => {
+    const run = job(2);
+    appendProcessOutput(run, line({ type: "begin", total: 2, tests: tests(1, 2) }));
+    const before = Date.now();
+    appendProcessOutput(run, line({ type: "test-begin", id: "t1", title: tests(1, 1)[0].title }));
+    const started = run.progress.plannedExecutions.find((entry) => entry.id === "t1")!.startedAt;
+    assert.ok(typeof started === "number" && started >= before && started <= Date.now(), `t1 began at ${started}`);
+    assert.equal(run.progress.plannedExecutions.find((entry) => entry.id === "t2")!.startedAt, undefined, "t2 hasn't begun");
+    appendProcessOutput(run, line({ type: "test-end", id: "t1", title: tests(1, 1)[0].title, status: "passed", duration: 10 }));
+    assert.equal(run.progress.plannedExecutions.find((entry) => entry.id === "t1")!.startedAt, started);
+});
+
+test("R10: the last finished test is named by its id, and a snapshot says the server's time", async () => {
+    const run = job(2);
+    appendProcessOutput(run, line({ type: "begin", total: 2, tests: [{ id: "chromium-1", title: "TFFU-001: one" }, { id: "firefox-1", title: "TFFU-001: one" }] }));
+    appendProcessOutput(run, line({ type: "test-end", id: "firefox-1", title: "TFFU-001: one", status: "passed", duration: 10 }));
+    appendProcessOutput(run, line({ type: "test-end", id: "chromium-1", title: "TFFU-001: one", status: "failed", duration: 20 }));
+    assert.equal(run.progress.lastCompletedId, "chromium-1", "the one that finished last, not the first of the title");
+    const { buildRunSnapshot } = await import("./jobs.ts");
+    const before = Date.now();
+    const sent = buildRunSnapshot({ ...run, id: "r", status: "running", createdAt: before, cancellationRequested: false } as unknown as RunJob);
+    assert.ok(sent.progress.sampledAt! >= before && sent.progress.sampledAt! <= Date.now());
+    assert.equal(run.progress.sampledAt, undefined, "the job's own progress isn't changed");
+});

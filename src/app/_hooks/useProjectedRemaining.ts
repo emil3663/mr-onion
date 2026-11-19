@@ -19,7 +19,7 @@ export function useProjectedRemaining(progress: RunProgressSnapshot | null, dura
         const tick = () => {
             const { progress: current, durationMs: duration, isCancelling: cancelling } = latest.current;
             const now = Date.now();
-            projection = advanceProjection(projection, { completed: current?.completedTests ?? 0, total: current?.totalTests ?? 0, durationMs: duration }, now);
+            projection = advanceProjection(projection, { completed: current?.completedTests ?? 0, total: current?.totalTests ?? 0, durationMs: duration, running: current?.plannedExecutions?.filter((entry) => entry.status === "running").length }, now);
             const left = projection ? shownRemainingMs(projection, now) : null;
             // At zero with tests still going (an estimate that was too short): finishing, not "0s" for a long while.
             setLabel(cancelling ? "Stopping..." : left === null ? "Estimating..." : left === 0 ? "Finishing..." : formatRemaining(left));
