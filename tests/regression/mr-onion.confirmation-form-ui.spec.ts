@@ -24,6 +24,8 @@ const SHOP = "https://confirm-shop.example.com";
 const HOST = "confirm-shop.example.com";
 const DAY = 24 * 60 * 60 * 1000;
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
+/** Text matched literally inside a regular expression: every character a pattern gives meaning to, escaped. */
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 function ownRegressionFolder(dir: string | undefined): boolean {
     if (!dir) return false;
@@ -64,7 +66,14 @@ const at = (day: string) => `${day} 00:00 UTC`;
 
 test("TFP-233: opened from the run form, the host field is empty, 90 days preselected, the picker stops at 1 year, the ticks off", async ({ page }) => {
     await page.goto("/");
-    await page.getByLabel("Base URL").fill(`${SHOP}/shop`);
+    // The run form fills in from the session just after the first paint (TFP-294, accepted), so a value typed before
+    // that can be replaced: seen once in the full suite (2026-11-19), the lookup searching the default address. Typed
+    // again until it holds.
+    const baseUrl = page.getByLabel("Base URL");
+    await expect(async () => {
+        await baseUrl.fill(`${SHOP}/shop`);
+        await expect(baseUrl).toHaveValue(`${SHOP}/shop`, { timeout: 500 });
+    }).toPass();
     // TFP-294: the run form's lookup is a modal over the form.
     await page.getByRole("button", { name: "This site's confirmation and settings", exact: true }).click();
     const lookup = page.getByRole("dialog", { name: "Site lookup" });
@@ -170,7 +179,8 @@ test("R2: the API's refusals are shown beside their field and in a summary above
     const email = form.getByLabel("Contact email");
     // Beside each field: its own refusal, the field marked invalid and described by it.
     await expect(hosts).toHaveAttribute("aria-invalid", "true");
-    await expect(hosts).toHaveAccessibleDescription(new RegExp(`"\\*\\.${HOST.replace(/\./g, "\\.")}" is a wildcard`));
+    // Every special character escaped (CodeQL js/incomplete-sanitization: escaping only the dots wasn't enough).
+    await expect(hosts).toHaveAccessibleDescription(new RegExp(`${escapeRegExp(`"*.${HOST}"`)} is a wildcard`));
     await expect(email).toHaveAttribute("aria-invalid", "true");
     await expect(email).toHaveAccessibleDescription(/"tess at example" isn't a valid email address/);
     await expect(form.getByLabel("Your name")).not.toHaveAttribute("aria-invalid", "true");
