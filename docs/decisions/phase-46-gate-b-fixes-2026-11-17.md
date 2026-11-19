@@ -377,5 +377,39 @@ recorder's own timer gives real time):
   variable that dropped the timing reporter, and on `32b965a` a query
   parameter that let the page follow a run started through the API (as
   `sessionStorage` does from TFP-294).
-- **Acceptance criteria:** to be written when placed. The measurement
-  above, repeated, is its check.
+- **Placed (owner, 2026-11-19):** next after Phase 46, before TFP-292.
+- **Scope:** the run overlay keeps its dimmed backdrop and loses the
+  blur, the cost measured; so do the header, the run form's sections and
+  Help's panel (below).
+- **Acceptance criteria:**
+  - While a run is shown, no full-screen layer has a backdrop filter (a
+    page test, the run staged as R10's cases stage it); red first.
+  - The measurement above, repeated: run 2's suite on the local Toolshop
+    through the LAN address, the overlay drawn in real, headed Chrome,
+    takes about what polling alone does (about 30 s), against 107.9 s
+    before.
+  - The overlay still dims the page behind it; template output
+    unchanged.
+- **Built (2026-11-19):** RUN-90. The overlay is dimmed, not blurred, and
+  so are the header and the run form's sections: with the overlay's blur
+  alone removed the run still took about 8 s more, as those two blurs were
+  redrawn under it with each poll. Help's panel loses its blur too: the
+  fresh-context review found it can be opened from the keyboard during a
+  run, over the overlay. Measured on the same day (run 2's suite, the local Toolshop through
+  192.168.1.17:4201, the overlay in headed Chrome):
+
+  | Run | Duration |
+  | --- | --- |
+  | Old blur put back (control) | 194.2 s (TFFU-033, 036 timed out) |
+  | Overlay's blur only removed | 45.2, 40.7, 55.6, 38.8, 37.5 s |
+  | Every blur removed (CSS) | 33.2, 32.8 s |
+  | Final code, overlay drawn | 36.3, 33.2, 33.6 s |
+  | Polled only, no browser, same build | 28.8, 28.9 s (28.8 to 46.0 s across the day) |
+  | Headed Chrome on a blank page | 29.4, 29.5 s |
+
+  What is left (about 4 to 7 s on that build) is within the machine's
+  run-to-run spread, and is the overlay drawn again each second by its
+  projected time and on each poll. Moving "running for" into its own
+  ticking component was tried and dropped: the remaining-time label still
+  redraws the overlay each second, and a second set of runs on it (34.1
+  to 37.9 s) was no better.

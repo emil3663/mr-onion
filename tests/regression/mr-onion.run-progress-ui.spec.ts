@@ -212,3 +212,27 @@ test("R10 (b): once the projection reaches zero it stays Finishing, naming what'
     expect(readings, "each second after the late finish").toEqual(Array(5).fill("Finishing..."));
     await expect(page.getByTestId("finishing-running")).toContainText("Still running: TFFU-054: test 54 (");
 });
+
+// TFP-301 (P1, from C's investigation, 2026-11-18): with the overlay drawn, a run took 107.9 s against 30.7 s polled
+// only, because a spinner repaints every frame under a full-screen backdrop blur, and the browser blurs the whole page
+// each time. While a run is shown, no full-screen layer has a backdrop filter; the page behind is still dimmed.
+test("TFP-301: while a run is shown, nothing on the page has a backdrop filter, and the page behind is dimmed", async ({ page }) => {
+    const planned: Planned[] = [{ id: "t1", title: title(1), linkLabel: null, status: "running", duration: null, startedAt: Date.now() }];
+    await followScriptedRun(page, () => snapshot(planned, 0, 1_000, null));
+    await page.goto("/");
+    await expect(page.getByText("Running generated Playwright suite...")).toBeVisible();
+    const layers = await page.evaluate(() => Array.from(document.querySelectorAll("body *")).flatMap((element) => {
+        const style = getComputedStyle(element);
+        const box = element.getBoundingClientRect();
+        const fullScreen = style.position === "fixed" && box.width >= window.innerWidth - 1 && box.height >= window.innerHeight - 1;
+        return fullScreen ? [{ backdrop: style.backdropFilter, background: style.backgroundColor }] : [];
+    }));
+    expect(layers.length, "the overlay's full-screen layer is there").toBeGreaterThan(0);
+    expect(layers.map((layer) => layer.backdrop), "no backdrop filter on a full-screen layer").toEqual(layers.map(() => "none"));
+    // Nothing else either (measured 2026-11-19: with the overlay's blur gone, the header's and the sections' still cost
+    // the run about 8 s, re-blurred as the page re-renders each poll; with none anywhere, 33.0 s against 32.1 s polled).
+    const blurred = await page.evaluate(() => Array.from(document.querySelectorAll("*")).filter((element) => getComputedStyle(element).backdropFilter !== "none").map((element) => `${element.tagName.toLowerCase()}.${String(element.className).split(" ").slice(0, 3).join(".")}`));
+    expect(blurred, "elements with a backdrop filter while a run is shown").toEqual([]);
+    // A translucent colour, not just any (the fresh-context review: any oklab matched, an opaque one too).
+    expect(layers.some((layer) => /rgba\([^)]*,\s*0?\.\d+\)|oklab\([^)]*\/\s*0?\.\d+\)/.test(layer.background)), `the page behind is dimmed: ${JSON.stringify(layers)}`).toBe(true);
+});

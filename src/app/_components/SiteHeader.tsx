@@ -19,7 +19,8 @@ const PAGES = [
 export function SiteHeader({ actions }: { actions?: ReactNode }) {
     const pathname = usePathname();
     return (
-        <header className="border-b border-white/70 bg-white/80 backdrop-blur">
+        // TFP-301: no backdrop blur, as the run form's sections (it cost the run under the overlay, measured 2026-11-19).
+        <header className="border-b border-white/70 bg-white/80">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
                 <Link href="/" aria-label="Mr Onion: home" className="flex items-center gap-3 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
                     <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-2xl bg-indigo-600 shadow-[0_10px_30px_rgba(79,70,229,0.25)]">

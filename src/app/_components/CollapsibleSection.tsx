@@ -21,7 +21,9 @@ export function CollapsibleSection({
     return (
         <section className={`rounded-[28px] border p-6 shadow-[0_24px_80px_rgba(15,23,42,0.06)] ${dark
             ? "border-white/70 bg-zinc-950 text-zinc-100 shadow-[0_24px_80px_rgba(15,23,42,0.16)]"
-            : "border-white/70 bg-white/85 text-zinc-900 backdrop-blur"
+            // TFP-301: no backdrop blur. Under the run overlay it was re-blurred as the page re-rendered with each poll,
+            // costing the run about 8 s (measured 2026-11-19); the white over the page's background looks the same.
+            : "border-white/70 bg-white/85 text-zinc-900"
             }`}>
             <button
                 type="button"

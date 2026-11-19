@@ -61,7 +61,9 @@ export function HelpPanel({ isOpen, onClose }: HelpPanelProps) {
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 px-6 backdrop-blur-sm"
+            // TFP-301 (the fresh-context review): no blur here either. Help can be opened from the keyboard during a run,
+            // over the run overlay and its spinner, which would bring the run's slowdown back.
+            className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 px-6"
             onMouseDown={(event) => {
                 if (!panelRef.current?.contains(event.target as Node)) {
                     onClose();

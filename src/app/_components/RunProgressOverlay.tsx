@@ -80,7 +80,9 @@ export function RunProgressOverlay({
     const finishing = runRemainingLabel === "Finishing...";
 
     return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 px-6 backdrop-blur-sm">
+                // TFP-301 (P1): dimmed, not blurred. A blur is redrawn whenever what is under it changes, and under it the
+                // spinners change every frame and the page each poll: it slowed the run it shows to 194 s from about 30 s.
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 px-6">
                     <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                         <div>
                             <div className="flex items-center gap-3">
