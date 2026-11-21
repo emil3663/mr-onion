@@ -9,6 +9,7 @@ import { ACTIVE_GATE_SKIP } from "@/lib/run/test-gates";
 import { escapeForSingleQuotedString } from "@/lib/generate/mock/format";
 import ts from "typescript";
 import { parseTestUnits, withId, type TestUnit } from "./units";
+import { MODEL_BODIES_OFF, MODEL_BODIES_RUN } from "@/lib/gap-writer/model-bodies";
 
 /**
  * Phase 42 (TFP-190, Decision 1): a site's suite is saved with the
@@ -156,6 +157,7 @@ export async function applySiteSuite(fresh: string, profile: ContentProfile | nu
     // a test the generator stopped writing tests something that is gone (a link taken off a page).
     // TFP-194: a gap test was never the generator's: it stays while its page type is unchanged.
     const appended = new Map<string, string[]>();
+    let held = 0;
     for (const stored of saved?.manifest.units ?? []) {
         if (matched.has(stored.key)) continue;
         const source = saved!.sources.get(stored.unit);
@@ -163,6 +165,12 @@ export async function applySiteSuite(fresh: string, profile: ContentProfile | nu
         const gapTest = stored.origin === "gap-writer" && unchanged(stored.type);
         if (source === undefined || (!isEdited && !gapTest)) {
             counts.retired++;
+            continue;
+        }
+        if (stored.origin === "gap-writer" && !MODEL_BODIES_RUN) {
+            // TFP-292: kept for when the sandbox runs it, but not in this run's code.
+            kept.push(stored);
+            held++;
             continue;
         }
         const describe = JSON.stringify(stored.describe);
@@ -200,7 +208,7 @@ export async function applySiteSuite(fresh: string, profile: ContentProfile | nu
     const goneTypes = saved ? Object.keys(saved.manifest.types).filter((type) => !fingerprint.types[type]) : [];
     return {
         code,
-        record: { store, firstRun: !saved, ...counts, changedTypes, newTypes, goneTypes, editedOnChangedPages },
+        record: { store, firstRun: !saved, ...counts, changedTypes, newTypes, goneTypes, editedOnChangedPages, ...(held > 0 ? { modelWritten: { held, promoted: 0, note: MODEL_BODIES_OFF } } : {}) },
     };
 }
 

@@ -30,6 +30,8 @@ import { writeGapTests } from "@/lib/gap-writer/write";
 import { applyCandidates } from "@/lib/candidates/apply";
 import { bindCandidatesToGaps } from "@/lib/candidates/standard";
 import { loadPromotedEntries } from "@/lib/candidates/promotion";
+import { loadPool } from "@/lib/candidates/pool";
+import { MODEL_BODIES_OFF, MODEL_BODIES_RUN } from "@/lib/gap-writer/model-bodies";
 import { bindPromotedEntries } from "@/lib/library/promoted";
 import { setting, type SettingName } from "@/lib/settings";
 import type { SiteSuiteRecord } from "@/lib/report/types";
@@ -133,18 +135,29 @@ export async function generateSuite(input: Record<string, unknown>, { models = t
         const inputs = { baseUrl: normalizedBaseUrl.value, description, practices: normalizedPractices, contentRules: normalizedContentRules, auditMode: normalizedAuditMode, runMode: normalizedRunMode };
         // Phase 42 (TFP-204, batch 2 ruling 3): the library's promoted entries join the template's checks where the
         // library's control checks run (Standard, functional), and are saved with them.
-        const library = identity.runType === "standard" && getBestPracticeAreas(description, normalizedPractices).includes("functional")
-            ? bindPromotedEntries(code, normalizedContentProfile, await loadPromotedEntries()).code
-            : code;
+        // TFP-292: model-written bodies (promoted entries, pool candidates, gap tests) aren't run until Phase 45's
+        // sandbox; each place says so in the site suite's record.
+        const promoted = identity.runType === "standard" && getBestPracticeAreas(description, normalizedPractices).includes("functional") ? await loadPromotedEntries() : [];
+        const library = MODEL_BODIES_RUN && promoted.length > 0 ? bindPromotedEntries(code, normalizedContentProfile, promoted).code : code;
         const fromSuite = await applySiteSuite(library, normalizedContentProfile, origin, identity, inputs);
         // Phase 42 (TFP-203, batch 2 ruling 2): on Standard, a pool candidate matching a gap becomes its test once it
         // passes the gates here. Nothing leaves the machine, so it doesn't wait for the opt-in.
-        const bound = identity.runType === "standard" ? await bindCandidatesToGaps({ baseUrl: normalizedBaseUrl.value, store: fromSuite.record.store, code: fromSuite.code, profile: normalizedContentProfile }) : null;
+        const bound = identity.runType === "standard" && MODEL_BODIES_RUN ? await bindCandidatesToGaps({ baseUrl: normalizedBaseUrl.value, store: fromSuite.record.store, code: fromSuite.code, profile: normalizedContentProfile }) : null;
+        const notBound = !MODEL_BODIES_RUN && identity.runType === "standard" && (await loadPool()).length > 0 ? { bound: 0, notBound: 0, tests: [], note: MODEL_BODIES_OFF } : null;
         const applied = bound?.record ? { code: bound.code, record: { ...fromSuite.record, candidateTests: bound.record } } : fromSuite;
-        siteSuite = applied.record;
+        siteSuite = {
+            ...applied.record,
+            ...(notBound ? { candidateTests: notBound } : {}),
+            ...(!MODEL_BODIES_RUN && promoted.length > 0 ? { modelWritten: { ...(applied.record.modelWritten ?? { held: 0 }), promoted: promoted.length, note: MODEL_BODIES_OFF } } : {}),
+        };
         // Phase 42 (TFP-194, Decision 6): gap tests only for a site that opted in; off, nothing is sent anywhere.
         const { gapWriter } = models ? await loadSiteSettings(origin) : { gapWriter: "off" as const };
         if (gapWriter === "off") return applied.code;
+        if (!MODEL_BODIES_RUN) {
+            // TFP-292: the site opted in, but no writer is asked: what it wrote couldn't be run.
+            siteSuite = { ...siteSuite, gapTests: { writer: gapWriter, gaps: 0, asked: 0, saved: 0, rejected: 0, failed: 0, costUsd: 0, tests: [], note: MODEL_BODIES_OFF } };
+            return applied.code;
+        }
         const localModel = configuredLocalModel;
         const writer = gapWriter === "claude-code" ? claudeCodeWriter() : localModel ? localModelWriter(localModel) : null;
         if (!writer) {
@@ -182,7 +195,10 @@ export async function generateSuite(input: Record<string, unknown>, { models = t
     if (isComprehensive(normalizedRunMode)) {
         const pageScope = selectComprehensivePages(normalizedContentProfile, normalizedBaseUrl.value, normalizedRunMode.pageCap);
         // Phase 42 (TFP-195): pool candidates matching this site's gaps run with it, outside the verdict. Not saved in the site suite.
-        const suite = (await applyCandidates(await withSiteSuite(buildComprehensiveSuite(normalizedBaseUrl.value, normalizedRunMode, pageScope)), normalizedContentProfile, siteSuite?.store)).code;
+        const built = await withSiteSuite(buildComprehensiveSuite(normalizedBaseUrl.value, normalizedRunMode, pageScope));
+        // TFP-292: not until Phase 45's sandbox; the site suite's record says so.
+        if (!MODEL_BODIES_RUN && siteSuite && (await loadPool()).length > 0) siteSuite = { ...siteSuite, candidateTests: { bound: 0, notBound: 0, tests: [], note: MODEL_BODIES_OFF } };
+        const suite = MODEL_BODIES_RUN ? (await applyCandidates(built, normalizedContentProfile, siteSuite?.store)).code : built;
         const scope = { runMode: normalizedRunMode, pageScope };
         const localModel = configuredLocalModel;
         if (!localModel) return respond({ code: suite, generatedBy: "template", ...scope, gates: [] });

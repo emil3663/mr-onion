@@ -133,6 +133,20 @@ test("the site suite's gap tests: kept as recorded, cleaned when malformed, drop
 });
 
 /** Phase 42 (TFP-203). ISTQB technique: equivalence partitioning - a real binding record, and a malformed one. */
+test("TFP-292: model-written tests held back are kept in the saved run's record, and said in its report", () => {
+    const base = { store: "C:/data/site-suites/x/standard", firstRun: false, reused: 4, generated: 0, regenerated: 0, retired: 0, edited: 0, changedTypes: [], newTypes: [], goneTypes: [], editedOnChangedPages: [] };
+    const note = "model-written tests don't run until Phase 45's sandbox (TFP-292)";
+    const modelWritten = { held: 2, promoted: 1, note };
+    const candidateTests = { bound: 0, notBound: 0, tests: [], note };
+    const kept = normalizeGenerationRecord({ generatedBy: "template", gates: [], siteSuite: { ...base, modelWritten, candidateTests } })?.siteSuite;
+    assert.deepEqual(kept?.modelWritten, modelWritten);
+    assert.deepEqual(kept?.candidateTests, candidateTests);
+    assert.ok(describeSiteSuite(kept!).endsWith(` Model-written tests: 2 saved gap tests kept but not run, 1 promoted library entry not bound, as ${note}. Pool candidates: none bound, as ${note}.`), describeSiteSuite(kept!));
+    // Malformed: counts cleaned; without a reason there is nothing to say.
+    assert.deepEqual(normalizeGenerationRecord({ generatedBy: "template", gates: [], siteSuite: { ...base, modelWritten: { held: -1, promoted: "2", note } } })?.siteSuite?.modelWritten, { held: 0, promoted: 0, note });
+    assert.equal(normalizeGenerationRecord({ generatedBy: "template", gates: [], siteSuite: { ...base, modelWritten: { held: 1 } } })?.siteSuite?.modelWritten, undefined);
+});
+
 test("the site suite's bound candidates: kept as recorded, cleaned when malformed, and said in the report", () => {
     const base = { store: "C:/data/site-suites/x/standard", firstRun: false, reused: 4, generated: 0, regenerated: 0, retired: 0, edited: 0, changedTypes: [], newTypes: [], goneTypes: [], editedOnChangedPages: [] };
     const candidateTests = { bound: 1, notBound: 1, tests: [{ title: "gap test: Rentals [link] on /", covers: "link [\"Rentals\",\"/rentals\"]", candidate: "0123456789ab", outcome: "bound" }, { title: "gap test: Help [link] on /", covers: "link [\"Help\",\"/help\"]", candidate: "ba9876543210", outcome: "not bound: read-only gate breach" }] };

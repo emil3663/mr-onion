@@ -149,7 +149,9 @@ export async function writeGapTests(options: {
                     const general = await options.writer.generalise();
                     cost += general.costUsd ?? 0;
                     record.costUsd += general.costUsd ?? 0;
-                    const back = general.body.includes("__LOCATOR__") ? await run(options.baseUrl, target, bindCandidate({ body: general.body }, target.page, target.locator)) : null;
+                    // TFP-292: bound, the body is checked again; one refused there isn't run or pooled.
+                    const boundBack = general.body.includes("__LOCATOR__") ? bindCandidate({ body: general.body }, target.page, target.locator) : null;
+                    const back = boundBack === null ? null : await run(options.baseUrl, target, boundBack);
                     if (back?.verdict === "passed") {
                         const added = await addToPool({ pattern, body: general.body, gate: "read-only", technique: `error guessing (written by ${options.writer.name} for one uncovered ${target.kind}, generalised to its pattern)`, writer: options.writer.name, sources: [{ origin: new URL(options.baseUrl).origin, page: target.page, at: new Date().toISOString() }], costUsd: general.costUsd ?? 0 });
                         pool.push(added.candidate);
@@ -157,7 +159,7 @@ export async function writeGapTests(options: {
                         candidateNote = `; candidate ${added.candidate.id} ${added.merged ? "merged" : "added"}`;
                     } else {
                         record.candidates!.notKept++;
-                        candidateNote = back ? `; its candidate didn't pass bound back to this ${target.kind}` : "; its candidate had no __LOCATOR__ blank";
+                        candidateNote = back ? `; its candidate didn't pass bound back to this ${target.kind}` : general.body.includes("__LOCATOR__") ? "; its candidate, bound back, isn't one the code check allows" : "; its candidate had no __LOCATOR__ blank";
                     }
                 } catch (caught) {
                     record.candidates!.notKept++;

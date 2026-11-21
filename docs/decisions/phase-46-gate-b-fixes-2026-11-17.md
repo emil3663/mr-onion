@@ -415,3 +415,25 @@ recorder's own timer gives real time):
   ticking component was tried and dropped: the remaining-time label still
   redraws the overlay each second, and a second set of runs on it (34.1
   to 37.9 s) was no better.
+
+## TFP-292 — Hardening of the model-written test check
+
+- **Status:** In progress (2026-11-21). D28's first finding
+  (`deferred-work-register.md`). Owner decision (2026-11-19): it comes
+  before the 0.5.0 tag.
+- **Scope amended (owner, 2026-11-21):**
+  - For 0.5.0, model-written test bodies are not run at all until Phase
+    45's sandbox. That covers gap tests, pool candidates and promoted
+    library entries, in gap runs and candidate runs alike.
+  - Template-built tests and the tester's own suites run as before.
+  - Each place that would have run one says so, naming Phase 45, in the
+    site suite's record and the report. Saved gap tests stay in the site
+    suite, unrun.
+  - The hardening already built stays, with the code check kept as the
+    first filter.
+  - Phase 45's record carries the matching line (TFP-230).
+
+## TFP-293 — A required prefix for login variable names
+
+- **Status:** Not placed (owner, 2026-11-21). Scope and acceptance
+  criteria are written when it is placed.

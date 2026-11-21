@@ -29,6 +29,7 @@ import { after, before, test } from "node:test";
 import type { ContentProfile } from "../generate/mock/types.ts";
 import type { PromotedEntry } from "../candidates/promotion.ts";
 import type { RunReport, SiteSuiteRecord } from "../report/types.ts";
+import { MODEL_BODIES_OFF, MODEL_BODIES_RUN } from "@/lib/gap-writer/model-bodies";
 
 const scratch = mkdtempSync(join(tmpdir(), "mr-onion-promoted-"));
 const savedEnv = Object.fromEntries(["MRONION_DATA_DIR", "MRONION_RUNS_ROOT", "MRONION_LIBRARY_PROMOTED_DIR", "MRONION_OLLAMA_MODEL", "OPENAI_API_KEY"].map((key) => [key, process.env[key]]));
@@ -53,6 +54,8 @@ const { startRecordedFixture } = await import("../../test-support/comparison-fix
 const { chromiumSkipReason } = await import("../../test-support/chromium.ts");
 const { waitForSavedRun } = await import("../../test-support/saved-run.ts");
 const needsChromium = await chromiumSkipReason();
+// TFP-292: these run model-written bodies, which don't run until Phase 45's sandbox; they come back with it.
+const heldBack = MODEL_BODIES_RUN ? false : MODEL_BODIES_OFF;
 
 const profile = normalizeContentProfile(JSON.parse(readFileSync(join(process.cwd(), "benchmarks/2026-10-14-tfp193-library/fixture-profile.json"), "utf8"))) as ContentProfile;
 const BASE = "http://127.0.0.1:4173";
@@ -106,6 +109,16 @@ test("an element's pattern: a test on each page with it, bound, in the functiona
     assert.ok(parseTestUnits(code).length === parseTestUnits(template).length + pages.length, "nothing else added or lost");
 });
 
+test("every locator the generator writes binds, and passes the code check bound (TFP-292)", async () => {
+    const { targetOf } = await import("../gap-writer/write.ts");
+    const { bindCandidate } = await import("../candidates/pool.ts");
+    const map = buildCoverageMap(profile, template)!;
+    const locators = new Set(map.entries.filter((item) => item.kind === "element" || item.kind === "link").map((item) => targetOf(item, map.entries).locator).filter((locator): locator is string => Boolean(locator)));
+    assert.ok(locators.size > 10, `${locators.size} locators`);
+    const refused = [...locators].filter((locator) => bindCandidate({ body: BODY }, "/a", locator) === null);
+    assert.deepEqual(refused, []);
+});
+
 test("a repeated link: one test, on the first page it is on (TFP-204)", () => {
     const map = buildCoverageMap(profile, template)!;
     const link = map.entries.find((item) => item.kind === "link" && (item.pages?.length ?? 0) > 1 && !item.name.startsWith("http"))!;
@@ -131,7 +144,7 @@ test("nothing promoted, no page with the pattern, or refused by the code check: 
     assert.deepEqual((await loadPromotedEntries(dir)).map((item) => item.id), [entry("element", name).id]);
 });
 
-test("through the routes: a promoted entry is generated on Standard functional and runs inside the verdict (TFP-204)", { skip: needsChromium }, async () => {
+test("through the routes: a promoted entry is generated on Standard functional and runs inside the verdict (TFP-204)", { skip: heldBack || needsChromium }, async () => {
     const post = (url: string, body: unknown) => new NextRequest(new URL(url), { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } });
     const generate = async (practices: string[]) => {
         const response = await generateRoute.POST(post("http://localhost/api/generate", { baseUrl: fixture.origin, description: "Check the pages.", selectedPractices: practices, contentRules: { paths: ["types/legal/privacy", "types/help/terms"] } }));

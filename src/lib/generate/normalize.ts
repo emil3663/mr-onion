@@ -44,6 +44,10 @@ export function normalizeBaseUrl(baseUrl: unknown) {
 
     try {
         const normalized = new URL(withProtocol);
+        // TFP-292 (hardening of the model-written test check): a run's site is an http(s) one.
+        if (normalized.protocol !== "http:" && normalized.protocol !== "https:") {
+            return { ok: false as const, message: "baseUrl must be an http or https address" };
+        }
         normalized.hash = "";
         return {
             ok: true as const,

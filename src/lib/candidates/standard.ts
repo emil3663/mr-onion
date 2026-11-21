@@ -63,11 +63,12 @@ export async function bindCandidatesToGaps(options: {
         if (!candidate || !target.locator) continue;
         const reached = forbiddenConstruct(candidate.body);
         const body = bindCandidate(candidate, target.page, target.locator);
-        const outcome: GapRunOutcome = reached ? { verdict: "invalid", message: `the candidate uses ${reached}` } : await run(options.baseUrl, target, body);
+        // TFP-292: bound, the body is checked again; one refused there is never run.
+        const outcome: GapRunOutcome = reached ? { verdict: "invalid", message: `the candidate uses ${reached}` } : body === null ? { verdict: "invalid", message: "the candidate, bound to this site, isn't one the code check allows" } : await run(options.baseUrl, target, body);
         const title = gapTestTitle(target);
         if (outcome.verdict === "passed") {
             // Named as the candidate's, so each run of it here adds to its evidence (evidence.ts), as on Comprehensive.
-            const source = composeGapTest(target, body, candidate.id);
+            const source = composeGapTest(target, body!, candidate.id); // passed: it was bound and run
             const unit = parseTestUnits(`test.describe('${GAP_DESCRIBE}', () => {\n${source}\n});`)[0];
             const file = unitFileName(unit.key);
             files.set(file, source);

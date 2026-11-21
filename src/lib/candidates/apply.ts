@@ -45,6 +45,8 @@ export async function applyCandidates(code: string, profile: ContentProfile | nu
         // TFP-202: a candidate is model-written code from another site; one the code check refuses is never bound.
         if (!candidate || !target.locator || forbiddenConstruct(candidate.body)) continue;
         const body = bindCandidate(candidate, target.page, target.locator);
+        // TFP-292: a binding the check refuses, bound, is never run.
+        if (body === null) continue;
         const indented = body.split("\n").map((line) => (line.trim() ? `      ${line}` : "")).join("\n");
         sources.push(`  test('${escapeForSingleQuotedString(`candidate ${candidate.id}: ${target.label ?? target.name} on ${target.page}`)}', { annotation: [{ type: 'gate', description: 'read-only' }, { type: 'page', description: '${escapeForSingleQuotedString(target.page)}' }, { type: 'candidate', description: '${candidate.id}' }] }, async ({ page }) => {
     await tfReadOnlyGuarded(page, async () => {

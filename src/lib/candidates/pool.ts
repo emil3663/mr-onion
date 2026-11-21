@@ -3,6 +3,7 @@ import { mkdir, readdir, readFile, rename, writeFile } from "fs/promises";
 import { join } from "path";
 import ts from "typescript";
 import { escapeForSingleQuotedString } from "@/lib/generate/mock/format";
+import { forbiddenConstruct } from "@/lib/gap-writer/code-check";
 import { dataDir } from "@/lib/storage/data-dir";
 
 /**
@@ -199,19 +200,55 @@ export function poolHas(pool: Candidate[], pattern: CandidatePattern): boolean {
  * plain substitution turned into `page.goto(/)`, so every candidate failed its bound-back run. The body's syntax
  * tree tells the two apart: a bare `__PAGE__` becomes the path as a quoted string, one inside a string or a
  * template becomes the path's text. `__LOCATOR__` is always an expression.
+ *
+ * TFP-292 (hardening of the model-written test check): a blank is bound by where the syntax tree puts it. Bare, in
+ * an expression: the quoted path, or the generator's own locator expression. Inside a string or a template: the
+ * value's text, escaped for it. `__PAGE__` in a comment: the path's text. Anywhere else (a name, a type, a regular
+ * expression, part of a longer word) the body isn't bound. The bound body goes through the code check again; null
+ * when the binding or the check refuses it.
  */
-export function bindCandidate(candidate: Pick<Candidate, "body">, page: string, locator: string): string {
+export function bindCandidate(candidate: Pick<Candidate, "body">, page: string, locator: string): string | null {
     const prefix = "async function __candidate__() {\n";
     const source = ts.createSourceFile("candidate.ts", `${prefix}${candidate.body}\n}`, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
-    const bare: number[] = [];
+    const bare = new Set<number>();
+    const strings: Array<[number, number]> = [];
+    const comments = new Map<number, number>();
+    const text = source.getFullText();
     const visit = (node: ts.Node) => {
-        if (ts.isIdentifier(node) && node.text === "__PAGE__") bare.push(node.getStart(source) - prefix.length);
+        for (const range of [...(ts.getLeadingCommentRanges(text, node.pos) ?? []), ...(ts.getTrailingCommentRanges(text, node.end) ?? [])]) comments.set(range.pos - prefix.length, range.end - prefix.length);
+        if (ts.isIdentifier(node) && (node.text === "__PAGE__" || node.text === "__LOCATOR__") && isBareExpression(node)) bare.add(node.getStart(source) - prefix.length);
+        if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) strings.push([node.getStart(source) - prefix.length, node.getEnd() - prefix.length]);
         ts.forEachChild(node, visit);
     };
     visit(source);
+    const inString = (at: number, length: number) => strings.some(([from, to]) => from < at && at + length <= to);
+    const inComment = (at: number, length: number) => [...comments].some(([from, to]) => from < at && at + length <= to);
+    const bindings: Array<{ at: number; length: number; text: string }> = [];
+    for (const [blank, expression, value] of [["__PAGE__", `'${escapeForSingleQuotedString(page)}'`, page], ["__LOCATOR__", locator, locator]] as const) {
+        for (let at = candidate.body.indexOf(blank); at >= 0; at = candidate.body.indexOf(blank, at + blank.length)) {
+            if (bare.has(at)) bindings.push({ at, length: blank.length, text: expression });
+            else if (inString(at, blank.length)) bindings.push({ at, length: blank.length, text: asStringText(value) });
+            else if (blank === "__PAGE__" && inComment(at, blank.length)) bindings.push({ at, length: blank.length, text: asStringText(value).replace(/\*\//g, "* /") });
+            else return null;
+        }
+    }
     let body = candidate.body;
-    for (const at of bare.sort((a, b) => b - a)) body = `${body.slice(0, at)}'${escapeForSingleQuotedString(page)}'${body.slice(at + "__PAGE__".length)}`;
-    return body.split("__PAGE__").join(page.replace(/\\/g, "\\\\").replace(/['"`]/g, "\\$&")).split("__LOCATOR__").join(locator);
+    for (const { at, length, text } of bindings.sort((a, b) => b.at - a.at)) body = `${body.slice(0, at)}${text}${body.slice(at + length)}`;
+    return forbiddenConstruct(body) ? null : body;
+}
+
+/** A blank written where an expression goes: not a name (a property, a declaration, a label) or in a type. */
+function isBareExpression(node: ts.Identifier): boolean {
+    const parent = node.parent;
+    for (let up: ts.Node | undefined = parent; up; up = up.parent) if (ts.isTypeNode(up)) return false;
+    if (ts.isPropertyAccessExpression(parent) && parent.name === node) return false;
+    if (ts.isShorthandPropertyAssignment(parent) || ts.isLabeledStatement(parent) || ts.isBreakOrContinueStatement(parent)) return false;
+    return (parent as { name?: ts.Node }).name !== node;
+}
+
+/** A value's text, escaped for a single- or double-quoted string or a template. */
+function asStringText(value: string): string {
+    return value.replace(/[\\'"`$]/g, "\\$&").replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
 export async function recordEvidence(id: string, evidence: CandidateEvidence): Promise<void> {

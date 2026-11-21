@@ -31,6 +31,8 @@ export interface SiteSuiteRecord {
     gapTests?: GapWritingRecord;
     /** TFP-203: pool candidates bound into a Standard suite as their gaps' tests at this generation. */
     candidateTests?: CandidateBindingRecord;
+    /** TFP-292: model-written tests held back until Phase 45's sandbox: saved gap tests kept but not run, and promoted library entries not bound. */
+    modelWritten?: { held: number; promoted: number; note: string };
 }
 
 /** Phase 42 (TFP-203): candidates tried as gaps' tests on Standard - bound after the gates, or not. */
@@ -38,6 +40,8 @@ export interface CandidateBindingRecord {
     bound: number;
     notBound: number;
     tests: Array<{ title: string; covers: string; candidate: string; outcome: string }>;
+    /** TFP-292: why no candidate was tried. */
+    note?: string;
 }
 
 /** Phase 42 (TFP-194): what the site's gap writer was asked for, what it cost, and what came of it. */

@@ -255,6 +255,11 @@ Status: **Locked (Emil, 2026-10-20). Not started.** Decisions, acceptance criter
   - the report sections unchanged;
   - `TEST_PLAN.md` cases.
 - **Dependencies:** TFP-229.
+- **Added (owner, 2026-11-21, with TFP-292):** model-written bodies run
+  again only inside the sandbox, with the code check's allowlist kept as a
+  first filter. Until then they don't run at all
+  (`src/lib/gap-writer/model-bodies.ts`). This ticket turns them back on
+  there, and the tests skipped until then run again.
 
 ### TFP-231 — Measure the sandbox (Gate B)
 

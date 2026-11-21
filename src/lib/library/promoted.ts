@@ -43,7 +43,10 @@ export function bindPromotedEntries(code: string, profile: ContentProfile | null
     let namesOnPage: string[] = [];
     const bind = (entry: PromotedEntry, page: string, name: string, locator: string) => {
         const label = distinctLabel(name, page, locator, namesOnPage);
-        const body = bindCandidate(entry, page, locator).split("\n").map((line) => (line.trim() ? `      ${line}` : "")).join("\n");
+        // TFP-292: bound, the body is checked again; one refused there isn't added.
+        const finished = bindCandidate(entry, page, locator);
+        if (finished === null) return;
+        const body = finished.split("\n").map((line) => (line.trim() ? `      ${line}` : "")).join("\n");
         sources.push(`  test('${escapeForSingleQuotedString(`library promoted.${entry.id}: ${label} on ${page}`)}', { annotation: [{ type: 'gate', description: 'read-only' }, { type: 'page', description: '${escapeForSingleQuotedString(page)}' }, { type: 'library', description: 'promoted.${entry.id}' }] }, async ({ page }) => {
     await tfReadOnlyGuarded(page, async () => {
 ${body}

@@ -29,6 +29,7 @@ import { join } from "node:path";
 import { after, before, test } from "node:test";
 import type { RunReport, SiteSuiteRecord } from "../report/types.ts";
 import type { SiteSuiteManifest } from "../site-suites/store.ts";
+import { MODEL_BODIES_OFF, MODEL_BODIES_RUN } from "@/lib/gap-writer/model-bodies";
 
 const scratch = mkdtempSync(join(tmpdir(), "mr-onion-candidates-"));
 const savedEnv = Object.fromEntries(["MRONION_DATA_DIR", "MRONION_RUNS_ROOT", "MRONION_CLAUDE_COMMAND", "MRONION_GAP_LIMIT", "FAKE_CLAUDE_LOG", "FAKE_CLAUDE_MODE", "MRONION_OLLAMA_MODEL", "OPENAI_API_KEY"].map((key) => [key, process.env[key]]));
@@ -55,6 +56,8 @@ const { loadSiteSuiteProfile } = await import("../site-suites/store.ts");
 const { buildCoverageMap, untouched } = await import("../report/coverage-map.ts");
 const { describeSiteSuite } = await import("../report/site-suite-text.ts");
 const needsChromium = await chromiumSkipReason();
+// TFP-292: these run model-written bodies, which don't run until Phase 45's sandbox; they come back with it.
+const heldBack = MODEL_BODIES_RUN ? false : MODEL_BODIES_OFF;
 
 const PATHS = ["types/legal/privacy", "types/help/terms"];
 const COMPREHENSIVE = { kind: "comprehensive", area: "accessibility" };
@@ -93,7 +96,7 @@ async function generate(origin: string, runMode?: unknown) {
     return (await response.json()) as { code: string; siteSuite: SiteSuiteRecord };
 }
 
-test("first site: a saved gap test is generalised, checked bound back, and pooled with its source (TFP-195)", { skip: needsChromium }, async () => {
+test("first site: a saved gap test is generalised, checked bound back, and pooled with its source (TFP-195)", { skip: heldBack || needsChromium }, async () => {
     await optIn(siteA.origin, "claude-code");
     process.env.MRONION_GAP_LIMIT = "1";
     const body = await generate(siteA.origin);
@@ -115,7 +118,7 @@ test("first site: a saved gap test is generalised, checked bound back, and poole
     assert.deepEqual(candidate.evidence, []);
 });
 
-test("second site, Comprehensive: the candidate runs in its own section, outside the verdict, and gains the run as evidence (TFP-195)", { skip: needsChromium }, async () => {
+test("second site, Comprehensive: the candidate runs in its own section, outside the verdict, and gains the run as evidence (TFP-195)", { skip: heldBack || needsChromium }, async () => {
     assert.ok(candidateId, "the first column ran");
     const before = calls().length;
     const body = await generate(siteB.origin, COMPREHENSIVE);
@@ -145,7 +148,7 @@ test("second site, Comprehensive: the candidate runs in its own section, outside
     assert.deepEqual(candidate!.evidence.map((evidence) => [evidence.origin, evidence.status, evidence.run]), [[siteB.origin, "Passed", runId]]);
 });
 
-test("second site, Standard: the matching candidate becomes the gap's test after the gates; no gap test is written (TFP-203)", { skip: needsChromium }, async () => {
+test("second site, Standard: the matching candidate becomes the gap's test after the gates; no gap test is written (TFP-203)", { skip: heldBack || needsChromium }, async () => {
     const before = calls().length;
     const body = await generate(siteB.origin);
     assert.equal(calls().length, before, "no writer asked: the site's opt-in is off, and the gap has its test");
@@ -170,7 +173,7 @@ test("second site, Standard: the matching candidate becomes the gap's test after
     assert.equal(parseTestUnits(again.code).filter((unit) => unit.describe[0] === "Gap tests").length, 1);
 });
 
-test("another site, Standard: a candidate that fails the gates there is not bound (TFP-203)", { skip: needsChromium }, async () => {
+test("another site, Standard: a candidate that fails the gates there is not bound (TFP-203)", { skip: heldBack || needsChromium }, async () => {
     const candidate = (await loadCandidate(candidateId))!;
     const bodies = {
         // Breaches the read-only gate: a form sent by POST.
@@ -185,7 +188,7 @@ test("another site, Standard: a candidate that fails the gates there is not boun
             const body = await generate(siteB.origin);
             const record = body.siteSuite.candidateTests!;
             assert.deepEqual([record.bound, record.notBound], [0, 1], `${kind}: ${JSON.stringify(record.tests)}`);
-            assert.match(record.tests[0].outcome, kind === "breach" ? /^not bound: read-only gate breach$/ : /^not bound: the candidate uses fetch$/);
+            assert.match(record.tests[0].outcome, kind === "breach" ? /^not bound: read-only gate breach$/ : /^not bound: the candidate uses fetch\(\), not on the list a test body may call$/);
             assert.ok(!parseTestUnits(body.code).some((unit) => unit.describe[0] === "Gap tests"), `${kind}: nothing bound`);
             const manifest = JSON.parse(readFileSync(join(body.siteSuite.store, "manifest.json"), "utf8")) as SiteSuiteManifest;
             assert.deepEqual(manifest.gapAttempts?.map((attempt) => [attempt.key, attempt.outcome, attempt.candidate]), [[record.tests[0].covers, kind, candidateId]]);
@@ -197,7 +200,7 @@ test("another site, Standard: a candidate that fails the gates there is not boun
     }
 });
 
-test("second site, Standard: the bound candidate's run counts toward its promotion evidence, gaining that site (TFP-203)", { skip: needsChromium }, async () => {
+test("second site, Standard: the bound candidate's run counts toward its promotion evidence, gaining that site (TFP-203)", { skip: heldBack || needsChromium }, async () => {
     const candidate = (await loadCandidate(candidateId))!;
     process.env.MRONION_DATA_DIR = join(scratch, "standard-evidence");
     try {
@@ -227,7 +230,7 @@ test("second site, Standard: the bound candidate's run counts toward its promoti
     }
 });
 
-test("second site, opted in: no new gap test for the candidate's pattern (TFP-195; TFP-203: the gap already has the candidate as its test)", { skip: needsChromium }, async () => {
+test("second site, opted in: no new gap test for the candidate's pattern (TFP-195; TFP-203: the gap already has the candidate as its test)", { skip: heldBack || needsChromium }, async () => {
     await optIn(siteB.origin, "claude-code");
     process.env.MRONION_GAP_LIMIT = "1";
     const body = await generate(siteB.origin);
@@ -252,6 +255,30 @@ test("binding: a bare __PAGE__ gets the quoted path, one inside a string the pat
     assert.equal(bind("await expect(page).toHaveURL(`${'x'}__PAGE__`);", "/rentals"), "await expect(page).toHaveURL(`${'x'}/rentals`);");
     // Both forms in one body, and a comment naming it, which stays text.
     assert.equal(bind("await page.goto(__PAGE__); // back on __PAGE__\nawait expect(page).toHaveURL(new RegExp('__PAGE__'));", "/a"), "await page.goto('/a'); // back on /a\nawait expect(page).toHaveURL(new RegExp('/a'));");
+});
+
+/** TFP-292 (hardening of the model-written test check). ISTQB technique: equivalence partitioning over where a body puts __LOCATOR__. */
+test("binding: __LOCATOR__ bare is the locator, inside a string its escaped text, anywhere else refused; the finished body is checked again (TFP-292)", () => {
+    const locator = "page.getByRole('link', { name: 'Neutral \\'fixture\\'', exact: true }).first()";
+    const bind = (body: string) => bindCandidate({ body }, "/a", locator);
+    // Bare: the generator's own expression, as before.
+    assert.equal(bind("await expect(__LOCATOR__).toBeVisible();"), `await expect(${locator}).toBeVisible();`);
+    // Inside a string or a template: the locator's text, escaped, so the string stays one string.
+    const quoted = bind("await expect(page).toHaveTitle('__LOCATOR__');");
+    assert.equal(quoted, "await expect(page).toHaveTitle('page.getByRole(\\'link\\', { name: \\'Neutral \\\\\\'fixture\\\\\\'\\', exact: true }).first()');");
+    assert.equal(bind("await expect(page).toHaveTitle(`x __LOCATOR__`);"), "await expect(page).toHaveTitle(`x page.getByRole(\\'link\\', { name: \\'Neutral \\\\\\'fixture\\\\\\'\\', exact: true }).first()`);");
+    // Anywhere else (a comment, a name), never spliced: not bound.
+    assert.equal(bind("await expect(__LOCATOR__).toBeVisible(); // __LOCATOR__"), null);
+    assert.equal(bind("const x = { __LOCATOR__: 1 };\nawait expect(__LOCATOR__).toBeVisible();"), null);
+    // The finished body is checked again: a locator that isn't one the check allows makes the binding refused.
+    assert.equal(bindCandidate({ body: "await expect(__LOCATOR__).toBeVisible();" }, "/a", "fixtureValue"), null);
+    // Quotes, backticks and dollar signs in the value are escaped for a template too.
+    assert.equal(bindCandidate({ body: "await expect(page).toHaveTitle(`__LOCATOR__`);" }, "/a", "page.getByText('${fixtureValue}`)"), "await expect(page).toHaveTitle(`page.getByText(\\'\\${fixtureValue}\\`)`);");
+    // In a type, part of a longer word, or a regular expression: not bound. In a comment, __PAGE__ is the path's text.
+    assert.equal(bind("let fixture: __LOCATOR__;\nawait expect(__LOCATOR__).toBeVisible();"), null);
+    assert.equal(bindCandidate({ body: "const fixture__PAGE__ = 1;\nawait page.goto(__PAGE__);" }, "/a", locator), null);
+    assert.equal(bindCandidate({ body: "await page.goto(__PAGE__);\nawait expect(page).toHaveURL(/__PAGE__/);" }, "/a", locator), null);
+    assert.equal(bindCandidate({ body: "await page.goto(__PAGE__); /* on __PAGE__ */" }, "/a*/b", locator), "await page.goto('/a*/b'); /* on /a* /b */");
 });
 
 test("one pattern from two sites is one candidate; a rejected one is kept, never bound, never proposed again (TFP-195)", async () => {

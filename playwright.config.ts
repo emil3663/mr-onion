@@ -13,6 +13,9 @@ export default defineConfig({
     // asked for a login, otherwise removed from the environment - so every
     // test in an authenticated run starts signed in, and nothing else does.
     storageState: setting("STORAGE_STATE") || undefined,
+    // TFP-292 (hardening of the model-written test check): no downloads in any run. The template's own checks read
+    // a download link's address and never download it.
+    acceptDownloads: false,
     trace: "retain-on-failure",
     video: "retain-on-failure",
     screenshot: "only-on-failure",

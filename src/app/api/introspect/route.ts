@@ -1,35 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findForeignPath, foreignPathMessage } from "@/lib/introspect/paths";
 import { inspectSite } from "@/lib/pipeline/inspect";
-
-// Only correct when Mr Onion is testing itself. For any other target
-// (Plane on :80, test-assist on :4321, ...) the caller must supply baseUrl.
-const DEFAULT_BASE_URL = "http://localhost:3000";
-
-function normalizeBaseUrl(baseUrl: unknown) {
-    if (typeof baseUrl !== "string" || !baseUrl.trim()) {
-        return { ok: true as const, value: DEFAULT_BASE_URL };
-    }
-
-    const trimmed = baseUrl.trim();
-    const withProtocol = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmed)
-        ? trimmed
-        : `http://${trimmed}`;
-
-    try {
-        const normalized = new URL(withProtocol);
-        normalized.hash = "";
-        return {
-            ok: true as const,
-            value: normalized.toString().replace(/\/$/, ""),
-        };
-    } catch {
-        return {
-            ok: false as const,
-            message: "baseUrl must be a valid URL",
-        };
-    }
-}
+// TFP-292 (hardening of the model-written test check): the one reading of a run's Base URL, in place of this route's
+// own copy (the same default, http(s) only).
+import { normalizeBaseUrl } from "@/lib/generate/normalize";
 
 export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null);

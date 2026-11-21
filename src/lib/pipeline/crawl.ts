@@ -4,6 +4,7 @@ import { capturePageOutline, type PageOutline } from "@/lib/selection/page-outli
 import { groupPagesIntoTypes, labelPageType, type OutlinedPageType, type PageTypeLabel } from "@/lib/selection/page-types";
 import { rankPageTypes, selectComprehensivePagesByType, selectStandardPages, type PageTypeSelection, type RankedPageType } from "@/lib/selection/select";
 import { DEFAULT_PAGE_CAP } from "@/lib/comprehensive/run-mode";
+import { normalizeBaseUrl } from "@/lib/generate/normalize";
 
 /**
  * Phase 47 Decision 4 (TFP-263): the crawl and page selection, shared by
@@ -11,9 +12,6 @@ import { DEFAULT_PAGE_CAP } from "@/lib/comprehensive/run-mode";
  * the caller's callbacks; the job map stays in the route.
  */
 
-// Only correct when Mr Onion is testing itself. For any other target
-// (Plane on :80, test-assist on :4321, ...) the caller must supply baseUrl.
-const DEFAULT_BASE_URL = "http://localhost:3000";
 const MAX_CRAWL_PAGES = 100;
 const MAX_DISCOVERED_LINKS_PER_PAGE = 200;
 const SKIPPED_EXTENSIONS = /\.(?:pdf|doc|docx|xls|xlsx|csv|zip|ppt|pptx|jpg|jpeg|png|gif|svg|webp|ico|css|js|json|xml|txt|mp3|mp4|avi|mov|woff|woff2|ttf|eot)(?:[?#].*)?$/i;
@@ -118,29 +116,9 @@ export function createEmptyCrawlProgress(): CrawlProgressSnapshot {
     };
 }
 
+/** TFP-292 (hardening of the model-written test check): the crawl reads a Base URL as every route does. */
 export function normalizeCrawlBaseUrl(baseUrl: unknown) {
-    if (typeof baseUrl !== "string" || !baseUrl.trim()) {
-        return { ok: true as const, value: DEFAULT_BASE_URL };
-    }
-
-    const trimmed = baseUrl.trim();
-    const withProtocol = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmed)
-        ? trimmed
-        : `http://${trimmed}`;
-
-    try {
-        const normalized = new URL(withProtocol);
-        normalized.hash = "";
-        return {
-            ok: true as const,
-            value: normalized.toString().replace(/\/$/, ""),
-        };
-    } catch {
-        return {
-            ok: false as const,
-            message: "baseUrl must be a valid URL",
-        };
-    }
+    return normalizeBaseUrl(baseUrl);
 }
 
 // TFP-165: a hash route is a page, named as the address bar shows it (/#/contact).

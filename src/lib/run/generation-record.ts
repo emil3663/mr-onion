@@ -88,7 +88,18 @@ function normalizeSiteSuite(value: unknown): SiteSuiteRecord | null {
         ...(normalizeRecheck(v.recheck) ? { recheck: normalizeRecheck(v.recheck)! } : {}),
         ...(normalizeGapWriting(v.gapTests) ? { gapTests: normalizeGapWriting(v.gapTests)! } : {}),
         ...(normalizeCandidateBinding(v.candidateTests) ? { candidateTests: normalizeCandidateBinding(v.candidateTests)! } : {}),
+        ...(normalizeModelWritten(v.modelWritten) ? { modelWritten: normalizeModelWritten(v.modelWritten)! } : {}),
     };
+}
+
+/** TFP-292: model-written tests held back until Phase 45's sandbox; without its reason, nothing to say. */
+function normalizeModelWritten(value: unknown): { held: number; promoted: number; note: string } | null {
+    if (!value || typeof value !== "object") return null;
+    const v = value as Record<string, unknown>;
+    const note = text(v.note, 400);
+    if (!note) return null;
+    const count = (key: string) => (typeof v[key] === "number" && Number.isInteger(v[key]) && (v[key] as number) >= 0 ? Math.min(v[key] as number, 100000) : 0);
+    return { held: count("held"), promoted: count("promoted"), note };
 }
 
 /** TFP-203: pool candidates bound as gaps' tests on Standard. */
@@ -102,7 +113,8 @@ function normalizeCandidateBinding(value: unknown): CandidateBindingRecord | nul
         const title = text(t.title);
         return title ? [{ title, covers: text(t.covers, 400) ?? "", candidate: text(t.candidate, 40) ?? "", outcome: text(t.outcome, 400) ?? "" }] : [];
     });
-    return { bound: count("bound"), notBound: count("notBound"), tests };
+    const note = text(v.note, 400);
+    return { bound: count("bound"), notBound: count("notBound"), tests, ...(note ? { note } : {}) };
 }
 
 function normalizeGapWriting(value: unknown): GapWritingRecord | null {

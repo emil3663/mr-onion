@@ -8,22 +8,34 @@ const plural = (count: number, one: string, many = `${one}s`) => `${count} ${cou
  * report and the HTML export alike.
  */
 export function describeSiteSuite(record: SiteSuiteRecord): string {
-    if (record.firstRun) return `Site suite: first run for this site and suite type, so all ${plural(record.generated, "test")} were generated and saved in ${record.store}.${describeCandidateTests(record)}${describeGapTests(record)}`;
+    if (record.firstRun) return `Site suite: first run for this site and suite type, so all ${plural(record.generated, "test")} were generated and saved in ${record.store}.${describeModelWritten(record)}${describeCandidateTests(record)}${describeGapTests(record)}`;
     const parts = [`${plural(record.reused, "test")} reused`, `${record.generated} generated`];
     parts.push(record.regenerated > 0 ? `${record.regenerated} regenerated (page types changed: ${record.changedTypes.join(", ") || "the site's set of page types"})` : "0 regenerated");
     parts.push(record.retired > 0 ? `${record.retired} retired${record.goneTypes.length > 0 ? ` (page types gone: ${record.goneTypes.join(", ")})` : ""}` : "0 retired");
     if (record.edited > 0) parts.push(`${record.edited} edited by hand and kept`);
     const newTypes = record.newTypes.length > 0 ? `; new page types: ${record.newTypes.join(", ")}` : "";
     const flagged = record.editedOnChangedPages.length > 0 ? ` Edited by hand, on a page that changed - check these: ${record.editedOnChangedPages.join("; ")}.` : "";
-    return `Site suite: ${parts.join(", ")}${newTypes} (saved in ${record.store}).${flagged}${describeRecheck(record)}${describeCandidateTests(record)}${describeGapTests(record)}`;
+    return `Site suite: ${parts.join(", ")}${newTypes} (saved in ${record.store}).${flagged}${describeRecheck(record)}${describeModelWritten(record)}${describeCandidateTests(record)}${describeGapTests(record)}`;
 }
 
 /** TFP-203: pool candidates bound as gaps' tests on a Standard run, and those that failed the gates here. */
 function describeCandidateTests(record: SiteSuiteRecord): string {
     const candidates = record.candidateTests;
     if (!candidates) return "";
+    if (candidates.note) return ` Pool candidates: none bound, as ${candidates.note}.`;
     const bound = candidates.tests.filter((test) => test.outcome === "bound").map((test) => test.title);
     return ` Pool candidates: ${plural(candidates.bound, "bound as its gap's test", "bound as their gaps' tests")}${bound.length ? ` (${bound.join("; ")})` : ""}, ${candidates.notBound} not bound, failing the gates here.`;
+}
+
+/** TFP-292: model-written tests this run held back, and why. */
+function describeModelWritten(record: SiteSuiteRecord): string {
+    const held = record.modelWritten;
+    if (!held) return "";
+    const parts = [
+        ...(held.held > 0 ? [`${plural(held.held, "saved gap test")} kept but not run`] : []),
+        ...(held.promoted > 0 ? [`${plural(held.promoted, "promoted library entry", "promoted library entries")} not bound`] : []),
+    ];
+    return parts.length ? ` Model-written tests: ${parts.join(", ")}, as ${held.note}.` : "";
 }
 
 /** TFP-194: which gap tests the site's writer wrote, and what it cost. */

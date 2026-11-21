@@ -1,5 +1,5 @@
 import type { TestAuditMode } from "@/lib/run/executor";
-import { normalizeContentProfile } from "@/lib/generate/normalize";
+import { normalizeBaseUrl, normalizeContentProfile } from "@/lib/generate/normalize";
 import { buildRunSelection } from "@/lib/run/selection";
 import { normalizeGenerationRecord } from "@/lib/run/generation-record";
 import { normalizeRunMode, RunModeError } from "@/lib/comprehensive/run-mode";
@@ -57,6 +57,11 @@ export function readRunRequest(body: unknown): { options: RunRequestOptions } | 
         return { error: includeTestTitles.length > 0 ? "No selected tests are available to rerun." : "No remaining tests are available to continue." };
     }
 
+    // TFP-292 (hardening of the model-written test check): http(s) only, by the shared rule; the address is kept as given.
+    if (typeof baseUrl === "string" && baseUrl.trim()) {
+        const read = normalizeBaseUrl(baseUrl);
+        if (!read.ok) return { error: read.message };
+    }
     const target = typeof baseUrl === "string" ? baseUrl : undefined;
     return {
         options: {
