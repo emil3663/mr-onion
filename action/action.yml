@@ -3,7 +3,7 @@
 # and ends the step with the run's own exit code (Decision 5): 0 no failures (with a baseline: no new ones), 1 test
 # failures, 2 couldn't run, 3 invalid configuration.
 #
-#   - uses: emil3663/mr-onion/action@v0.5.0
+#   - uses: emil3663/mr-onion/action@v0.5.1
 #     with:
 #       url: http://localhost:3000
 #

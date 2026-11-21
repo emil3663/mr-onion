@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: emil3663/mr-onion/action@v0.5.0
+      - uses: emil3663/mr-onion/action@v0.5.1
         with:
           url: ${{ github.event.deployment_status.environment_url }}
           artifact-name: mr-onion-preview-${{ github.event.deployment.id }}

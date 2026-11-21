@@ -408,7 +408,7 @@ npm run mr-onion -- run --url http://localhost:4200 --data-dir .mr-onion-data --
 The command ships as a pinned Docker image (Node, Playwright and Chromium fixed: `Dockerfile`), and as a composite GitHub Action that runs it (`action/`):
 
 ```yaml
-- uses: emil3663/mr-onion/action@v0.5.0
+- uses: emil3663/mr-onion/action@v0.5.1
   with:
     url: http://localhost:3000
 ```

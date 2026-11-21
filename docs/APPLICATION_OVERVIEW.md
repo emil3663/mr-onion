@@ -153,12 +153,14 @@ In order (`product-roadmap.md`, `deferred-work-register.md`):
   `mr-onion run` command, baselines, the Docker image and the GitHub Action
   (2026-11-13, `v0.4.0`). Phase 43, ownership confirmation and the active
   gate (2026-11-16), and Phase 46, the app screens (2026-11-19), released
-  with TFP-292 as `v0.5.0` (2026-11-21).
+  with TFP-292 as `v0.5.0` (2026-11-21). TFP-293, login variables must
+  start with `MRONION_LOGIN_`, released as `v0.5.1` (2026-11-22).
 - **Next:** the triaged build
-  order (`product-roadmap.md`): retention for saved runs (D29); the
+  order (`product-roadmap.md`), with Phase 45 moved up to first (owner,
+  2026-11-21): Phase 45; retention for saved runs (D29); the
   remaining Standard sets (SEO, the WAI-ARIA APG patterns, the rest of
   accessibility and security); failure triage; a measured comparison with
-  an outside QA tool (D27); Phase 45; Phase 44; authenticated and active
+  an outside QA tool (D27); Phase 44; authenticated and active
   security; Comprehensive negative tests and SEO; all-areas runs; load
   testing.
 - **Locked, not started:** Phase 44 scenario gaps, Phase 45 Docker sandbox.

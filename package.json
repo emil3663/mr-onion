@@ -1,6 +1,6 @@
 {
   "name": "mr-onion",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "bin": {
     "mr-onion": "bin/mr-onion.mjs",
