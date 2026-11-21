@@ -452,10 +452,16 @@ recorder's own timer gives real time):
 
 ## TFP-293 — A required prefix for login variable names
 
-- **Status:** In progress (2026-11-21). Placed next, after 0.5.0
-  (handover, 2026-11-21). Scope proposed by the planning session and
-  confirmed by the owner (2026-11-21): the `MRONION_LOGIN_` prefix, no
-  fallback.
+- **Status:** Done (2026-11-21). Merged to `main` as PR #65, ending at
+  `1a5d883`. Every check passed on its head, CodeQL's alert check
+  included. Ships in 0.5.1. Placed next, after 0.5.0 (handover,
+  2026-11-21). Scope proposed by the planning session and confirmed by
+  the owner (2026-11-21): the `MRONION_LOGIN_` prefix, no fallback.
+- **Verified (owner, 2026-11-21),** with two additions before the push:
+  `resolveCredentials` refuses an unprefixed name too, so the rule holds
+  where the values are read (`c853352`); each login field's help line is
+  linked by `aria-describedby` (`1a5d883`). The general problem block
+  below the fields is left as it is (owner).
 - **Problem:** a login config names the environment variables that hold
   the username and password (`usernameEnv`, `passwordEnv`). Any upper-case
   name is accepted today, so a login setting isn't limited to variables
