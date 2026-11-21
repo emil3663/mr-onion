@@ -42,7 +42,7 @@ inputs:
     description: Mr Onion's data folder, saved runs included, under the workspace (the action's, not the config file's dataDir); restore and save it between jobs for a baseline
     default: .mr-onion
   env:
-    description: Names of environment variables to pass into the run, comma- or space-separated (a login's usernameEnv and passwordEnv)
+    description: Names of environment variables to pass into the run, comma- or space-separated (a login's usernameEnv and passwordEnv, which start with MRONION_LOGIN_)
     default: ''
   image:
     description: The image to run; empty for ghcr.io/emil3663/mr-onion at this action's own version

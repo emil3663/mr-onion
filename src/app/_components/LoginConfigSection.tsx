@@ -9,6 +9,8 @@ interface LoginConfigSectionProps {
     setLoginInputs: (inputs: LoginInputs) => void;
     // Why the run is blocked, if the login settings are unusable as typed.
     loginProblem: string;
+    // TFP-293: the field it's about, so it's shown under that field.
+    loginProblemField: LoginConfigField | null;
     isCollapsed: boolean;
     setIsCollapsed: (updater: (value: boolean) => boolean) => void;
 }
@@ -18,8 +20,8 @@ const FIELD_HINTS: Record<LoginConfigField, { placeholder: string; help?: string
     usernameSelector: { placeholder: "#username" },
     passwordSelector: { placeholder: "#password" },
     submitSelector: { placeholder: "button[type=submit]" },
-    usernameEnv: { placeholder: "MYAPP_TEST_USER" },
-    passwordEnv: { placeholder: "MYAPP_TEST_PASS" },
+    usernameEnv: { placeholder: "MRONION_LOGIN_USER", help: "A variable whose name starts with MRONION_LOGIN_." },
+    passwordEnv: { placeholder: "MRONION_LOGIN_PASS", help: "A variable whose name starts with MRONION_LOGIN_." },
     postLoginPath: { placeholder: "/dashboard", help: "A page only reached once signed in." },
     postLoginSelector: { placeholder: "a[href='/logout']", help: "An element only visible once signed in. Give this or the page above (or both)." },
 };
@@ -36,7 +38,7 @@ const GROUPS: { title: string; fields: LoginConfigField[] }[] = [
 // credential fields take the NAME of an environment variable set for the
 // Mr Onion server (Decision 3), never a value, so this section cannot become
 // a place to type a real password.
-export function LoginConfigSection({ loginInputs, setLoginInputs, loginProblem, isCollapsed, setIsCollapsed }: LoginConfigSectionProps) {
+export function LoginConfigSection({ loginInputs, setLoginInputs, loginProblem, loginProblemField, isCollapsed, setIsCollapsed }: LoginConfigSectionProps) {
     const isConfigured = Object.values(loginInputs).some((value) => value.trim().length > 0);
 
     return (
@@ -62,6 +64,7 @@ export function LoginConfigSection({ loginInputs, setLoginInputs, loginProblem, 
                             {group.fields.map((field) => {
                                 const id = `login-${field}-input`;
                                 const hint = FIELD_HINTS[field];
+                                const problemHere = Boolean(loginProblem) && loginProblemField === field;
 
                                 return (
                                     <div key={field} className="space-y-1.5">
@@ -75,12 +78,15 @@ export function LoginConfigSection({ loginInputs, setLoginInputs, loginProblem, 
                                             autoComplete="off"
                                             spellCheck={false}
                                             aria-label={LOGIN_FIELD_LABELS[field]}
+                                            aria-invalid={problemHere || undefined}
+                                            aria-describedby={problemHere ? "login-config-problem" : undefined}
                                             value={loginInputs[field]}
                                             onChange={(event) => setLoginInputs({ ...loginInputs, [field]: event.target.value })}
                                             placeholder={hint.placeholder}
                                             className="w-full rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 font-mono text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                                         />
                                         {hint.help && <p className="text-xs leading-5 text-zinc-500">{hint.help}</p>}
+                                        {problemHere && <LoginProblem message={loginProblem} />}
                                     </div>
                                 );
                             })}
@@ -88,11 +94,7 @@ export function LoginConfigSection({ loginInputs, setLoginInputs, loginProblem, 
                     </fieldset>
                 ))}
 
-                {loginProblem && (
-                    <div role="alert" data-testid="login-config-problem" className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
-                        {loginProblem} Running is blocked until this is fixed, so a run never quietly goes ahead signed out.
-                    </div>
-                )}
+                {loginProblem && !loginProblemField && <LoginProblem message={loginProblem} />}
 
                 <div className="flex items-center justify-between gap-3">
                     <span className="text-xs text-zinc-500" data-testid="login-config-state">
@@ -109,5 +111,14 @@ export function LoginConfigSection({ loginInputs, setLoginInputs, loginProblem, 
                 </div>
             </div>
         </CollapsibleSection>
+    );
+}
+
+/** Why the run is blocked; under the field it's about (TFP-293), or below the fields when it's about none. */
+function LoginProblem({ message }: { message: string }) {
+    return (
+        <div role="alert" id="login-config-problem" data-testid="login-config-problem" className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
+            {message} Running is blocked until this is fixed, so a run never quietly goes ahead signed out.
+        </div>
     );
 }

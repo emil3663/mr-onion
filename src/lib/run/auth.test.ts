@@ -25,8 +25,8 @@ const valid = {
     usernameSelector: "#user",
     passwordSelector: "#pass",
     submitSelector: "button[type=submit]",
-    usernameEnv: "APP_USER",
-    passwordEnv: "APP_PASS",
+    usernameEnv: "MRONION_LOGIN_APP_USER",
+    passwordEnv: "MRONION_LOGIN_APP_PASS",
     postLoginPath: "/dashboard/",
 };
 
@@ -48,8 +48,8 @@ test("a complete config is resolved against the base URL and normalized", () => 
         usernameSelector: "#user",
         passwordSelector: "#pass",
         submitSelector: "button[type=submit]",
-        usernameEnv: "APP_USER",
-        passwordEnv: "APP_PASS",
+        usernameEnv: "MRONION_LOGIN_APP_USER",
+        passwordEnv: "MRONION_LOGIN_APP_PASS",
         postLoginPath: "/dashboard",
         postLoginSelector: undefined,
     });
@@ -75,7 +75,7 @@ test("a credential pasted where a name belongs is refused, so it is never looked
         );
     }
 
-    assert.ok(normalizeLoginConfig({ ...valid, passwordEnv: "MYAPP_TEST_PASS2" }, BASE));
+    assert.ok(normalizeLoginConfig({ ...valid, passwordEnv: "MRONION_LOGIN_PASS2" }, BASE));
 });
 
 test("every field a login needs is required", () => {
@@ -103,11 +103,11 @@ test("a login that is not an object is refused", () => {
 test("credential values are read from the environment at run time, and a missing or empty one is a named error", () => {
     const config = normalizeLoginConfig(valid, BASE)!;
 
-    assert.deepStrictEqual(resolveCredentials(config, { APP_USER: "u", APP_PASS: "p" }), { username: "u", password: "p" });
-    for (const env of [{ APP_USER: "u" }, { APP_PASS: "p" }, { APP_USER: "u", APP_PASS: "" }]) {
+    assert.deepStrictEqual(resolveCredentials(config, { MRONION_LOGIN_APP_USER: "u", MRONION_LOGIN_APP_PASS: "p" }), { username: "u", password: "p" });
+    for (const env of [{ MRONION_LOGIN_APP_USER: "u" }, { MRONION_LOGIN_APP_PASS: "p" }, { MRONION_LOGIN_APP_USER: "u", MRONION_LOGIN_APP_PASS: "" }]) {
         assert.throws(
             () => resolveCredentials(config, env),
-            (error: unknown) => error instanceof RunLoginError && error.kind === "credential-missing" && /environment variable APP_(USER|PASS) is not set/.test(error.message)
+            (error: unknown) => error instanceof RunLoginError && error.kind === "credential-missing" && /environment variable MRONION_LOGIN_APP_(USER|PASS) is not set/.test(error.message)
         );
     }
 });
@@ -116,7 +116,7 @@ test("a missing-credential error names the variable and never a value", () => {
     const config = normalizeLoginConfig(valid, BASE)!;
 
     assert.throws(
-        () => resolveCredentials(config, { APP_USER: "super-secret-user" }),
+        () => resolveCredentials(config, { MRONION_LOGIN_APP_USER: "super-secret-user" }),
         (error: unknown) => error instanceof RunLoginError && !error.message.includes("super-secret-user")
     );
 });

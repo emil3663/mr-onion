@@ -140,12 +140,12 @@ test.describe("Config-driven login (TFP-092)", () => {
     });
 
     test("a credential environment variable that is not set is a named error", async ({ request }) => {
-        const response = await startRun(request, { ...validLogin, passwordEnv: "MRONION_TEST_LOGIN_NOT_SET" });
+        const response = await startRun(request, { ...validLogin, passwordEnv: "MRONION_LOGIN_TEST_NOT_SET" });
         const body = await response.json();
 
         expect(response.status()).toBe(422);
         expect(body.errorKind).toBe("credential-missing");
-        expect(body.error).toContain("environment variable MRONION_TEST_LOGIN_NOT_SET is not set");
+        expect(body.error).toContain("environment variable MRONION_LOGIN_TEST_NOT_SET is not set");
     });
 
     test("an invalid login config is rejected before anything runs; inline credentials are never accepted", async ({ request }) => {

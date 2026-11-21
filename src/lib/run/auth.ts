@@ -2,7 +2,7 @@ import { chromium } from "@playwright/test";
 import { mkdir, readdir, readFile, rm } from "fs/promises";
 import { join } from "path";
 import { RUN_CONTEXT_OPTIONS } from "./browser-context";
-import { ENV_NAME_PATTERN, ENV_NAME_RULE_MESSAGE, LOGIN_CONFIG_FIELDS } from "./login-fields";
+import { ENV_NAME_PATTERN, ENV_NAME_RULE_MESSAGE, hasLoginEnvPrefix, LOGIN_CONFIG_FIELDS, loginEnvPrefixMessage } from "./login-fields";
 import { secretsFromStorageState } from "./redact";
 
 // Phase 20 (TFP-092): config-driven login, once per run.
@@ -106,6 +106,10 @@ export function normalizeLoginConfig(input: unknown, baseUrl: string | undefined
                 "config-invalid",
                 `Login config: "${key}" ${ENV_NAME_RULE_MESSAGE}`
             );
+        }
+        // TFP-293: only a variable named for logins.
+        if (!hasLoginEnvPrefix(name)) {
+            throw new RunLoginError("config-invalid", `Login config: "${key}" ${loginEnvPrefixMessage(key)}`);
         }
     }
 

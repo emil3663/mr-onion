@@ -11,6 +11,27 @@ the report and the CI command are declared stable, after Phase 47.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking: a login's variable names must start with `MRONION_LOGIN_`.**
+  A login reads only variables named for logins, so `usernameEnv` and
+  `passwordEnv` must both start with `MRONION_LOGIN_` (for example
+  `MRONION_LOGIN_USER` and `MRONION_LOGIN_PASS`), in the app, the CLI and
+  the Action. Any other name is refused before anything runs, with a
+  message naming the field, and the app shows it under that field. There
+  is no fallback for the old names
+  ([TFP-293](docs/decisions/phase-46-gate-b-fixes-2026-11-17.md)).
+
+  **To migrate**, rename the two variables and the names in your login
+  config: `MYAPP_TEST_USER` becomes `MRONION_LOGIN_USER` in your `.env` (or
+  your CI step's `env`) and in `"usernameEnv"`, and the same for the
+  password. In the Action, list the new names in `env:`; your secrets can
+  keep their own names. With `--baseline latest`, a run matches earlier
+  runs by their login too, so the first run after renaming finds no
+  baseline and is treated as a first run: any failing test fails that
+  build. To keep comparing, give that one run the last good run's
+  `run.json` (`--baseline <file>`); later runs find it by the new names.
+
 ## [0.5.0] — 2026-11-21
 
 ### Model-written tests held back until the sandbox (TFP-292)

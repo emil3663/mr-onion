@@ -220,7 +220,7 @@ export default function Home() {
     const isPracticeSelectionReady = generation.lastGeneratedPracticeSignature === selectedPracticeSignature;
     const isJourneySelectionReady =
         generation.lastGeneratedJourneySignature === JSON.stringify([...effectiveSelectedJourneyIds].sort());
-    const { login: loginBlock, problem: loginProblem } = buildLoginBlock(loginInputs);
+    const { login: loginBlock, problem: loginProblem, field: loginProblemField } = buildLoginBlock(loginInputs);
     const runBlockedMessage = urlFieldProblem
         ? urlFieldProblem
         : loginProblem
@@ -421,6 +421,7 @@ export default function Home() {
                     loginInputs={loginInputs}
                     setLoginInputs={setLoginInputs}
                     loginProblem={loginProblem}
+                    loginProblemField={loginProblemField}
                     isCollapsed={isLoginCollapsed}
                     setIsCollapsed={setIsLoginCollapsed}
                 />

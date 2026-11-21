@@ -1,7 +1,7 @@
 import { BEST_PRACTICE_OPTIONS, BEST_PRACTICE_KEYWORDS, DEFAULT_BASE_URL } from "@/app/_lib/constants";
 import { getDefaultInspectionPath } from "@/lib/introspect/paths";
 import type { NamedFlow } from "@/lib/introspect/types";
-import { ENV_NAME_PATTERN, ENV_NAME_RULE_MESSAGE, LOGIN_CONFIG_FIELDS, LOGIN_FIELD_LABELS } from "@/lib/run/login-fields";
+import { ENV_NAME_PATTERN, ENV_NAME_RULE_MESSAGE, hasLoginEnvPrefix, LOGIN_CONFIG_FIELDS, LOGIN_FIELD_LABELS, loginEnvPrefixMessage } from "@/lib/run/login-fields";
 import type { LoginConfigField } from "@/lib/run/login-fields";
 import { formatMilliseconds } from "@/lib/report/text";
 import type { BestPracticeArea, BusyInspectionTarget, ContentProfile, ContentProfilePage, CrawlResult, CrawledPage, RunProgressSnapshot, RunResult, TestAuditMode } from "@/app/_lib/types";
@@ -83,24 +83,29 @@ export type LoginInputs = Record<LoginConfigField, string>;
 
 export const EMPTY_LOGIN_INPUTS: LoginInputs = Object.fromEntries(LOGIN_CONFIG_FIELDS.map((field) => [field, ""])) as LoginInputs;
 
-export function buildLoginBlock(inputs: LoginInputs) {
+/** The login block, or why it can't be sent; `field` is the field the problem is under (TFP-293: shown there). */
+export function buildLoginBlock(inputs: LoginInputs): { login: Partial<Record<LoginConfigField, string>> | null; problem: string; field: LoginConfigField | null } {
     const entries = LOGIN_CONFIG_FIELDS
         .map((field) => [field, inputs[field].trim()] as const)
         .filter(([, value]) => value.length > 0);
 
     if (entries.length === 0) {
-        return { login: null, problem: "" };
+        return { login: null, problem: "", field: null };
     }
 
     for (const field of ["usernameEnv", "passwordEnv"] as const) {
         const value = inputs[field].trim();
 
         if (value && !ENV_NAME_PATTERN.test(value)) {
-            return { login: null, problem: `"${LOGIN_FIELD_LABELS[field]}" ${ENV_NAME_RULE_MESSAGE}` };
+            return { login: null, problem: `"${LOGIN_FIELD_LABELS[field]}" ${ENV_NAME_RULE_MESSAGE}`, field };
+        }
+        // TFP-293: the server's rule, so a name it would refuse is caught here, under its field.
+        if (value && !hasLoginEnvPrefix(value)) {
+            return { login: null, problem: `"${LOGIN_FIELD_LABELS[field]}" ${loginEnvPrefixMessage(field)}`, field };
         }
     }
 
-    return { login: Object.fromEntries(entries) as Partial<Record<LoginConfigField, string>>, problem: "" };
+    return { login: Object.fromEntries(entries) as Partial<Record<LoginConfigField, string>>, problem: "", field: null };
 }
 
 export function includesKeyword(text: string, keyword: string) {

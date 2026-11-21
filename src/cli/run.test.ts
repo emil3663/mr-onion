@@ -48,17 +48,17 @@ test("an unreachable URL: the crawl finds no page, exit 2, never 0", async () =>
 
 test("Decision 7: a login value is redacted from every file in --out, page-data.json included", async (t) => {
     const out = await mkdtemp(join(tmpdir(), "tfp245-out-"));
-    const saved = { user: process.env.TFP245_TEST_USER, pass: process.env.TFP245_TEST_PASS };
-    process.env.TFP245_TEST_USER = "ada-the-tester";
-    process.env.TFP245_TEST_PASS = "s3cret-Pa55";
+    const saved = { user: process.env.MRONION_LOGIN_TFP245_USER, pass: process.env.MRONION_LOGIN_TFP245_PASS };
+    process.env.MRONION_LOGIN_TFP245_USER = "ada-the-tester";
+    process.env.MRONION_LOGIN_TFP245_PASS = "s3cret-Pa55";
     t.after(async () => {
-        for (const [key, value] of [["TFP245_TEST_USER", saved.user], ["TFP245_TEST_PASS", saved.pass]] as const) {
+        for (const [key, value] of [["MRONION_LOGIN_TFP245_USER", saved.user], ["MRONION_LOGIN_TFP245_PASS", saved.pass]] as const) {
             if (value === undefined) delete process.env[key];
             else process.env[key] = value;
         }
         await rm(out, { recursive: true, force: true });
     });
-    const config = buildConfig({}, { url: "http://localhost:4200", out, login: { loginUrl: "/login", usernameEnv: "TFP245_TEST_USER", passwordEnv: "TFP245_TEST_PASS", usernameSelector: "#email", passwordSelector: "#password", submitSelector: "button[type=submit]", postLoginPath: "/account" } }, tmpdir());
+    const config = buildConfig({}, { url: "http://localhost:4200", out, login: { loginUrl: "/login", usernameEnv: "MRONION_LOGIN_TFP245_USER", passwordEnv: "MRONION_LOGIN_TFP245_PASS", usernameSelector: "#email", passwordSelector: "#password", submitSelector: "button[type=submit]", postLoginPath: "/account" } }, tmpdir());
     const { createEmptyProgress } = await import("../lib/run/jobs.ts");
     // The secret where a page, a test and the output could each carry it.
     const job = { result: { runId: "r", runStatus: "failed", passed: false, output: "logged in as ada-the-tester with s3cret-Pa55", duration: 1, progress: createEmptyProgress() }, artifactFiles: new Map() } as never;

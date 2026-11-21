@@ -61,14 +61,14 @@ const completeInputs = {
     usernameSelector: "#username",
     passwordSelector: "#password",
     submitSelector: "button[type=submit]",
-    usernameEnv: "MYAPP_TEST_USER",
-    passwordEnv: "MYAPP_TEST_PASS",
+    usernameEnv: "MRONION_LOGIN_USER",
+    passwordEnv: "MRONION_LOGIN_PASS",
     postLoginPath: "/dashboard",
 };
 
 test("nothing typed means no login, and no problem", () => {
-    assert.deepStrictEqual(buildLoginBlock(EMPTY_LOGIN_INPUTS), { login: null, problem: "" });
-    assert.deepStrictEqual(buildLoginBlock({ ...EMPTY_LOGIN_INPUTS, loginUrl: "   " }), { login: null, problem: "" });
+    assert.deepStrictEqual(buildLoginBlock(EMPTY_LOGIN_INPUTS), { login: null, problem: "", field: null });
+    assert.deepStrictEqual(buildLoginBlock({ ...EMPTY_LOGIN_INPUTS, loginUrl: "   " }), { login: null, problem: "", field: null });
 });
 
 test("what was typed becomes the login block, trimmed, with blank optional fields left out", () => {
@@ -80,8 +80,8 @@ test("what was typed becomes the login block, trimmed, with blank optional field
         usernameSelector: "#username",
         passwordSelector: "#password",
         submitSelector: "button[type=submit]",
-        usernameEnv: "MYAPP_TEST_USER",
-        passwordEnv: "MYAPP_TEST_PASS",
+        usernameEnv: "MRONION_LOGIN_USER",
+        passwordEnv: "MRONION_LOGIN_PASS",
         postLoginPath: "/dashboard",
     });
 });

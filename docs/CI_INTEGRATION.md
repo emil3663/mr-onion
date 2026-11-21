@@ -168,8 +168,8 @@ variables in the config file's `login`, never their values:
     "usernameSelector": "#email",
     "passwordSelector": "#password",
     "submitSelector": "button[type=submit]",
-    "usernameEnv": "SITE_USER",
-    "passwordEnv": "SITE_PASSWORD",
+    "usernameEnv": "MRONION_LOGIN_USER",
+    "passwordEnv": "MRONION_LOGIN_PASS",
     "postLoginPath": "/account"
   }
 }
@@ -183,14 +183,17 @@ image:
         with:
           url: http://localhost:3000
           config: mr-onion.json
-          env: SITE_USER, SITE_PASSWORD
+          env: MRONION_LOGIN_USER, MRONION_LOGIN_PASS
         env:
-          SITE_USER: ${{ secrets.SITE_USER }}
-          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          MRONION_LOGIN_USER: ${{ secrets.SITE_USER }}
+          MRONION_LOGIN_PASS: ${{ secrets.SITE_PASSWORD }}
 ```
 
 Docker reads each value from the step's environment by name, so a secret
-never appears on a command line. A login needs `postLoginPath` or
+never appears on a command line. Both names must start with
+`MRONION_LOGIN_` (TFP-293); a login reads no other variable, and the run
+stops before it starts if one doesn't. Your secrets can keep their own
+names. A login needs `postLoginPath` or
 `postLoginSelector`, something only true once signed in.
 [`AUTOMATED_ACCOUNT_SETUP.md`](AUTOMATED_ACCOUNT_SETUP.md) has every field,
 and the automation account a login should use.

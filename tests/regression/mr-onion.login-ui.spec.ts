@@ -182,6 +182,35 @@ test.describe("Login config in the UI (TFP-097)", () => {
         await expect(page.getByRole("button", { name: "Run suite" }).first()).toBeEnabled();
     });
 
+    // TFP-293: a login reads only variables named for logins. The refusal is under the field it's about (as R11 shows
+    // the Base URL's), names the field as the screen does, the prefix and an example, and blocks the run.
+    test("a variable name without MRONION_LOGIN_ is refused under its field, and no run starts", async ({ page }) => {
+        let runRequests = 0;
+        page.on("request", (req) => {
+            if (req.url().endsWith("/api/run") && req.method() === "POST") runRequests += 1;
+        });
+
+        await generateSuiteAndUseAuthenticatedCode(page);
+        await fillLoginSection(page, { ...typed, "Username environment variable name": "SITE_LOGIN_USER" });
+
+        const field = page.getByLabel("Username environment variable name", { exact: true });
+        const problem = page.getByTestId("login-config-problem");
+        await expect(problem).toHaveText("\"Username environment variable name\" must start with MRONION_LOGIN_ (for example MRONION_LOGIN_USER): a login reads only variables named for logins. Running is blocked until this is fixed, so a run never quietly goes ahead signed out.");
+        await expect(field).toHaveAttribute("aria-invalid", "true");
+        await expect(field).toHaveAttribute("aria-describedby", "login-config-problem");
+        // Under the field: in the same block as its input, right below it.
+        await expect(field.locator("xpath=..").getByTestId("login-config-problem")).toBeVisible();
+        const [fieldBox, problemBox] = [await field.boundingBox(), await problem.boundingBox()];
+        expect(problemBox!.y).toBeGreaterThan(fieldBox!.y);
+        await expect(page.getByRole("button", { name: "Run suite" }).first()).toBeDisabled();
+        expect(runRequests).toBe(0);
+
+        await field.fill(AUTH_FIXTURE_USER_ENV);
+        await expect(problem).toHaveCount(0);
+        await expect(field).not.toHaveAttribute("aria-invalid", "true");
+        await expect(page.getByRole("button", { name: "Run suite" }).first()).toBeEnabled();
+    });
+
     test("an incomplete login is not run signed out: the server's named error reaches the user and no run starts", async ({ page }) => {
         await generateSuiteAndUseAuthenticatedCode(page);
         await fillLoginSection(page, { "Login URL": "/login" });

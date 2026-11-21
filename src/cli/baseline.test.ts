@@ -133,13 +133,13 @@ test("Decision 7: run.json and baseline.json in --out are redacted like every ot
     const { writeOutputs } = await import("./run.ts");
     const { createEmptyProgress } = await import("../lib/run/jobs.ts");
     const out = join(scratch, "out-redacted");
-    process.env.TFP246_TEST_USER = "ada-the-tester";
-    process.env.TFP246_TEST_PASS = "s3cret-Pa55";
+    process.env.MRONION_LOGIN_TFP246_USER = "ada-the-tester";
+    process.env.MRONION_LOGIN_TFP246_PASS = "s3cret-Pa55";
     t.after(() => {
-        delete process.env.TFP246_TEST_USER;
-        delete process.env.TFP246_TEST_PASS;
+        delete process.env.MRONION_LOGIN_TFP246_USER;
+        delete process.env.MRONION_LOGIN_TFP246_PASS;
     });
-    const login = { loginUrl: "/login", usernameEnv: "TFP246_TEST_USER", passwordEnv: "TFP246_TEST_PASS", usernameSelector: "#email", passwordSelector: "#password", submitSelector: "button[type=submit]", postLoginPath: "/account" };
+    const login = { loginUrl: "/login", usernameEnv: "MRONION_LOGIN_TFP246_USER", passwordEnv: "MRONION_LOGIN_TFP246_PASS", usernameSelector: "#email", passwordSelector: "#password", submitSelector: "button[type=submit]", postLoginPath: "/account" };
     // A saved run whose record and comparison could each carry a login value, in an output line and a test's title.
     const run = await store({ ...record({ finishedAt: "2026-11-08T13:00:00.000Z" }), description: "signed in as ada-the-tester" });
     const job = { id: run.runId, result: { runId: run.runId, runStatus: "failed", passed: false, output: "s3cret-Pa55", duration: 1, progress: createEmptyProgress() }, artifactFiles: new Map() } as never;
@@ -171,13 +171,13 @@ test("a run.json whose id is already in the data folder: its copy is that run; a
 test("a run that can't be compared still writes its reports, then couldn't run; the comparison's log is redacted", async (t) => {
     const { finishRun, CouldNotRun } = await import("./run.ts");
     const { createEmptyProgress } = await import("../lib/run/jobs.ts");
-    process.env.TFP246_TEST_USER = "ada-the-tester";
-    process.env.TFP246_TEST_PASS = "s3cret-Pa55";
+    process.env.MRONION_LOGIN_TFP246_USER = "ada-the-tester";
+    process.env.MRONION_LOGIN_TFP246_PASS = "s3cret-Pa55";
     t.after(() => {
-        delete process.env.TFP246_TEST_USER;
-        delete process.env.TFP246_TEST_PASS;
+        delete process.env.MRONION_LOGIN_TFP246_USER;
+        delete process.env.MRONION_LOGIN_TFP246_PASS;
     });
-    const login = { loginUrl: "/login", usernameEnv: "TFP246_TEST_USER", passwordEnv: "TFP246_TEST_PASS", usernameSelector: "#email", passwordSelector: "#password", submitSelector: "button[type=submit]", postLoginPath: "/account" };
+    const login = { loginUrl: "/login", usernameEnv: "MRONION_LOGIN_TFP246_USER", passwordEnv: "MRONION_LOGIN_TFP246_PASS", usernameSelector: "#email", passwordSelector: "#password", submitSelector: "button[type=submit]", postLoginPath: "/account" };
     // A whole report, as the HTML export reads one.
     const report = (status: string) => {
         const passed = status === "Passed" ? 1 : 0;
@@ -301,13 +301,13 @@ test("the verdict is saved with the run, and is in --out's run.json", async () =
 test("a baseline whose titles were redacted matches this run's titles, redacted the same way", async (t) => {
     const { finishRun } = await import("./run.ts");
     const { createEmptyProgress } = await import("../lib/run/jobs.ts");
-    process.env.TFP246_TEST_USER = "ada-the-tester";
-    process.env.TFP246_TEST_PASS = "s3cret-Pa55";
+    process.env.MRONION_LOGIN_TFP246_USER = "ada-the-tester";
+    process.env.MRONION_LOGIN_TFP246_PASS = "s3cret-Pa55";
     t.after(() => {
-        delete process.env.TFP246_TEST_USER;
-        delete process.env.TFP246_TEST_PASS;
+        delete process.env.MRONION_LOGIN_TFP246_USER;
+        delete process.env.MRONION_LOGIN_TFP246_PASS;
     });
-    const login = { loginUrl: "/login", usernameEnv: "TFP246_TEST_USER", passwordEnv: "TFP246_TEST_PASS", usernameSelector: "#email", passwordSelector: "#password", submitSelector: "button[type=submit]", postLoginPath: "/account" };
+    const login = { loginUrl: "/login", usernameEnv: "MRONION_LOGIN_TFP246_USER", passwordEnv: "MRONION_LOGIN_TFP246_PASS", usernameSelector: "#email", passwordSelector: "#password", submitSelector: "button[type=submit]", postLoginPath: "/account" };
     const full = (title: string) => ({
         summary: { planned: 1, executed: 1, passed: 0, failed: 1, blocked: 0, flaky: 0, notRun: 0, duration: 1, releaseRecommendation: "", defectDistribution: { Critical: 0, Major: 0, Minor: 0 }, passFailRatio: { passed: 0, failed: 1 }, browsers: ["chromium"], defectTrend: [] },
         execution: [{ id: "e1", title, description: "", suite: "s", area: "Functional", interactionType: null, browser: "chromium", status: "Failed", duration: 1, remarks: "", rawMessage: "", reproductionSteps: [], artifacts: [], order: 1 }],

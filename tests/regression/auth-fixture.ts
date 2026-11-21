@@ -9,9 +9,9 @@ import { createServer, type Server } from "node:http";
 export const AUTH_FIXTURE_PORT = 4397;
 export const AUTH_FIXTURE_URL = `http://127.0.0.1:${AUTH_FIXTURE_PORT}`;
 
-export const AUTH_FIXTURE_USER_ENV = "MRONION_TEST_LOGIN_USER";
-export const AUTH_FIXTURE_PASS_ENV = "MRONION_TEST_LOGIN_PASS";
-export const AUTH_FIXTURE_WRONG_PASS_ENV = "MRONION_TEST_LOGIN_WRONG_PASS";
+export const AUTH_FIXTURE_USER_ENV = "MRONION_LOGIN_TEST_USER";
+export const AUTH_FIXTURE_PASS_ENV = "MRONION_LOGIN_TEST_PASS";
+export const AUTH_FIXTURE_WRONG_PASS_ENV = "MRONION_LOGIN_TEST_WRONG_PASS";
 
 export const AUTH_FIXTURE_USER = "fixture-user";
 export const AUTH_FIXTURE_PASS = "Fixture-Pass-7391-zq";

@@ -123,11 +123,12 @@ reads the values from its own environment when a run starts.
 
 Set them for the Mr Onion server process — in your local `.env` (see
 [`.env.example`](../.env.example)) or in the shell that starts it. Names are
-upper-case letters, digits and underscores:
+upper-case letters, digits and underscores, and both must start with
+`MRONION_LOGIN_` (TFP-293): a login reads only variables named for logins.
 
 ```
-MYAPP_TEST_USER=automation@example.test
-MYAPP_TEST_PASS=<a long random password>
+MRONION_LOGIN_USER=automation@example.test
+MRONION_LOGIN_PASS=<a long random password>
 ```
 
 Environment variables are the only credential source Mr Onion supports today.
@@ -157,6 +158,11 @@ The section has no password field, and it will not become one: the two
 credential fields take a variable **name**. If what you type in them does not
 look like a name (upper case, digits, underscores), the run is blocked in the
 app and nothing is sent — so a password pasted there never leaves your browser.
+A name that doesn't start with `MRONION_LOGIN_` is refused too, before anything
+runs. The app shows the refusal under its field, with the field's label; the API
+answers 400 with
+`Login config: "usernameEnv" must start with MRONION_LOGIN_ (for example MRONION_LOGIN_USER): a login reads only variables named for logins.`,
+and the CLI and the Action give the same message after `login: `.
 If you fill in some of the login settings but not all, the run is not started
 signed out: the missing field is reported by name.
 
@@ -176,8 +182,8 @@ If you call the API directly instead, this is the `login` part of the request bo
   "usernameSelector": "#username",
   "passwordSelector": "#password",
   "submitSelector": "button[type=submit]",
-  "usernameEnv": "MYAPP_TEST_USER",
-  "passwordEnv": "MYAPP_TEST_PASS",
+  "usernameEnv": "MRONION_LOGIN_USER",
+  "passwordEnv": "MRONION_LOGIN_PASS",
   "postLoginPath": "/dashboard",
   "postLoginSelector": "a[href='/logout']"
 }
