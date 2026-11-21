@@ -30,7 +30,7 @@ const { OPENAI_MODEL_CANDIDATES } = await import("../../../lib/generate/models.t
 
 installFakeServer();
 
-const LOCAL_MODEL = "testforge-qwen7b";
+const LOCAL_MODEL = "mr-onion-qwen7b";
 const CATALOG_ID = `${LOCAL_MODEL}:latest`;
 const MARKER = "neutral-describe-level-fixture";
 
