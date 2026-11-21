@@ -227,8 +227,9 @@ no automated browser shows. Three rules catch those earlier:
   default it changed), and each is fixed or its last-reviewed date says it
   was checked. Search the whole doc, not only the section the phase added
   to: a new section can leave an older line saying the opposite. The gate
-  report lists the docs checked. `npm run check:doc-status` (TFP-302)
-  catches the status phrases mechanically; it doesn't replace the read.
+  report lists the docs checked. A mechanical check for the status
+  phrases, `npm run check:doc-status`, is planned (TFP-302, not built
+  yet); once it exists it won't replace the read.
 - **Commits** follow Conventional Commits and give the reason for the
   change, the alternatives that were rejected, and what the change does not
   do.
