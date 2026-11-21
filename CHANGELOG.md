@@ -11,6 +11,8 @@ the report and the CI command are declared stable, after Phase 47.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-11-21
+
 ### Model-written tests held back until the sandbox (TFP-292)
 
 Hardening of the model-written test check
@@ -367,6 +369,8 @@ TestForge from a FastAPI backend to Next.js ([history](docs/consolidation/README
 - The `testforge-skills` Claude Code plugin: 12 testing and engineering
   skills, usable without the app ([`skills/README.md`](skills/README.md)).
 
-[Unreleased]: https://github.com/emil3663/mr-onion/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/emil3663/mr-onion/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/emil3663/mr-onion/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/emil3663/mr-onion/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/emil3663/mr-onion/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/emil3663/mr-onion/releases/tag/v0.2.0

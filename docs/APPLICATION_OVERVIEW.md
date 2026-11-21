@@ -152,9 +152,9 @@ In order (`product-roadmap.md`, `deferred-work-register.md`):
   (2026-11-12, `v0.3.0`). Phase 47, Mr Onion in a target's CI pipeline: the
   `mr-onion run` command, baselines, the Docker image and the GitHub Action
   (2026-11-13, `v0.4.0`). Phase 43, ownership confirmation and the active
-  gate (2026-11-16), and Phase 46, the app screens (2026-11-19): both on
-  `main`, not yet in a tagged release.
-- **Next:** the `v0.5.0` tag (TFP-292 is done, 2026-11-21). Then the triaged build
+  gate (2026-11-16), and Phase 46, the app screens (2026-11-19), released
+  with TFP-292 as `v0.5.0` (2026-11-21).
+- **Next:** the triaged build
   order (`product-roadmap.md`): retention for saved runs (D29); the
   remaining Standard sets (SEO, the WAI-ARIA APG patterns, the rest of
   accessibility and security); failure triage; a measured comparison with

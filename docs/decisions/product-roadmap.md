@@ -427,7 +427,7 @@ Planned 2026-10-15 as `post-phase-42-review-plan.md` (R1 to R6).
 16. all-areas runs;
 17. load testing.
 
-### Phase 43 — Ownership confirmation, once per site, and the active gate (complete 2026-11-16: TFP-218 to TFP-221; Gates A and B passed; not released yet)
+### Phase 43 — Ownership confirmation, once per site, and the active gate (complete 2026-11-16: TFP-218 to TFP-221; Gates A and B passed; released as 0.5.0, 2026-11-21)
 A tester confirms once per site, by API, that they own the site or have
 written permission:
 - exact hosts;
@@ -473,7 +473,7 @@ Tickets TFP-228 to TFP-231.
 
 See `phase-45-docker-sandbox-decision-record.md`.
 
-### Phase 46 — App screens (locked 2026-10-20, complete 2026-11-19: Gates A and B passed, merged as PRs #54 to #59)
+### Phase 46 — App screens (locked 2026-10-20, complete 2026-11-19: Gates A and B passed, merged as PRs #54 to #59; released as 0.5.0, 2026-11-21)
 - **A site lookup by URL:** exact match only, no list of sites, the email
   masked.
 - **The confirmation form:** hosts typed by hand.

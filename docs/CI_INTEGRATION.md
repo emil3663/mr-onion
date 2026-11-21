@@ -20,7 +20,7 @@ jobs:
       - run: npm ci && npm run build
       - run: npm start &                       # your app, on port 3000
       - run: npx wait-on http://localhost:3000
-      - uses: emil3663/mr-onion/action@v0.4.0
+      - uses: emil3663/mr-onion/action@v0.5.0
         with:
           url: http://localhost:3000
 ```
@@ -30,8 +30,8 @@ workflow run as an artifact (`report.html`, `junit.xml` and the rest of
 the folder) and writes a job summary: the verdict, the counts, and the
 failing tests.
 
-Pin the action to a version. `@v0.4.0` runs the image
-`ghcr.io/emil3663/mr-onion:0.4.0`, so a new release changes nothing until
+Pin the action to a version. `@v0.5.0` runs the image
+`ghcr.io/emil3663/mr-onion:0.5.0`, so a new release changes nothing until
 you move the pin. Pin it to a version tag, not a branch or a commit: the
 action runs the image of the version in its own `package.json`, and a
 branch's version between releases has no image, so the step can't run
@@ -111,7 +111,7 @@ before the next one. A cache does this:
           key: mr-onion-${{ github.run_id }}
           restore-keys: mr-onion-
       - id: mr-onion
-        uses: emil3663/mr-onion/action@v0.4.0
+        uses: emil3663/mr-onion/action@v0.5.0
         with:
           url: http://localhost:3000
           baseline: latest
@@ -179,7 +179,7 @@ Then pass them to the step, and name them in `env` so they reach the
 image:
 
 ```yaml
-      - uses: emil3663/mr-onion/action@v0.4.0
+      - uses: emil3663/mr-onion/action@v0.5.0
         with:
           url: http://localhost:3000
           config: mr-onion.json
@@ -238,7 +238,7 @@ Any Linux CI system with Docker can run the image directly:
 docker run --rm --init --ipc=host --network host \
   --user "$(id -u):$(id -g)" \
   -v "$PWD:/work" \
-  ghcr.io/emil3663/mr-onion:0.4.0 run --url http://localhost:3000 --out mr-onion-out --data-dir .mr-onion
+  ghcr.io/emil3663/mr-onion:0.5.0 run --url http://localhost:3000 --out mr-onion-out --data-dir .mr-onion
 ```
 
 - **`--user "$(id -u):$(id -g)"`.** Without it, the image runs as root,
@@ -249,7 +249,7 @@ docker run --rm --init --ipc=host --network host \
   must run as root, give the files back afterwards:
 
   ```bash
-  docker run --rm -v "$PWD:/work" --entrypoint chown ghcr.io/emil3663/mr-onion:0.4.0 \
+  docker run --rm -v "$PWD:/work" --entrypoint chown ghcr.io/emil3663/mr-onion:0.5.0 \
     -R "$(id -u):$(id -g)" /work/mr-onion-out /work/.mr-onion
   ```
 
