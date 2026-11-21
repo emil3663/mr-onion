@@ -160,6 +160,13 @@ export interface ResolvedCredentials {
 
 // Reads the credential values from the environment at run time.
 export function resolveCredentials(config: LoginConfig, env: Record<string, string | undefined> = process.env): ResolvedCredentials {
+    // TFP-293: checked again where the values are read, so a config that never went through normalizeLoginConfig
+    // still can't read a variable not named for logins. Refused before any lookup.
+    for (const [key, name] of [["usernameEnv", config.usernameEnv], ["passwordEnv", config.passwordEnv]] as const) {
+        if (!hasLoginEnvPrefix(name)) {
+            throw new RunLoginError("config-invalid", `Login config: "${key}" ${loginEnvPrefixMessage(key)}`);
+        }
+    }
     for (const name of [config.usernameEnv, config.passwordEnv]) {
         if (!env[name]) {
             throw new RunLoginError(

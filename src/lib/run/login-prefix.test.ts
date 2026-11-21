@@ -22,7 +22,7 @@ process.env.MRONION_RUNS_ROOT = join(scratch, "runs");
 process.env.MRONION_DATA_DIR = join(scratch, "data");
 after(() => rmSync(scratch, { recursive: true, force: true }));
 
-const { normalizeLoginConfig, RunLoginError } = await import("./auth.ts");
+const { normalizeLoginConfig, resolveCredentials, RunLoginError } = await import("./auth.ts");
 const { buildConfig, ConfigError } = await import("../../cli/config.ts");
 const { buildLoginBlock, EMPTY_LOGIN_INPUTS } = await import("../../app/_lib/derive.ts");
 const runRoute = await import("../../app/api/run/route.ts");
@@ -58,6 +58,22 @@ test("TFP-293: the server reads a prefixed name, and refuses any other, for both
                 `${field}: ${name}`
             );
         }
+    }
+});
+
+test("TFP-293: the credentials are read only from a prefixed name, even for a config that skipped the check", () => {
+    // Built directly, as a caller that never went through normalizeLoginConfig would: the rule holds where the values
+    // are read, not only where configs come in.
+    const config = { ...login, loginUrl: `${BASE}/login` };
+    const env = { MRONION_LOGIN_USER: "u", MRONION_LOGIN_PASS: "p", SITE_LOGIN_USER: "other-user", SITE_LOGIN_PASS: "other-pass" };
+    assert.deepStrictEqual(resolveCredentials(config, env), { username: "u", password: "p" }, "a prefixed name is read as before");
+    for (const field of FIELDS) {
+        const name = field === "usernameEnv" ? "SITE_LOGIN_USER" : "SITE_LOGIN_PASS";
+        assert.throws(
+            () => resolveCredentials({ ...config, [field]: name }, env),
+            (error: unknown) => error instanceof RunLoginError && error.kind === "config-invalid" && error.message === refusal(field),
+            field
+        );
     }
 });
 
