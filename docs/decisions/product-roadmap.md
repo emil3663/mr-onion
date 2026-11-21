@@ -427,6 +427,11 @@ Planned 2026-10-15 as `post-phase-42-review-plan.md` (R1 to R6).
 16. all-areas runs;
 17. load testing.
 
+**Amended 2026-11-21 (owner):** Phase 45 (11) moves up to next, with D29
+(4) straight after it. Why: since 0.5.0 nothing model-written runs
+(TFP-292), and Phase 44 and the candidate features wait on the sandbox.
+The reasoning is in Phase 45's record, "Review before building", item 1.
+
 ### Phase 43 — Ownership confirmation, once per site, and the active gate (complete 2026-11-16: TFP-218 to TFP-221; Gates A and B passed; released as 0.5.0, 2026-11-21)
 A tester confirms once per site, by API, that they own the site or have
 written permission:

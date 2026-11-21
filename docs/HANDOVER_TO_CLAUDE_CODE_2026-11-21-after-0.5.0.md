@@ -13,8 +13,9 @@ file replaces it, and its queue is done (Phase 46, TFP-301, TFP-292, the
 - **Model-written tests don't run** until Phase 45's sandbox
   (`MODEL_BODIES_RUN = false`, TFP-292). Nothing turns that on outside the
   sandbox's own work, tests included.
-- **Phase 45** (the sandbox) is the next phase. A planning session is
-  writing its decision record; don't start it from this file.
+- **Phase 45** (the sandbox) is the next phase, moved up by the owner on
+  2026-11-21. Its record was reviewed the same day; the "Review before
+  building" section amends it and overrides older wording below it.
 - **The security advisory** for TFP-292 is the owner's. Don't edit,
   publish or name it anywhere except where the owner says.
 
@@ -23,6 +24,8 @@ file replaces it, and its queue is done (Phase 46, TFP-301, TFP-292, the
 - `CLAUDE.md` and `docs/WORKING_AGREEMENTS.md`.
 - `docs/decisions/phase-46-gate-b-fixes-2026-11-17.md`, TFP-293.
 - `src/lib/run/auth.ts` and `src/lib/run/login-fields.ts`.
+- For Phase 45: `docs/decisions/phase-45-docker-sandbox-decision-record.md`,
+  starting with its "Review before building" section (2026-11-21).
 
 ## Standing rules for this stretch
 
@@ -46,10 +49,18 @@ file replaces it, and its queue is done (Phase 46, TFP-301, TFP-292, the
    says so, with the migration.
 2. **Stop after TFP-293** for verification. Ask the owner before any tag:
    it would ship as 0.5.1.
+3. **Phase 45, TFP-228: the sandbox container and its mounts.**
+4. **TFP-229: the network.** Remote sites reach their own hosts only
+   (review item 7). Then **Gate A**: stop for independent verification,
+   which includes D28's remaining zones (review item 2).
+5. **TFP-230: model-written tests run in the sandbox.** One route, no
+   switch (review item 6); promoted entries and the local model's and
+   OpenAI's suites included (review items 3 and 4).
+6. **TFP-231: measure it.** Then **Gate B**: stop for verification and
+   the owner's ruling. Ask before any tag.
 
 ## Not for this handover
 
-- Phase 45, until its record is locked.
 - TFP-300 (the rejection list): its wireframes come first, from a planning
   session, and it needs candidates running again.
 - TFP-303 to TFP-305, TFP-286, TFP-288 / D45, TFP-291 and TFP-249 / D31:

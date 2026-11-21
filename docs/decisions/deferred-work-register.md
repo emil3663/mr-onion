@@ -20,6 +20,16 @@ records placed). Phase 39 runs as locked. R4 comes after it, or fits
 between its gates: TFP-206, TFP-209, TFP-216, TFP-217 Part A and TFP-222,
 with TFP-222 before Phase 39's TFP-155.
 
+**Amended 2026-11-21 (owner): Phase 45 (item 11) moves up to next**,
+ahead of D29 (item 4), which follows straight after it; the rest keeps its
+order. Why: since 0.5.0 nothing model-written runs (TFP-292), and Phase 44,
+TFP-300 and the candidate pool all wait on it. TFP-292 also showed the code
+check can't be made complete, so the sandbox is now the only way those
+features come back, not defence in depth. D28 (item 10) is done for the gap
+writer and candidates by TFP-292's reviews; its other zones are checked at
+Phase 45's Gate A. The full reasoning is in Phase 45's record, "Review
+before building", item 1.
+
 1. **D26: the local copies move into WSL.**
    - Testsmith's checkout moves into WSL's Linux filesystem, so starts
      stop crossing the Windows mount.
@@ -74,7 +84,8 @@ without renumbering the items below, which the tables' Order columns cite).
    - The candidate promotion screen: approve, then Claude Code commits.
    - The active switch in the run form.
    - Tickets TFP-232 to TFP-235.
-4. **D29: a retention policy for saved runs and their evidence.**
+4. **D29: a retention policy for saved runs and their evidence.** Now
+   straight after Phase 45 (amended 2026-11-21, above).
    - How long saved runs and their videos, traces and screenshots are
      kept, and a "clear old runs" action on Phase 46's screens.
    - Its own short decision record with Emil's choices.
@@ -105,7 +116,11 @@ without renumbering the items below, which the tables' Order columns cite).
    - Covers the gap writer, candidates and bound candidates,
      TFP-202's code check and stripped environment.
    - Done before Phase 45 builds the sandbox.
-11. **Phase 45: the Docker sandbox.**
+   - Amended 2026-11-21 (owner): done for the gap writer and candidates by
+     TFP-292's two reviews; `child-env.ts` and the report paths are checked
+     at Phase 45's Gate A.
+11. **Phase 45: the Docker sandbox.** **Next** (moved up by the owner,
+    2026-11-21, above).
    - Every model-written test runs in a container: gap tests, candidates
      and scenario tests.
    - Read-only mounts, no secrets, a non-root user.
@@ -217,7 +232,7 @@ Statuses:
 | D26 | The local Toolshop copies move into WSL's Linux filesystem, with the README's start timings corrected | Emil, 2026-10-19, from TFP-211's slow with-bugs start (about 6 min, composer once 10.5 min) | Wanted, after Phase 39; and the rule for every locally hosted site | **Built 2026-10-27, awaiting verification** (`benchmarks/2026-10-27-d26-wsl/`) | Moved into Phase 39 by Gate D's ruling 3 (2026-10-26), before the re-measurement | Phase 39 complete: the move also speeds up the Toolshop's API, so mid-phase it would shift the run times Phase 39 compares. What it covers is below |
 | D27 | A comparison benchmark: Mr Onion against the "QA My App" plugin (Anthropic Directory, community) and Playwright's Test Agents (planner, generator, healer; added 2026-11-02) on the local Toolshop copies | Emil, 2026-10-20 | Wanted: use outside testing tools as yardsticks, not inside Mr Onion | **Planned** | 8, after D3 and D19, once Standard is complete (Emil, 2026-10-20: earlier, it would mostly point at work already planned) | D26 (both tools run on the WSL setup), D1 to D3, D19. What it covers is below |
 | D28 | A security sweep of Mr Onion's own model-code paths, with the "Verified Security Sweep" plugin (Anthropic Directory, community) or an equivalent review | Emil, 2026-10-20 | Wanted, before the sandbox is built | **Planned**; its first finding is TFP-292, hardening of the model-written test check (done 2026-11-21, PR #62). Scope amended (owner, 2026-11-21): model-written tests don't run until Phase 45's sandbox, the local model's and OpenAI's whole-suite generation included (TFP-292's entry in `phase-46-gate-b-fixes-2026-11-17.md`) | 9, after D19, before Phase 45 | Nothing; it informs Phase 45's design. What it covers is below |
-| D29 | A retention policy for saved runs and their evidence | Emil, 2026-10-21, after 278 MB of leftover run folders were cleared | Wanted: stop cluttering with records and evidence nobody opens | **Planned** | 4, straight after Phase 46 | Phase 46 (the action belongs on its screens). What it covers is below |
+| D29 | A retention policy for saved runs and their evidence | Emil, 2026-10-21, after 278 MB of leftover run folders were cleared | Wanted: stop cluttering with records and evidence nobody opens | **Planned** | 4, straight after Phase 45 (amended 2026-11-21; was after Phase 46) | Phase 46 (the action belongs on its screens). What it covers is below |
 | D30 | A solo performance pass, so real sites without the ownership confirmation still get performance judged | Emil, 2026-10-21, after TFP-157's ruling that timed checks are Not run under the request cap | Wanted | **Planned**, with D3 | 7, with D3 | TFP-157 (Phase 39). What it covers is below |
 | D25 | A summary email after a run against a site, to the tester's inbox, with the way back to the full report | Emil, 2026-10-19, with TFP-217 (the same for Mr Onion's own nightly CI) | Wanted: a quick view for whoever is in charge of testing that site | **To plan** | Not set | A decision record of its own. It is most useful with D5's scheduled runs. The record decides the questions below |
 

@@ -12,10 +12,101 @@ tests and promoted library entries, which are reviewed code, keep running
 as today.
 
 Status: **Locked (Emil, 2026-10-20). Not started.** Decisions, acceptance criteria and tickets approved.
+- Reviewed before building (planning session, 2026-11-21): see the next
+  section. Its proposals are confirmed (owner, 2026-11-21).
+- **Moved up in the build order** (owner, 2026-11-21): next, ahead of D29.
+  Why: review item 1.
 - This is R5's first decision record (`post-phase-42-review-plan.md`).
 - Its build order: after D19, before Phase 44's writer (TFP-226)
-  (`deferred-work-register.md`).
+  (`deferred-work-register.md`). Amended 2026-11-21: next, before D29
+  (review item 1).
 - Tickets TFP-228 to TFP-231.
+
+## Review before building (planning session, 2026-11-21)
+
+This record was locked on 2026-10-20, before Phases 43, 46, 47 and 48,
+TFP-292 and the 0.5.0 release. Checked against `main` at `980d876`. The
+design stands; these amendments apply and override older wording below.
+Items 1, 2, 4 and 7 were proposals; the owner confirmed all four on
+2026-11-21.
+
+1. **Build order: Phase 45 is next (owner, 2026-11-21).** The triaged
+   order put it eleventh, after D29, the Standard sets, failure triage
+   (D19), D27 and D28. It moves up because several things now hinge on it:
+   - since 0.5.0 nothing model-written runs (TFP-292): the gap writer,
+     candidates, promoted entries, and the local model's and OpenAI's
+     suites are all off until this phase lands;
+   - Phase 44 (scenario tests), TFP-300 (the rejection list) and the
+     candidate pool all need model-written tests running again;
+   - the order was set on 2026-10-19, when the code check was thought to be
+     enough and the sandbox was defence in depth. TFP-292 showed the check
+     can't be made complete, so the sandbox is now the only way those
+     features come back.
+
+   Rejected: keeping the order with D29 next, as the register promised
+   after Phase 46. D29 moves to straight after Phase 45; the rest keeps its
+   order.
+2. **D28 (owner, 2026-11-21).** D28's sweep was to come before this phase. TFP-292's
+   two fresh-context reviews covered `src/lib/gap-writer/` and
+   `src/lib/candidates/`. Decided: D28 is done for those zones; its
+   other two (`src/lib/run/child-env.ts`, and the paths that read model
+   output back into reports) are checked at Gate A, with Acceptance
+   Criteria 2 and 4, rather than in a separate sweep first.
+3. **What runs inside widens (TFP-292).** Decision 1's list adds:
+   - the local model's gap fill on Standard and its scenarios on
+     Comprehensive;
+   - OpenAI's whole suite;
+   - a site suite's saved gap tests.
+
+   Where a model's tests were merged into the template's file, they run as
+   their own spec in the sandbox, and the template's stay on the host.
+   OpenAI's suite runs whole in the sandbox: the model wrote all of it,
+   imports and `describe` bodies included, and Playwright runs those when it
+   loads the file even when every test is skipped.
+4. **Promoted library entries run inside too (owner, 2026-11-21).** Decision 1 kept
+   them on the host as reviewed code; TFP-292 held them back because they
+   began as model-written candidates. TFP-292's reviews found ways past the
+   code check subtle enough that a person reading a body can miss them, and
+   promotion reviews whether a test is useful, not whether it is safe. In
+   the sandbox they cost nothing extra. The template's tests and the
+   tester's own suites stay on the host.
+5. **The sandbox is the boundary.** Decision 3's "defence in depth behind
+   the code check" no longer holds: the check is an allowlist kept as a
+   first filter (TFP-230's amendment), and nothing relies on it. The
+   Context's description of TFP-202's check is history.
+6. **One route, not a switch.** TFP-230 replaces `MODEL_BODIES_RUN` with a
+   single route: a model-written body runs in the sandbox or not at all. No
+   code path runs one on the host, at any setting. A test shows the host
+   runner refuses a spec marked model-written. The tests TFP-292 skipped
+   with the Phase 45 reason run again through the sandbox, or are removed
+   where they only tested the host path, with each named.
+7. **Remote sites: the site's own hosts only (owner, 2026-11-21).** Decision 3
+   allows the hosts a remote site's pages load, third parties included. A
+   signed-in run mounts the session (`storageState`), so an allowed third
+   party is a way out for it. Decided: allow only the site's own
+   hosts, by Phase 43's same-site rule (the Public Suffix List), and refuse
+   third-party requests, naming each in the results. Pages may draw less
+   completely, as with the read-only guard's stubbed beacons. Rejected:
+   allowing third parties on runs that aren't signed in.
+8. **Where there's no Docker: CI and the release image.** Mr Onion's own
+   image and the GitHub Action have no Docker inside, and mounting the host's
+   Docker socket would hand the tests the host. So in CI and in the image,
+   model-written tests are Not run with Decision 5's reason ("sandbox
+   unavailable"), and the socket is never mounted. Decision 5's "start
+   Docker Desktop" applies to a desktop only.
+9. **Credentials.** Only the session (`storageState`) enters the container.
+   Login passwords, under TFP-293's `MRONION_LOGIN_` names, never do.
+   Acceptance Criteria 2's environment check includes them.
+10. **The image pin is 1.62.1 today** (Playwright, with Chromium 151), as in
+    Mr Onion's own image. Chromium 151 doesn't stop a beacon on a route
+    abort (Phase 43); the proxy refuses at the network, which covers that.
+11. **Containment is proven without publishing ways past the filter.**
+    Acceptance Criteria 2's test-only path hands the sandbox a body without
+    the code check, so no fixture needs a way past it. At Gate A, the
+    verifier also runs the privately recorded gaps against the sandbox,
+    outside the repo.
+12. **No new screen.** The phase adds report notes only, so the Screens
+    rules (`QUALITY_GATES.md` §4) don't apply.
 
 ## Context
 
