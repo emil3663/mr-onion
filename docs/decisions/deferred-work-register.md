@@ -205,9 +205,9 @@ Statuses:
 | D5 | All-areas Comprehensive runs, scheduling, per-area jobs | Phase 35, deferred | Include | **Planned** | 9 | D4; Phase 39 Gate D (workers) |
 | D6 | Model-written tests counting toward the verdict | Phase 35 Decision 5, deferred | "Depends on what these model-written tests find". Decided 2026-10-20: outside the verdict until measured, per scenario type | **Decided** in Phase 44 Decision 6: a scenario type joins the verdict when every planted defect of its type is found on the fixture and there's no unlabelled failure on clean fixture, clean Toolshop or 3 real sites, with Emil's approval | 9 (with Phase 44) | Phase 44's measurement |
 | D7 | Comprehensive's negative tests, by ISTQB technique, with a technique-coverage measure | Phase 38, deferred | No problems. Triage: before D4 | **Planned** | 7 | D10. Includes scenario #8 (`scenario-gap-candidates-2026-10-19.md`) |
-| D8 | The ownership confirmation and the active gate, with the script-payload test. The load-testing run is split out to D24 | Phase 35 Decision 8; Phase 38 | A tester confirms once, not repeatedly. Triage: see "D8, confirming once" below | **Done 2026-11-16** (Phase 43 complete: TFP-218 to TFP-221, Gates A and B passed; not released yet) | 1 | Phase 39 and R4. **Locked** as Phase 43 (`phase-43-ownership-confirmation-decision-record.md`, Emil 2026-10-19; TFP-218 to TFP-221). It unblocks D3's active parts, D10, D24 and Phase 39's ownership row |
+| D8 | The ownership confirmation and the active gate, with the script-payload test. The load-testing run is split out to D24 | Phase 35 Decision 8; Phase 38 | A tester confirms once, not repeatedly. Triage: see "D8, confirming once" below | **Done 2026-11-16** (Phase 43 complete: TFP-218 to TFP-221, Gates A and B passed; released in 0.5.0, 2026-11-21) | 1 | Phase 39 and R4. **Locked** as Phase 43 (`phase-43-ownership-confirmation-decision-record.md`, Emil 2026-10-19; TFP-218 to TFP-221). It unblocks D3's active parts, D10, D24 and Phase 39's ownership row |
 | D9 | INP measured through real interactions | Phase 38, deferred | Needs explaining (below). Triage: with D2, banded findings only | **Planned**, with D2 | 3 | D2; Phase 41's GET-only interactions |
-| D10 | Authenticated and active security | Phase 35, deferred; GitHub issue #3 | Not sure it should be parked entirely. Triage: the first Comprehensive item | **Planned** (sequence only; no design yet) | 6 | D8, D3, D19. Overlaps scenarios #3, #4 and #9; R5's scenario-gaps record says which side owns each |
+| D10 | Authenticated and active security | Phase 35, deferred; GitHub issue #3 | Not sure it should be parked entirely. Triage: the first Comprehensive item | **Planned** (sequence only; the shape from issue #3 is under "D10, from GitHub issue #3" below) | 6 | D8, D3, D19. Overlaps scenarios #3, #4 and #9; R5's scenario-gaps record says which side owns each |
 | D24 | The opt-in load-testing run, designed with the ISTQB Performance Testing syllabus | Phase 38, deferred; split from D8 (2026-10-19) | Split out of D8. Placed last for now; moves up if needed sooner | **Planned** | 10 | D8's load-testing tick |
 
 ## Features asked for, not yet planned
@@ -239,7 +239,7 @@ Statuses:
 | D46 | TFP-291: a site folder name that can't collide, with a one-time move of existing folders. Today `https://a.b:8080` and `https://a.b_8080` share one folder, and with it the confirmation, the gap writer and the saved crawls; it can't open the active gate or lift the caps (both check the run's host against the confirmation's typed hosts) | Phase 46, found building TFP-232 (2026-11-17) | Owner ruling at TFP-232's verification (2026-11-17): a known limitation (TEST_PLAN item 15, issue #51), with a ticket, not placed. Ticket: `phase-46-app-screens-decision-record.md`, TFP-291 | Open | - | Placement |
 | D47 | TFP-300: a searchable rejected-candidates list with "Return to candidates", and the gap writer counting each time it would have proposed a rejected pattern again ("seen N times on M sites since rejection"); includes Gate B's R8 | Phase 46 Gate B re-walk (owner, 2026-11-18) | Wanted, after Gate B. Ticket: `phase-46-gate-b-fixes-2026-11-17.md`, TFP-300 | Open | After Phase 46's Gate B | Gate B |
 | D48 | TFP-301 (P1): in-app runs three to four times slower than the same suite outside the app while the run overlay is drawn (its full-screen backdrop blur under a spinning icon), so tests near the timeout fail | Phase 46 Gate B re-walk, C's investigation (2026-11-18) | Owner ruling (2026-11-18): on `32b965a` too, so kept out of Gate B. Ticket: `phase-46-gate-b-fixes-2026-11-17.md`, TFP-301 | **Done 2026-11-19** (`d463e93`, PR #60) | - | - |
-| D49 | TFP-293: a required prefix for login variable names | Owner, 2026-11-21, with TFP-292 | Wanted; not placed. Ticket: `phase-46-gate-b-fixes-2026-11-17.md`, TFP-293 | Open | - | Placement |
+| D49 | TFP-293: a required prefix for login variable names | Owner, 2026-11-21, with TFP-292 | Wanted; placed next after 0.5.0, scope confirmed (owner, 2026-11-21). Ticket: `phase-46-gate-b-fixes-2026-11-17.md`, TFP-293 | **In progress** (2026-11-21) | - | Nothing |
 | D50 | TFP-303: the TFP-220 active-guard test's 300 s limit under a full unit run | Owner, 2026-11-21, with TFP-292 | Wanted; not placed. Ticket: `phase-46-gate-b-fixes-2026-11-17.md`, TFP-303 | Open | - | Placement |
 | D51 | TFP-304: the cap-arrivals worker-scheduling test failing once in a full unit run | Owner, 2026-11-21, with TFP-292 | Wanted; not placed. Ticket: `phase-46-gate-b-fixes-2026-11-17.md`, TFP-304 | Open | - | Placement |
 | D52 | TFP-305: held runs reading "Generated by fallback" | Owner, 2026-11-21, with TFP-292 | Wanted; not placed. Ticket: `phase-46-gate-b-fixes-2026-11-17.md`, TFP-305 | Open | - | Placement |
@@ -423,6 +423,37 @@ Phase 41's interactions and D2's APG checks.
   for.
 - A failure rule is considered only once measurement shows the numbers are
   stable.
+
+**D10, from GitHub issue #3 (2026-11-21).** Martin's issue proposes two
+checks; the owner's reply on the issue changes their shape. Starting points
+for D10's decision record, not decisions:
+- **Tenant isolation, black-box.** Run as account A and record the
+  identifiers and distinctive values A sees (ids in addresses and JSON,
+  names, emails, canary strings the tester seeds). Run as account B over the
+  same pages and API calls, and report any of A's values that reach B, with
+  the page, request and field.
+- **API-level access checks.** Replay each API request the crawl and
+  inspection saw as each configured account and signed out. A request an
+  account's pages never made that still returns its data is a finding; an id
+  swapped for another account's that still returns 200 is an IDOR finding.
+- **The owner's changes (issue #3 reply):**
+  - both checks run behind the active gate, not the read-only one: asking
+    for another account's data is access testing, even as a GET;
+  - the login config grows from one account to several, each named by
+    tenant or role;
+  - the report names the endpoint, the field and the accounts, but never
+    shows the leaked value in full.
+- **Acceptance, from the issue:** on a local two-tenant fixture with a
+  leaky endpoint (an order by id with no owner check), the run reports the
+  endpoint, both accounts and the leaked field, and reports none once it's
+  fixed. With one account, the report says isolation wasn't tested and why.
+  Nothing writes unless the active gate is on.
+- **First benchmark:** the Toolshop's 13 known authorisation bugs
+  (`known-bug-benchmark-backlog-2026-10-06.md`).
+- **Out of scope, per the issue:** proving a backend's whole permission
+  matrix (white-box), fuzzing and injection.
+- **Owed:** the reply promised D10's record would be linked on issue #3
+  once written.
 
 **D13, D14 and D17, the local-model items.** All three are weaknesses of
 the optional local model (Ollama), not of the template:

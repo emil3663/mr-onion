@@ -452,8 +452,33 @@ recorder's own timer gives real time):
 
 ## TFP-293 — A required prefix for login variable names
 
-- **Status:** Not placed (owner, 2026-11-21). Scope and acceptance
-  criteria are written when it is placed.
+- **Status:** In progress (2026-11-21). Placed next, after 0.5.0
+  (handover, 2026-11-21). Scope proposed by the planning session and
+  confirmed by the owner (2026-11-21): the `MRONION_LOGIN_` prefix, no
+  fallback.
+- **Problem:** a login config names the environment variables that hold
+  the username and password (`usernameEnv`, `passwordEnv`). Any upper-case
+  name is accepted today, so a login setting isn't limited to variables
+  meant for logins.
+- **Scope (confirmed by the owner, 2026-11-21):**
+  - both names must start with `MRONION_LOGIN_` (for example
+    `MRONION_LOGIN_USER`, `MRONION_LOGIN_PASS`), in the app, the CLI and
+    the Action alike;
+  - a name without the prefix is refused before anything runs, with a
+    message naming the field, the prefix and an example;
+  - no fallback for unprefixed names, not even until 1.0: a fallback would
+    keep the gap open. It's a breaking change, said plainly in the
+    changelog with the one-line migration;
+  - the docs and examples that name login variables move to the prefix:
+    `AUTOMATED_ACCOUNT_SETUP.md`, `CI_INTEGRATION.md`, `test-plan/RUN.md`
+    and `action/action.yml`. Decision records keep their history.
+- **Acceptance:**
+  - red first: an unprefixed name is accepted today, and refused after,
+    for both fields, through the app's run request and the CLI config;
+  - a prefixed name logs in as before (the existing login tests, renamed);
+  - the refusal names the field and the rule; the app shows it under the
+    field, as R11 does for the Base URL;
+  - `check:template-unchanged` identical; `check:old-name` passes.
 
 ## TFP-303 — The TFP-220 test's time limit under a full unit run
 
