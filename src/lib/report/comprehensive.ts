@@ -1,4 +1,5 @@
 import { ASVS_CHAPTERS, ASVS_SOURCE } from "@/lib/comprehensive/asvs";
+import { MODEL_BODIES_OFF } from "@/lib/gap-writer/model-bodies";
 import { NOT_TESTED_STATEMENTS, notCoveredPagesStatement } from "@/lib/comprehensive/not-tested";
 import { selectComprehensivePages } from "@/lib/comprehensive/pages";
 import { comprehensiveLabel, type ComprehensiveRunMode } from "@/lib/comprehensive/run-mode";
@@ -43,6 +44,10 @@ function modelSection(modelRecords: ExecutionRecord[], generation: GenerationRec
             note: `Written by the local model${model ? ` (${model})` : ""} for this site's ${area}, and not yet trusted: these tests count toward no pass or fail, no recommendation and no coverage figure. A failure here needs review; it is not a defect in the site.`,
             tests,
         };
+    }
+    // TFP-292: not asked, until Phase 45's sandbox.
+    if (generation?.fallbackReason === MODEL_BODIES_OFF) {
+        return { status: "held", note: `The local model wasn't asked for ${area} scenarios, as ${MODEL_BODIES_OFF}. The template's checks stand on their own.`, tests: [] };
     }
     if (generation?.fallbackReason) {
         const why = MODEL_REJECTED_REASONS[generation.fallbackReason] ?? generation.fallbackReason;

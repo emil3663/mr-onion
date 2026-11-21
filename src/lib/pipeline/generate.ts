@@ -202,6 +202,8 @@ export async function generateSuite(input: Record<string, unknown>, { models = t
         const scope = { runMode: normalizedRunMode, pageScope };
         const localModel = configuredLocalModel;
         if (!localModel) return respond({ code: suite, generatedBy: "template", ...scope, gates: [] });
+        // TFP-292: the local model's scenarios are model-written: not asked for until Phase 45's sandbox.
+        if (!MODEL_BODIES_RUN) return respond({ code: suite, generatedBy: "fallback", fallbackReason: MODEL_BODIES_OFF, ...scope, gates: [] });
         const area = [normalizedRunMode.area];
         const local = await generateLocalSuite(localModel, buildGenerationMessages(requestContext, area), area);
         if (!local.ok) return respond({ code: suite, generatedBy: "fallback", fallbackReason: local.reason, ...(local.model ? { model: local.model } : {}), ...scope, gates: local.gates });
@@ -239,6 +241,8 @@ export async function generateSuite(input: Record<string, unknown>, { models = t
             return respond({ code: generated.code, generatedBy: "template", gapFill: { gapAreas, outcome: "no-gaps", notApplicableAreas }, gates: [] });
         }
 
+        // TFP-292: the local model's tests are model-written: not asked for until Phase 45's sandbox.
+        if (!MODEL_BODIES_RUN) return respond({ ...gapFillFallback(generated.code, MODEL_BODIES_OFF, gapAreas, notApplicableAreas, []), gapFill: { gapAreas, outcome: "held", notApplicableAreas } });
         const gapMessages = buildGapFillMessages(requestContext, gapAreas);
         const local = await generateLocalSuite(ollamaModel, gapMessages, gapAreas);
         if (!local.ok) {
@@ -265,6 +269,8 @@ export async function generateSuite(input: Record<string, unknown>, { models = t
     if (!apiKey) {
         return respond({ code: await template() });
     }
+    // TFP-292: OpenAI's suite is model-written: not asked for until Phase 45's sandbox.
+    if (!MODEL_BODIES_RUN) return respond(fallback(await template(), MODEL_BODIES_OFF));
 
     // TFP-083: every failure of the OpenAI call (rejection, timeout, no
     // usable model, empty completion) degrades to the template generator and
@@ -302,7 +308,7 @@ export async function generateSuite(input: Record<string, unknown>, { models = t
     }
 }
 
-type FallbackReason = "openai_error" | "timeout" | "empty_completion" | "no_candidate_model" | LocalFailureReason;
+type FallbackReason = "openai_error" | "timeout" | "empty_completion" | "no_candidate_model" | LocalFailureReason | typeof MODEL_BODIES_OFF;
 
 function fallback(code: string, fallbackReason: FallbackReason, model?: string) {
     return { code, generatedBy: "fallback", fallbackReason, ...(model ? { model } : {}) };
@@ -312,7 +318,7 @@ function fallback(code: string, fallbackReason: FallbackReason, model?: string) 
  * Option B's failure shape: the template suite, unchanged, with why the gap
  * areas stayed empty and every gate verdict that led there.
  */
-function gapFillFallback(code: string, fallbackReason: LocalFailureReason, gapAreas: BestPracticeArea[], notApplicableAreas: string[], gates: GateVerdict[], model?: string) {
+function gapFillFallback(code: string, fallbackReason: LocalFailureReason | typeof MODEL_BODIES_OFF, gapAreas: BestPracticeArea[], notApplicableAreas: string[], gates: GateVerdict[], model?: string) {
     return {
         code,
         generatedBy: "fallback",

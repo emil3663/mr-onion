@@ -432,6 +432,17 @@ recorder's own timer gives real time):
   - The hardening already built stays, with the code check kept as the
     first filter.
   - Phase 45's record carries the matching line (TFP-230).
+- **Scope amended again (owner, 2026-11-21, the same day):**
+  - The local model's and OpenAI's whole-suite generation count as
+    model-written bodies too: the local model's gap fill on Standard, its
+    scenarios on Comprehensive, and OpenAI's suite.
+  - Neither is asked until Phase 45's sandbox. The run's code is the
+    template's.
+  - The generation record carries the reason, naming Phase 45, through to
+    the app's report, the saved run and the HTML export.
+  - Template-only runs, with no key and no local model, are unchanged
+    (`check:template-unchanged`).
+  - Promoted library entries stay held back (owner, confirmed).
 
 ## TFP-293 — A required prefix for login variable names
 

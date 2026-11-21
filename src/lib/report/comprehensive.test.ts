@@ -145,3 +145,10 @@ test("a Standard report has no comprehensive section and keeps the tabbed layout
     assert.equal("comprehensive" in standard, false);
     assert.match(buildReportHtmlDocument(standard, "r"), /Release readiness at a glance/);
 });
+
+test("TFP-292: the local model held back until Phase 45's sandbox: the model section says it wasn't asked, and why", async () => {
+    const { MODEL_BODIES_OFF } = await import("../gap-writer/model-bodies.ts");
+    const report = buildComprehensiveReport([record({ page: "/", status: "Passed" })], ACCESSIBILITY, null, "http://localhost:3000", 2, { generatedBy: "fallback", fallbackReason: MODEL_BODIES_OFF, gates: [] });
+    assert.equal(report.model.status, "held");
+    assert.equal(report.model.note, `The local model wasn't asked for accessibility scenarios, as ${MODEL_BODIES_OFF}. The template's checks stand on their own.`);
+});

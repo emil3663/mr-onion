@@ -38,6 +38,8 @@ function localReason(area: BestPracticeArea, generation: GenerationRecord | null
     if (!generation) return "no local model result was recorded for this run - the local model only fills gaps when MRONION_OLLAMA_MODEL is set";
     const gapFill = generation.gapFill;
     if (!gapFill || !gapFill.gapAreas.includes(area)) return null;
+    // TFP-292: not asked, until Phase 45's sandbox.
+    if (gapFill.outcome === "held") return `the local model wasn't asked for this area, as ${generation.fallbackReason ?? "model-written tests don't run yet"}`;
     if (gapFill.outcome === "rejected") {
         return LOCAL_FAILURE_REASONS[generation.fallbackReason ?? ""] ?? `the local model's tests were rejected (${generation.fallbackReason ?? "no reason recorded"})`;
     }

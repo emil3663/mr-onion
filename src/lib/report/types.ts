@@ -441,8 +441,8 @@ export interface ComprehensiveCandidateSection {
 }
 
 export interface ComprehensiveModelSection {
-    /** not-configured: no local model; rejected: asked, but its suite fell back; added: its tests are below. */
-    status: "not-configured" | "rejected" | "added";
+    /** not-configured: no local model; held: not asked until Phase 45's sandbox (TFP-292); rejected: asked, but its suite fell back; added: its tests are below. */
+    status: "not-configured" | "held" | "rejected" | "added";
     model?: string;
     note: string;
     tests: ComprehensiveModelTest[];

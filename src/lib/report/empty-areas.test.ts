@@ -136,3 +136,9 @@ test("buildReport without a generation record: no generation section, and older 
     assert.equal(report.generation, null);
     assert.doesNotMatch(buildReportHtmlDocument(report, "r"), /How this suite was generated/);
 });
+
+test("TFP-292: an area the local model wasn't asked for, held back until Phase 45's sandbox, says so", async () => {
+    const { MODEL_BODIES_OFF } = await import("../gap-writer/model-bodies.ts");
+    const generation: GenerationRecord = { generatedBy: "fallback", fallbackReason: MODEL_BODIES_OFF, gates: [], gapFill: { gapAreas: ["database"], outcome: "held" } };
+    assert.equal(computeEmptyAreas(["database"], [], SUITE, generation)[0].reasons.at(-1), `the local model wasn't asked for this area, as ${MODEL_BODIES_OFF}`);
+});

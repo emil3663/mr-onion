@@ -13,6 +13,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { chatBodies, completion, fakeBaseUrl, fakeOpenAi, installFakeServer, json } from "./route-test-helpers.ts";
+import { MODEL_BODIES_OFF, MODEL_BODIES_RUN } from "../../../lib/gap-writer/model-bodies.ts";
+// TFP-292: these ask a model for a suite, which doesn't run until Phase 45's sandbox; they come back with it.
+const heldBack = MODEL_BODIES_RUN ? false : MODEL_BODIES_OFF;
 
 const scratchRoot = mkdtempSync(join(tmpdir(), "mr-onion-comprehensive-route-test-"));
 process.env.MRONION_RUNS_ROOT = join(scratchRoot, "runs");
@@ -70,7 +73,7 @@ async function comprehensive(area: string) {
     return (await generate(post("http://localhost/api/generate", generateBody({ kind: "comprehensive", area })))).json();
 }
 
-test("TFP-135: with a local model, a Comprehensive request asks it for that area alone and appends its scenarios in their own block", async () => {
+test("TFP-135: with a local model, a Comprehensive request asks it for that area alone and appends its scenarios in their own block", { skip: heldBack }, async () => {
     const templateOnly = await comprehensive("accessibility");
     fakeOpenAi([CATALOG_ID], (_req, res) => json(res, 200, completion(SCENARIO)));
     useOllama();
@@ -86,7 +89,7 @@ test("TFP-135: with a local model, a Comprehensive request asks it for that area
     assert.deepEqual(body.gates.map((g: { gate: string; verdict: string }) => `${g.gate}: ${g.verdict}`), ["time budget: kept", "type check: kept", "unawaited assertions: kept", "promise to plain matcher: kept", "duplicate tests: kept", "merged suite type check: kept"]);
 });
 
-test("TFP-135, TFP-146: in a passive security run the model's scenarios are at the active gate, so never run - they may send input", async () => {
+test("TFP-135, TFP-146: in a passive security run the model's scenarios are at the active gate, so never run - they may send input", { skip: heldBack }, async () => {
     fakeOpenAi([CATALOG_ID], (_req, res) => json(res, 200, completion(SCENARIO)));
     useOllama();
     const body = await comprehensive("security");
@@ -94,7 +97,7 @@ test("TFP-135, TFP-146: in a passive security run the model's scenarios are at t
     assert.match(body.code, /test\.describe\('Local model \(mr-onion-qwen7b:latest\)', \{ annotation: \{ type: 'gate', description: 'active' \} \}, \(\) => \{\n {4}test\.skip\(true, 'model-written active test: not run'\);/);
 });
 
-test("TFP-135: a rejected model suite leaves the template's suite alone, labelled with why", async (t) => {
+test("TFP-135: a rejected model suite leaves the template's suite alone, labelled with why", { skip: heldBack }, async (t) => {
     t.mock.method(console, "error", () => {});
     const templateOnly = await comprehensive("accessibility");
     fakeOpenAi([CATALOG_ID], (_req, res) => json(res, 200, completion(SCENARIO.replace("toBeVisible()", "toBeAccessible()"))));

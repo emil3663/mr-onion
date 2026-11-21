@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { chatBodies, completion, fakeBaseUrl, fakeOpenAi, installFakeServer, json, templateCode, useFake } from "../../app/api/generate/route-test-helpers.ts";
 import { generateSuite } from "./generate.ts";
+import { MODEL_BODIES_OFF, MODEL_BODIES_RUN } from "../gap-writer/model-bodies.ts";
 
 installFakeServer();
 
@@ -26,7 +27,9 @@ test("models off: an OpenAI key is never used; the suite is the template's, with
 
     const on = await generateSuite(REQUEST);
     assert.ok(on.ok);
-    assert.equal(on.body.generatedBy, "openai", "with models on, the same key is used: the route's behaviour");
+    // TFP-292: with models on, the same key is the route's behaviour; until Phase 45's sandbox it isn't asked either, and says why.
+    if (MODEL_BODIES_RUN) assert.equal(on.body.generatedBy, "openai", "with models on, the same key is used: the route's behaviour");
+    else assert.deepEqual([on.body.generatedBy, on.body.fallbackReason, chatBodies.length], ["fallback", MODEL_BODIES_OFF, 0]);
 });
 
 test("models off: a configured local model is never asked to fill gaps either", async () => {

@@ -147,6 +147,14 @@ test("TFP-292: model-written tests held back are kept in the saved run's record,
     assert.equal(normalizeGenerationRecord({ generatedBy: "template", gates: [], siteSuite: { ...base, modelWritten: { held: 1 } } })?.siteSuite?.modelWritten, undefined);
 });
 
+test("TFP-292: a generation held back until Phase 45's sandbox keeps its reason and the held gap fill in the saved run", () => {
+    const note = "model-written tests don't run until Phase 45's sandbox (TFP-292)";
+    const held = { generatedBy: "fallback", fallbackReason: note, gapFill: { gapAreas: ["database"], outcome: "held" }, gates: [] };
+    const kept = normalizeGenerationRecord(held);
+    assert.equal(kept?.fallbackReason, note);
+    assert.deepEqual(kept?.gapFill, { gapAreas: ["database"], outcome: "held" });
+});
+
 test("the site suite's bound candidates: kept as recorded, cleaned when malformed, and said in the report", () => {
     const base = { store: "C:/data/site-suites/x/standard", firstRun: false, reused: 4, generated: 0, regenerated: 0, retired: 0, edited: 0, changedTypes: [], newTypes: [], goneTypes: [], editedOnChangedPages: [] };
     const candidateTests = { bound: 1, notBound: 1, tests: [{ title: "gap test: Rentals [link] on /", covers: "link [\"Rentals\",\"/rentals\"]", candidate: "0123456789ab", outcome: "bound" }, { title: "gap test: Help [link] on /", covers: "link [\"Help\",\"/help\"]", candidate: "ba9876543210", outcome: "not bound: read-only gate breach" }] };
