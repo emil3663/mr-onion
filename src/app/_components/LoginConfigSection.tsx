@@ -65,6 +65,9 @@ export function LoginConfigSection({ loginInputs, setLoginInputs, loginProblem, 
                                 const id = `login-${field}-input`;
                                 const hint = FIELD_HINTS[field];
                                 const problemHere = Boolean(loginProblem) && loginProblemField === field;
+                                const helpId = hint.help ? `login-${field}-help` : undefined;
+                                // The help line, then the problem: read in the order they're shown (TFP-293).
+                                const describedBy = [helpId, problemHere ? "login-config-problem" : undefined].filter(Boolean).join(" ") || undefined;
 
                                 return (
                                     <div key={field} className="space-y-1.5">
@@ -79,13 +82,13 @@ export function LoginConfigSection({ loginInputs, setLoginInputs, loginProblem, 
                                             spellCheck={false}
                                             aria-label={LOGIN_FIELD_LABELS[field]}
                                             aria-invalid={problemHere || undefined}
-                                            aria-describedby={problemHere ? "login-config-problem" : undefined}
+                                            aria-describedby={describedBy}
                                             value={loginInputs[field]}
                                             onChange={(event) => setLoginInputs({ ...loginInputs, [field]: event.target.value })}
                                             placeholder={hint.placeholder}
                                             className="w-full rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 font-mono text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                                         />
-                                        {hint.help && <p className="text-xs leading-5 text-zinc-500">{hint.help}</p>}
+                                        {hint.help && <p id={helpId} className="text-xs leading-5 text-zinc-500">{hint.help}</p>}
                                         {problemHere && <LoginProblem message={loginProblem} />}
                                     </div>
                                 );

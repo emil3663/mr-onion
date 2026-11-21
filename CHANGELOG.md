@@ -18,8 +18,10 @@ the report and the CI command are declared stable, after Phase 47.
   `passwordEnv` must both start with `MRONION_LOGIN_` (for example
   `MRONION_LOGIN_USER` and `MRONION_LOGIN_PASS`), in the app, the CLI and
   the Action. Any other name is refused before anything runs, with a
-  message naming the field, and the app shows it under that field. There
-  is no fallback for the old names
+  message naming the field, and the app shows it under that field. The
+  rule is checked again where the values are read, so no way into a run
+  can skip it. Each login field's help line is now read out with the field
+  by screen readers. There is no fallback for the old names
   ([TFP-293](docs/decisions/phase-46-gate-b-fixes-2026-11-17.md)).
 
   **To migrate**, rename the two variables and the names in your login

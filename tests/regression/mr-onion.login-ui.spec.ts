@@ -197,7 +197,8 @@ test.describe("Login config in the UI (TFP-097)", () => {
         const problem = page.getByTestId("login-config-problem");
         await expect(problem).toHaveText("\"Username environment variable name\" must start with MRONION_LOGIN_ (for example MRONION_LOGIN_USER): a login reads only variables named for logins. Running is blocked until this is fixed, so a run never quietly goes ahead signed out.");
         await expect(field).toHaveAttribute("aria-invalid", "true");
-        await expect(field).toHaveAttribute("aria-describedby", "login-config-problem");
+        // Its help line first, then the problem: the order they're shown in.
+        await expect(field).toHaveAttribute("aria-describedby", "login-usernameEnv-help login-config-problem");
         // Under the field: in the same block as its input, right below it.
         await expect(field.locator("xpath=..").getByTestId("login-config-problem")).toBeVisible();
         const [fieldBox, problemBox] = [await field.boundingBox(), await problem.boundingBox()];
@@ -208,7 +209,27 @@ test.describe("Login config in the UI (TFP-097)", () => {
         await field.fill(AUTH_FIXTURE_USER_ENV);
         await expect(problem).toHaveCount(0);
         await expect(field).not.toHaveAttribute("aria-invalid", "true");
+        await expect(field).toHaveAttribute("aria-describedby", "login-usernameEnv-help");
         await expect(page.getByRole("button", { name: "Run suite" }).first()).toBeEnabled();
+    });
+
+    // TFP-293: a field's help line is read with the field, not only shown beside it.
+    test("each login field with a help line has it as its accessible description", async ({ page }) => {
+        await page.goto("/");
+        await page.getByRole("button", { name: /Authenticated Run/i }).click();
+
+        const help = {
+            "Login URL": "A path on the site under test, or a full URL on the same origin.",
+            "Username environment variable name": "A variable whose name starts with MRONION_LOGIN_.",
+            "Password environment variable name": "A variable whose name starts with MRONION_LOGIN_.",
+            "Signed-in page path": "A page only reached once signed in.",
+            "Signed-in element selector": "An element only visible once signed in. Give this or the page above (or both).",
+        };
+        for (const [label, description] of Object.entries(help)) {
+            await expect(page.getByLabel(label, { exact: true }), label).toHaveAccessibleDescription(description);
+        }
+        // A field without a help line has no description.
+        await expect(page.getByLabel("Username field selector", { exact: true })).not.toHaveAttribute("aria-describedby");
     });
 
     test("an incomplete login is not run signed out: the server's named error reaches the user and no run starts", async ({ page }) => {
