@@ -49,7 +49,7 @@ research, nothing locked.
 | 43 | Ownership confirmation and the active gate | Complete (2026-11-16); Gates A and B passed; not released yet (no version tag) | DR [`phase-43-ownership-confirmation-decision-record.md`](phase-43-ownership-confirmation-decision-record.md) |
 | 44 | Scenario gaps, slice 1 | Locked (2026-10-20), not started | DR [`phase-44-scenario-gaps-decision-record.md`](phase-44-scenario-gaps-decision-record.md) · REF [`scenario-gap-candidates-2026-10-19.md`](scenario-gap-candidates-2026-10-19.md) |
 | 45 | Docker sandbox for model-written tests | Locked (2026-10-20), not started | DR [`phase-45-docker-sandbox-decision-record.md`](phase-45-docker-sandbox-decision-record.md) |
-| 46 | App screens | Complete (2026-11-19): Gates A and B passed; not released (no tag until TFP-292) | DR [`phase-46-app-screens-decision-record.md`](phase-46-app-screens-decision-record.md) |
+| 46 | App screens | Complete (2026-11-19): Gates A and B passed; not released (TFP-292 done 2026-11-21; the tag waits for the owner) | DR [`phase-46-app-screens-decision-record.md`](phase-46-app-screens-decision-record.md) |
 | 47 | Mr Onion in a target's CI pipeline | Complete (2026-11-13); released as [0.4.0](https://github.com/emil3663/mr-onion/releases/tag/v0.4.0), the image's first publish (`ghcr.io/emil3663/mr-onion:0.4.0`, public) | DR [`phase-47-ci-integration-decision-record.md`](phase-47-ci-integration-decision-record.md) · BL [`workflow-and-ci-backlog-2026-10-26.md`](workflow-and-ci-backlog-2026-10-26.md) Part 1 |
 | 48 | The rename to Mr Onion (D39) | Complete (2026-11-12); merged as `2861a4c` | DR [`phase-48-rename-to-mr-onion-decision-record.md`](phase-48-rename-to-mr-onion-decision-record.md) |
 

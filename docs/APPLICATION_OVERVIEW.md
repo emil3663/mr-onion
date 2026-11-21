@@ -154,7 +154,7 @@ In order (`product-roadmap.md`, `deferred-work-register.md`):
   (2026-11-13, `v0.4.0`). Phase 43, ownership confirmation and the active
   gate (2026-11-16), and Phase 46, the app screens (2026-11-19): both on
   `main`, not yet in a tagged release.
-- **Next:** TFP-292, then the next version tag. Then the triaged build
+- **Next:** the `v0.5.0` tag (TFP-292 is done, 2026-11-21). Then the triaged build
   order (`product-roadmap.md`): retention for saved runs (D29); the
   remaining Standard sets (SEO, the WAI-ARIA APG patterns, the rest of
   accessibility and security); failure triage; a measured comparison with

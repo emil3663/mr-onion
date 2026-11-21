@@ -1848,7 +1848,7 @@ Moved word for word from [`docs/test-plan/GEN.md`](../test-plan/GEN.md) by TFP-2
     nightly red.
   - `QUALITY_GATES.md` §4 ("Docs that must stay true, at every phase's last
     gate") already names the command; `README.md`'s Scripts table gains it.
-- **Dependencies:** TFP-292 (the branch in progress).
+- **Dependencies:** TFP-292 (done 2026-11-21).
 
 ---
 

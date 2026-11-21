@@ -418,7 +418,10 @@ recorder's own timer gives real time):
 
 ## TFP-292 — Hardening of the model-written test check
 
-- **Status:** In progress (2026-11-21). D28's first finding
+- **Status:** Done (2026-11-21). Merged to `main` as PR #62, ending at
+  `1836067`. Every check passed on its head, CodeQL's alert check
+  included. Its security advisory is GHSA-g6gp-hr78-pqqc; the owner
+  publishes it after `v0.5.0` is tagged. D28's first finding
   (`deferred-work-register.md`). Owner decision (2026-11-19): it comes
   before the 0.5.0 tag.
 - **Scope amended (owner, 2026-11-21):**
