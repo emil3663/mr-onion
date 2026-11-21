@@ -11,6 +11,19 @@ the report and the CI command are declared stable, after Phase 47.
 
 ## [Unreleased]
 
+### Model-written tests held back until the sandbox (TFP-292)
+
+Hardening of the model-written test check
+([TFP-292](docs/decisions/phase-46-gate-b-fixes-2026-11-17.md)).
+
+- **Model-written tests don't run until Phase 45's sandbox.** That covers
+  the gap writer's tests, pool candidates, promoted library entries, and
+  the local model's and OpenAI's suites. None of them is asked for or
+  bound, and a site suite's saved gap tests are kept but not run.
+- **Each run says so**, naming Phase 45, in the app's report, the saved
+  run and the HTML export.
+- **Template-built tests and your own suites run as before.**
+
 ### Ownership confirmation and the active gate (Phase 43)
 
 A site you own or may test is confirmed once, and that confirmation
