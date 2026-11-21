@@ -1,7 +1,7 @@
 # Mr Onion — Test Plan
 
 **Version:** 1.0
-**Last updated:** 2026-10-16 (header, overview, feature status, known limitation 1 and the roadmap pointer, from the post-Phase 42 review; the test cases were already current)
+**Last updated:** 2026-11-21 (overview, feature status and sections 5 and 6, from a claim audit against the code and the roadmap; the test cases were not touched). Before that: 2026-10-16, from the post-Phase 42 review.
 **Status:** In active development
 
 ## 1. App Overview
@@ -16,8 +16,11 @@ neither is needed.
 Two kinds of run:
 - **Standard:** the critical working path, at the read-only gate unless the
   interactive gate is switched on.
-- **Comprehensive:** one area in depth, or all of them, trying to break
-  fields and flows.
+- **Comprehensive:** one area in depth, trying to break fields and flows.
+  Security and accessibility have Comprehensive sets today
+  (`COMPREHENSIVE_AREAS`, `src/lib/comprehensive/run-mode.ts`); the other
+  areas and an all-areas run are in the build order
+  (`docs/decisions/deferred-work-register.md`).
 
 The active gate (attack-shaped input, such as the script-payload test) is
 closed unless a run asks for active tests and its host is local or covered
@@ -46,13 +49,15 @@ run, report, export, and save-suite.
 | Report | ✅ Done | Seven-tab structured report — summary, execution, defects, coverage, performance, usability, and SEO (when SEO coverage is selected). |
 | Export | ✅ Done | HTML export of the structured report. |
 | Save-suite | ✅ Done | Persists an edited generated suite before it's run. |
-| Comprehensive runs | ✅ Done | Phase 35: one area in depth or all areas, starting with security; a single-area run reports only that area, an all-areas run gives a summary plus per-area reports. One worker off a local host. |
+| Comprehensive runs | ✅ Done (security and accessibility) | Phase 35: one area in depth; a run reports only that area. Built today: security (passive) and accessibility. The other areas and an all-areas run (a summary plus per-area reports) are planned, not built (`deferred-work-register.md`). Workers and request caps are set by the host, as for Standard (Phase 39). |
 | Gates and Standard conformance | ✅ Done | Phase 38: read-only, interactive and active gates (active behind the typed ownership confirmation); passive security and the axe scan shared with Comprehensive; performance graded by Core Web Vitals bands ("needs improvement" is a finding, "poor" fails). |
 | Page-type selection | ✅ Done | Phase 40: pages grouped by address pattern, split by form signature; Standard tests one page of every type, capped at 8; the report lists types found, covered and skipped, with a copyable page list. |
 | Check gaps | ✅ Done | Phase 41: layout consistency, overlap and unrendered images, spelling, controls that don't do their job (GET-only interactions behind a request guard), tab order and grouping, known-path probes, guessable ids, exposed API fields. Local Toolshop copies: 33 of 37 known bugs found with Standard plus Comprehensive security and accessibility (Gate B, TFP-188); 30 with Standard alone (TFP-207). |
 | Site suites, library, coverage map | ✅ Done | Phase 42: Standard suites kept per site and reused; a library of component-pattern tests with candidates promoted only with the tester's approval; a coverage map in two tiers (reachability and in context), with a template test for every link on the selected pages (TFP-205). The gap writer (Claude Code) exists but is off unless a site opts in, and not kept as a bug finder (Gate B ruling). |
-| Ownership confirmation | 🚧 In progress | Phase 43. TFP-218: saved once per site through `/api/site-ownership`, in the local data folder. It holds the hosts, typed in full, who confirmed it and a contact email, a 90-day expiry (at most 1 year), and ticks for active tests and load testing. It can be replaced or withdrawn, and the old one is kept as evidence (RUN-56 to RUN-60, [docs/SITE_OWNERSHIP.md](docs/SITE_OWNERSHIP.md)). TFP-219: the active gate opens on it. A run must ask with `enableActive`, and the host must be covered with the active tick, or be local. Otherwise each active test is Not run, with a reason that says what to do, and the report names the confirmation, without its email (RUN-61 to RUN-65). TFP-220: an active test's input reaches only the hosts the gate covers, under the covered-host guard (RUN-66); a valid confirmation lifts the caps on the hosts it covers, in the app and the CLI, and a CLI run's active tests are Not run until TFP-249 (RUN-67, RUN-68); a saved active test without the guard is never reused (RUN-69). The measurement (TFP-221) is still to come. |
-| Run concurrency and speed | ⏳ Locked, not started | Phase 39, amended 2026-10-16: fewer page visits first, then workers by host. Today Standard runs 4 workers in the app (2 in deep mode). |
+| Ownership confirmation | ✅ Done (on `main`, not yet in a tagged release) | Phase 43, complete 2026-11-16 (Gates A and B passed); the app's screens for it are Phase 46. TFP-218: saved once per site through `/api/site-ownership`, in the local data folder. It holds the hosts, typed in full, who confirmed it and a contact email, a 90-day expiry (at most 1 year), and ticks for active tests and load testing. It can be replaced or withdrawn, and the old one is kept as evidence (RUN-56 to RUN-60, [docs/SITE_OWNERSHIP.md](docs/SITE_OWNERSHIP.md)). TFP-219: the active gate opens on it. A run must ask with `enableActive`, and the host must be covered with the active tick, or be local. Otherwise each active test is Not run, with a reason that says what to do, and the report names the confirmation, without its email (RUN-61 to RUN-65). TFP-220: an active test's input reaches only the hosts the gate covers, under the covered-host guard (RUN-66); a valid confirmation lifts the caps on the hosts it covers, in the app and the CLI, and a CLI run's active tests are Not run until TFP-249 (RUN-67, RUN-68); a saved active test without the guard is never reused (RUN-69). TFP-221, the measurement with the switch off and on, is done (`docs/decisions/phase-43-ownership-confirmation-decision-record.md`). |
+| Run concurrency and speed | ✅ Done | Phase 39, complete 2026-10-31: fewer page visits first, then workers by host. At most 3 workers (half the machine's cores); a host that isn't local and isn't covered by an ownership confirmation shares 5 requests per second, and a failure the cap starved is reported Not run (`src/lib/run/host-limits.ts`, RUN-44). |
+| CI command, image and GitHub Action | ✅ Done (0.4.0) | Phase 47, complete 2026-11-13: `mr-onion run` crawls, generates and runs with no UI and exits with a code a pipeline acts on; baselines fail only on new failures; a pinned Docker image (`ghcr.io/emil3663/mr-onion`) and a composite Action. No model writes tests in CI. Cases in [docs/test-plan/CI.md](docs/test-plan/CI.md); setup in [docs/CI_INTEGRATION.md](docs/CI_INTEGRATION.md). |
+| App screens | ✅ Done (on `main`, not yet in a tagged release) | Phase 46, complete 2026-11-19: the site lookup (`/sites`) and confirmation form, the promotion screen (`/candidates`), the active switch in the run form, and notes in the report tabs (TFP-232 to TFP-235, TFP-289). |
 
 ## 3. Test Cases
 
@@ -94,8 +99,7 @@ Each area's cases are in a file of their own under `docs/test-plan/` (TFP-253). 
 
 The sprints below are the early history. Since Phase 35 the phase plan lives
 in `docs/decisions/product-roadmap.md`, each phase in its own decision record
-under `docs/decisions/`. Now: the post-Phase 42 review
-(`docs/decisions/post-phase-42-review-plan.md`), then Phase 39.
+under `docs/decisions/`; the roadmap's headings say which phase is current.
 
 ### Sprint 1 (Close out Phase 16)
 - [x] TFP-005 — delete stale `copilot/*` branches from origin
@@ -119,8 +123,10 @@ under `docs/decisions/`. Now: the post-Phase 42 review
 
 ## 6. GitHub Project Board Structure
 
-Mr Onion currently tracks phase work as numbered `TFP-NNN` tickets inside
-`docs/decisions/phase-N-*-backlog.md`, not as live GitHub Issues. The
+Mr Onion tracks phase work as numbered `TFP-NNN` tickets in
+`docs/decisions/`. GitHub Issues are the public front door: outside
+reports, known limitations and a tracking issue per phase (for example
+#61, Phase 46); security reports never go there (`SECURITY.md`). The
 structure below is the suggested shape if/when this repo's tracking moves
 to a GitHub Project board, kept consistent with the labels already used
 across the backlog docs.

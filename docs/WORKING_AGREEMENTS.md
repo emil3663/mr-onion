@@ -178,7 +178,7 @@ Recurring checks run on a schedule rather than when someone remembers.
 |---|---|---|---|
 | Unit suite, template check, advisory audit and dead-code check | Nightly 02:00 UTC, plus manual dispatch | `.github/workflows/nightly.yml` | Running |
 | Nightly summary email | After the nightly run | Quick-view summary with a link to results, on the run's page and by email (`.github/workflows/nightly.yml`, `notify`) | Running |
-| Living-docs check | Weekly | Checks `APPLICATION_OVERVIEW.md`, `README.md` and this file against the code and the roadmap (`repo-claim-audit` skill) and reports what is false or stale | Scheduled task, set up 2026-10-26 |
+| Living-docs check | Weekly (Monday 06:31 SA time) | Checks every doc in the table below against the code and the roadmap (`repo-claim-audit` skill) and posts what is false or stale as a comment on one open GitHub issue, "Living-docs check" (opened if none is open); posts nothing when all is true | Scheduled task, set up 2026-10-26; issue reporting and full doc list from 2026-11-21 |
 | Nightly-failure triage | After a red nightly | Reads the failing job and drafts an issue with the failing test, the first bad commit and a reproduction | Ticketed (see `docs/decisions/workflow-and-ci-backlog-2026-10-26.md`) |
 
 A routine only *reports* or *drafts*. Anything it finds goes through the
@@ -197,8 +197,12 @@ loop like any other work.
 | `TEST_PLAN.md` | Feature status, known limitations, and the index of test-case areas | In the commit that changes the behaviour |
 | `docs/test-plan/<area>.md` | Case-by-case status, one file per area (`GEN`, `RUN`, …) | In the commit that changes the behaviour |
 | `docs/QUALITY_GATES.md` | Gates, evidence and verification | When a gate or check changes |
+| `SECURITY.md` | The security model, what each area does, and how to report a problem | When a gate, guard, sandbox or supported-version rule changes |
+| `CHANGELOG.md` | What changed for a user, per version; `[Unreleased]` for what's on `main` | In the commit that changes user-visible behaviour, and at each phase completion |
 | This file | How work is done | When the loop changes; reviewed at each phase completion |
 
 Each of these should carry its last-reviewed date near the top (the
 overview and this file do; TFP-255 and TFP-256 add the rest). The weekly
-living-docs check reports any that is older than the last phase completion.
+living-docs check reports any that is older than the last phase completion,
+and `docs/QUALITY_GATES.md` §4 makes this table part of every phase's last
+gate.

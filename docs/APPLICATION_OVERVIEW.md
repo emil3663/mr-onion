@@ -1,7 +1,7 @@
 # Mr Onion — what it actually does
 
-*Living doc. Last reviewed 2026-10-31, against `main` at `b38c622` (Phase 39
-complete). Reviewed at every phase completion
+*Living doc. Last reviewed 2026-11-21, against `main` at `047ef11` (Phase 46
+complete), in a claim audit; before that 2026-10-31 (Phase 39). Reviewed at every phase completion
 ([`WORKING_AGREEMENTS.md`](WORKING_AGREEMENTS.md)). Point new readers here
 first; `README.md` is the how-to, `docs/decisions/product-roadmap.md` the
 phase-by-phase ledger, `docs/test-plan/` the case-by-case status (indexed
@@ -51,7 +51,9 @@ the tester's machine, not a hosted service.
      blocks non-GET traffic;
    - **interactive**: forms and flows, when the run switches it on;
    - **active**: data-changing and attack-shaped tests, only behind an
-     ownership confirmation (Phase 43, locked, not built).
+     ownership confirmation with its active tick, or on a local host, and
+     only when the run asks for them (Phase 43; on `main`, not yet in a
+     tagged release).
 5. **Report.** Execution, defects, coverage, performance, accessibility,
    usability and SEO, with an HTML export. Runs persist and two runs of the
    same site can be diffed test by test.
@@ -63,8 +65,8 @@ the tester's machine, not a hosted service.
   pages, layout and overlap, spelling, keyboard order, WCAG 2.2 A/AA via axe,
   passive security headers and probes, baseline SEO, and Core Web Vitals
   graded in bands (a miss that isn't poor is an improvement, not a failure).
-- **Comprehensive** — one area in depth, or all areas: negative and
-  edge-case tests that try to break fields and flows. Security and
+- **Comprehensive** — one area in depth: negative and edge-case tests
+  that try to break fields and flows. Security and
   accessibility have Comprehensive sets today; SEO, functional negatives and
   all-areas runs are in the build order
   (`docs/decisions/deferred-work-register.md`).
@@ -96,12 +98,18 @@ Windows; `MRONION_DATA_DIR` overrides), never in the repo.
 ## Architecture
 
 ```
- Browser UI (src/app/page.tsx)
-      │  fetch
-      ▼
- Next.js API routes (src/app/api/*)          one Node process, loopback only
-  crawl · introspect · generate · run · runs · runs/diff · candidates
-  site-settings · site-ownership · save-suite · health
+ Browser UI: src/app/page.tsx,            CLI: bin/mr-onion.mjs → src/cli
+ /sites, /candidates                       (no server; also the Docker
+      │  fetch                             image and the GitHub Action)
+      ▼                                          │
+ Next.js API routes (src/app/api/*)              │
+  one Node process, loopback only                │
+  crawl · introspect · generate · run · runs     │
+  runs/diff · candidates · site-settings         │
+  site-ownership · site-suites · save-suite      │
+  health                                         │
+      │                                          │
+      ├──── src/lib/pipeline: crawl, inspect, generate (shared) ──┘
       │
       ├─ src/lib/introspect, selection   crawl, page types, inspection (Playwright)
       ├─ src/lib/generate                 template generator, Comprehensive sets
@@ -138,19 +146,22 @@ Windows; `MRONION_DATA_DIR` overrides), never in the repo.
 
 In order (`product-roadmap.md`, `deferred-work-register.md`):
 
-- **Done:** Phase 39, run speed (2026-10-31): Standard about 2.5 times faster on the with-bugs
-  Toolshop; at most 3 workers; capped runs report cap-starved tests as Not run.
-- **Next:** a few small tickets, after `v0.2.0` (2026-10-31, the first
-  tagged version); then Phase 47, Mr Onion as a step in a
-  target's CI pipeline (`docs/decisions/phase-47-ci-integration-decision-record.md`),
-  with the application's rename (D39, "Mr Onion" proposed) before its
-  Docker image is published.
-- **After that:** Phase 43 ownership confirmation; the remaining Standard
-  sets (SEO, the WAI-ARIA APG patterns, the rest of accessibility and
-  security); Comprehensive negative tests and SEO; all-areas runs; load
+- **Done:** Phase 39, run speed (2026-10-31, `v0.2.0`): Standard about 2.5
+  times faster on the with-bugs Toolshop; at most 3 workers; capped runs
+  report cap-starved tests as Not run. Phase 48, the rename to Mr Onion
+  (2026-11-12, `v0.3.0`). Phase 47, Mr Onion in a target's CI pipeline: the
+  `mr-onion run` command, baselines, the Docker image and the GitHub Action
+  (2026-11-13, `v0.4.0`). Phase 43, ownership confirmation and the active
+  gate (2026-11-16), and Phase 46, the app screens (2026-11-19): both on
+  `main`, not yet in a tagged release.
+- **Next:** TFP-292, then the next version tag. Then the triaged build
+  order (`product-roadmap.md`): retention for saved runs (D29); the
+  remaining Standard sets (SEO, the WAI-ARIA APG patterns, the rest of
+  accessibility and security); failure triage; a measured comparison with
+  an outside QA tool (D27); Phase 45; Phase 44; authenticated and active
+  security; Comprehensive negative tests and SEO; all-areas runs; load
   testing.
-- **Locked, not started:** Phase 44 scenario gaps, Phase 45 Docker sandbox,
-  Phase 46 app screens.
+- **Locked, not started:** Phase 44 scenario gaps, Phase 45 Docker sandbox.
 - **Deferred, not cancelled:** a hosted SaaS version
   (`saas-prerequisites.md`); the OpenAI path (Phase 28, parked).
 

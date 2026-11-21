@@ -3,7 +3,7 @@
 **Mr Onion is a test automation assistant that works alongside testers, not instead of them.**  
 Point it at a site. It crawls it, inspects one page of each kind, writes a real Playwright TypeScript suite from what it found, runs it, and reports what was tested, how, and what wasn't tested and why. The generator is deterministic and needs no AI or API key; a local model or Claude Code can optionally write tests for the gaps. You review the code, run it, and keep it: it's plain Playwright.
 
-*README last reviewed 2026-10-28 (TFP-256). Also: [what it does today](docs/APPLICATION_OVERVIEW.md) · [all docs](docs/README.md) · [changelog](CHANGELOG.md) · [security](SECURITY.md) · [contributing](CONTRIBUTING.md).*
+*README last reviewed 2026-10-28 (TFP-256); Features, tech stack and scripts corrected 2026-11-21 (claim audit). Also: [what it does today](docs/APPLICATION_OVERVIEW.md) · [all docs](docs/README.md) · [changelog](CHANGELOG.md) · [security](SECURITY.md) · [contributing](CONTRIBUTING.md).*
 
 ---
 
@@ -196,8 +196,8 @@ The gap between these two worlds is brutal. Testers are told: "Learn to code." T
 - **Deterministic generation, no API key needed.** A template generator writes a standard Playwright TypeScript suite from what Mr Onion actually finds on the site. A local model (Ollama) can fill only the areas the template left empty. An OpenAI path exists but is parked: no live completion has succeeded (`TEST_PLAN.md`, known limitation 5).
 - **Crawl, page types and inspection.** Mr Onion crawls the site, groups its pages into page types by address pattern and form signature, and tests one page of each type (up to 8), then inspects those pages so every check targets real elements.
 - **Standard and Comprehensive runs.** Standard tests the critical working path. Comprehensive goes deep on one area at a time. The goal is a Comprehensive set for every area, plus an all-areas run that tries to break fields and flows; **built today: security (passive) and accessibility.** The rest are in the build order (`docs/decisions/deferred-work-register.md`).
-- **Three gates.** Read-only by default, behind a request guard; interactive when switched on; active (tests that change data, and attack-shaped tests) only behind a typed ownership confirmation per site. **The confirmation isn't built yet (Phase 43), so active tests are reported Not run today.**
-- **Polite to other people's sites.** A local host gets up to 3 workers; any other host gets at most 3 workers sharing 5 requests per second, and timed checks there are Not run with the reason, until the ownership confirmation lifts the cap.
+- **Three gates.** Read-only by default, behind a request guard; interactive (forms, journeys and other tests that change data) when switched on; active (attack-shaped tests) only when a run asks for them and the host is local, or covered by the site's ownership confirmation with its active tick (Phase 43; on `main`, not yet in a tagged release). Otherwise each active test is reported Not run, with the reason.
+- **Polite to other people's sites.** A local host gets up to 3 workers; any other host gets at most 3 workers sharing 5 requests per second, and timed checks there are Not run with the reason. A host covered by the site's ownership confirmation gets the machine's limit and no request cap.
 - **Checks across the areas.** Functional controls (sorts, filters, steppers, links), layout consistency and overlap, spelling, tab order and grouping, WCAG 2.2 A/AA with axe, passive security headers and probes, SEO, and performance graded by Core Web Vitals bands.
 - **Measured against known bugs.** On local copies of the Toolshop practice site with 37 known bugs in reach, Standard alone finds 30 (TFP-207, 2026-10-16), and Standard plus Comprehensive security and accessibility finds 33 (Phase 41 Gate B). See `docs/decisions/phase-41-check-gaps-decision-record.md`.
 - **Reusable site suites and a test library.** Each site's Standard suite is kept and reused, regenerated only for page types that changed. Comprehensive tests live in a library written against component patterns.
@@ -426,7 +426,7 @@ The action runs the image as the job's own user, attaches the reports, writes a 
 | Framework | [Next.js](https://nextjs.org/) (App Router, TypeScript) |
 | Browser automation | [Playwright](https://playwright.dev/) |
 | Test runner | [Playwright Test](https://playwright.dev/docs/test-intro), Chromium only |
-| Generation | Template generator (default); optional local model via [Ollama](https://ollama.com/) or [OpenAI](https://platform.openai.com/) for areas the template leaves empty |
+| Generation | Template generator (default); optional local model via [Ollama](https://ollama.com/) for areas the template leaves empty; an [OpenAI](https://platform.openai.com/) path exists but is parked |
 | Reporting | [Allure](https://allurereport.org/) (smoke and regression suites) |
 | Test targets | Local Toolshop copies via Docker (`scripts/toolshop-local/`); [Plane](https://plane.so) via `docker-compose.yml` |
 
@@ -441,7 +441,7 @@ The action runs the image as the job's own user, attaches the reports, writes a 
 | `npm run start` | Start the production build |
 | `npm run dev:development` | Start Mr Onion in dev mode with `.env.development` |
 | `npm run lint` | Run ESLint |
-| `npm run test:unit` | Run the unit suite (about 620 tests; about 14 min) |
+| `npm run test:unit` | Run the unit suite (844 tests on 2026-11-15, TFP-287; about 14 min) |
 | `npm run check:template-unchanged -- <commit>` | Compare the template generator's output on 172 fixed inputs with a commit's |
 | `npm run check:old-name` | List every use of the product's old name that `scripts/old-name/allowlist.json` doesn't allow, with why each allowed one stays |
 | `npm run test:self` | Build the self-test target, then run the smoke suite |

@@ -11,6 +11,40 @@ the report and the CI command are declared stable, after Phase 47.
 
 ## [Unreleased]
 
+### Ownership confirmation and the active gate (Phase 43)
+
+A site you own or may test is confirmed once, and that confirmation
+opens what Mr Onion holds back on other people's sites
+([Phase 43](docs/decisions/phase-43-ownership-confirmation-decision-record.md);
+the guide is [`docs/SITE_OWNERSHIP.md`](docs/SITE_OWNERSHIP.md)).
+
+- **Confirm a site once**, through `/api/site-ownership`: the hosts it
+  covers, typed in full, who confirmed it and a contact email, a 90-day
+  expiry (at most a year), and ticks for active tests and load testing.
+  It stays in the local data folder and can be replaced or withdrawn
+  (TFP-218).
+- **Active tests** (the script-payload test) run only when a run asks for
+  them (`"enableActive": true`) and the host is local, or covered with the
+  active tick. Otherwise each is Not run, with a reason that says what to
+  do (TFP-219).
+- **A covered-host guard** stops every request an active test makes to a
+  host the confirmation doesn't cover, and a valid confirmation lifts the
+  worker limit and request cap on the hosts it covers, in the app and the
+  CLI. In CI, active tests stay Not run (TFP-220).
+
+### App screens (Phase 46)
+
+The parts of Mr Onion that were API-only now have screens
+([Phase 46](docs/decisions/phase-46-app-screens-decision-record.md)).
+
+- **A site lookup** (`/sites`): enter a site's exact address to see and
+  edit its settings and ownership confirmation. There is no list of sites,
+  and the contact email is always masked (TFP-232, TFP-233).
+- **A promotion screen** (`/candidates`) to approve or reject candidate
+  tests (TFP-234).
+- **Run active tests**, a switch in the run form (TFP-235), and notes in
+  the report's tabs (TFP-289).
+
 ### Changed
 
 - **Playwright 1.62.1 and its Chromium 151**, from 1.59.1 and Chromium 147,

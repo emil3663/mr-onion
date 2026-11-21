@@ -1794,6 +1794,64 @@ Moved word for word from [`docs/test-plan/GEN.md`](../test-plan/GEN.md) by TFP-2
 
 ---
 
+### TFP-302 - A nightly check that no living doc calls a completed phase unbuilt (added 2026-11-21)
+
+- **Status:** Not started. Planning session, 2026-11-21, from a claim
+  audit of the living docs. Build after TFP-292.
+- **Problem:** Phases 43, 46, 47 and 48 completed without the living docs
+  catching up. On 2026-11-21, `README.md` (Features, "Three gates") and
+  `SECURITY.md` (the Generated tests row) said Phase 43's confirmation was
+  "not yet built"; `TEST_PLAN.md` had it "In progress" and Phase 39 "Locked,
+  not started"; `docs/APPLICATION_OVERVIEW.md` had Phase 43 "locked, not
+  built" and Phase 46 "not started". The roadmap had each phase complete.
+  The rule in `WORKING_AGREEMENTS.md` ("Docs that must stay true") was in
+  place; nothing checked it mechanically, and the weekly living-docs
+  check's report went nowhere anyone reads. Those docs were fixed by hand
+  the same day; this ticket stops the same drift coming back.
+- **Scope:**
+  - `scripts/doc-status/check.mjs` and `npm run check:doc-status`.
+  - It reads the phases marked complete from
+    `docs/decisions/product-roadmap.md`'s `### Phase N — … (complete …)`
+    headings, so the roadmap stays the one source of status.
+  - It scans the living docs, the table in `WORKING_AGREEMENTS.md` ("Docs
+    that must stay true") plus `SECURITY.md` and `CHANGELOG.md`'s
+    `[Unreleased]` section. Each table row, list item or line that names a
+    complete phase ("Phase 43", "Phases 43 and 46") next to a not-done status
+    ("not built", "not yet built", "isn't built", "not started", "in
+    progress", "locked, not", "🚧", "⏳") is a hit, printed as
+    `file:line: Phase N is complete (roadmap) but this says "<phrase>"`.
+  - An allowlist (`scripts/doc-status/allowlist.json`), in the shape of
+    `scripts/old-name/allowlist.json`: path, an optional line pattern, and
+    why. An entry that allows nothing fails the check, as the old-name
+    check does. History sections (for example `TEST_PLAN.md` §5's sprints)
+    go there, each with its reason.
+  - A step in `.github/workflows/nightly.yml`, reported in the nightly
+    summary like its other checks. Whether it also runs in PR validation
+    (it takes seconds, and would catch drift before merge) is an owner
+    decision, to ask before building.
+- **Out of scope:** judging prose beyond the status phrases; counts and
+  defaults (the weekly living-docs check and the phase-gate read in
+  `QUALITY_GATES.md` §4 cover those); decision records and backlogs, which
+  are dated history.
+- **Acceptance criteria:**
+  - **Red first:** run against the docs as they were before the
+    2026-11-21 fixes (`git show <commit before them>:<path>`), it reports
+    at least `README.md` (Three gates), `SECURITY.md` (Generated tests),
+    `TEST_PLAN.md` (the Ownership confirmation and Run concurrency rows)
+    and `docs/APPLICATION_OVERVIEW.md` (the active gate, Where it's going),
+    and exits 1. Quote that output in the commit body.
+  - On the fixed docs it exits 0, with every allowlist entry used.
+  - Unit tests for the parser: a complete heading, a phase that isn't
+    complete (no hit), "Phases 43 and 46" in one line, a status emoji in a
+    table row, and an unused allowlist entry (fails).
+  - The nightly runs it and its summary shows the result; a hit makes the
+    nightly red.
+  - `QUALITY_GATES.md` §4 ("Docs that must stay true, at every phase's last
+    gate") already names the command; `README.md`'s Scripts table gains it.
+- **Dependencies:** TFP-292 (the branch in progress).
+
+---
+
 ## Owner plans to carry into the register (2026-10-28) — carried 2026-10-30 as D38 and D39
 
 To add to `deferred-work-register.md` once Claude Code's D37 commit has
