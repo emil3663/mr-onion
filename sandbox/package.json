@@ -1,0 +1,7 @@
+{
+  "name": "mr-onion-sandbox",
+  "private": true,
+  "dependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}

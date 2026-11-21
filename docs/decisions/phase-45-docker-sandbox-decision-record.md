@@ -11,7 +11,7 @@ except the run's target hosts. Only the results leave it. The template's
 tests and promoted library entries, which are reviewed code, keep running
 as today.
 
-Status: **Locked (Emil, 2026-10-20). Not started.** Decisions, acceptance criteria and tickets approved.
+Status: **Locked (Emil, 2026-10-20). In progress: TFP-228 built (2026-11-22), stopped for verification.** Decisions, acceptance criteria and tickets approved.
 - Reviewed before building (planning session, 2026-11-21): see the next
   section. Its proposals are confirmed (owner, 2026-11-21).
 - **Moved up in the build order** (owner, 2026-11-21): next, ahead of D29.
@@ -314,6 +314,18 @@ Items 1, 2, 4 and 7 were proposals; the owner confirmed all four on
 ### TFP-228 — The sandbox container and its mounts
 
 - **Phase:** 45 · **Priority:** P1 · **Labels:** `security`, `run`
+- **Status:** Built (2026-11-22). Stopped for verification. `src/lib/sandbox/`
+  and `sandbox/Dockerfile`; RUN-92 to RUN-97. Nothing routes a test to it yet
+  (TFP-230), and it has no network yet (TFP-229: `--network none` until the
+  proxy). The container also enforces its own time limit, so it ends if Mr
+  Onion's process dies or a test blocks Node.
+  - **For TFP-230, from this ticket's review:** a signed-in run's session
+    can reach the output folder (a failing test's trace holds its cookies,
+    and a body can write them out), so the output must go through Decision
+    4's credential scan before anything reads it, as Acceptance Criteria 4
+    says; TFP-230's tests include a failing signed-in test. And "no host
+    path" is checked again against the routing code there: at this ticket
+    it's a check of the sandbox module's source.
 - **Problem it solves:** model-written code runs on the host with the repo,
   data and home folder in reach.
 - **Scope:** Decisions 2 and 5. Acceptance Criteria 2 and 5.

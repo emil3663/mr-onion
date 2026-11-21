@@ -465,7 +465,7 @@ The gap writer's new purpose: behaviour and edge cases nothing exercises.
 
 See `phase-44-scenario-gaps-decision-record.md`.
 
-### Phase 45 — The Docker sandbox for model-written tests (locked 2026-10-20, not started)
+### Phase 45 — The Docker sandbox for model-written tests (locked 2026-10-20, in progress: TFP-228 built 2026-11-22)
 Gap tests, candidates and scenario tests run in a container:
 - the image pinned to the repo's Playwright version;
 - read-only mounts, no secrets, a non-root user;
