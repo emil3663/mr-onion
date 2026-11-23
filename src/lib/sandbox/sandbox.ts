@@ -23,10 +23,11 @@
  */
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { cpus, tmpdir } from "node:os";
 import { join } from "node:path";
 import { sandboxBuildArgs, sandboxImageTag } from "./image";
+import { readSandboxOutput } from "./output";
 
 /** Decision 5's reason, word for word. */
 export const SANDBOX_UNAVAILABLE = "sandbox unavailable: start Docker Desktop";
@@ -75,8 +76,13 @@ export type SandboxRunResult =
           status: "ran";
           exitCode: number | null;
           timedOut: boolean;
-          /** Playwright's JSON report as text, or null if none was written. Read as data; it's never run. */
+          /**
+           * Playwright's JSON report as text, or null. Read as data, and only as a regular file directly in the output
+           * folder, never through a link (readSandboxOutput); it's never run.
+           */
           report: string | null;
+          /** Why there's no report: it wasn't written, or what the container left in its place isn't read. */
+          reportProblem: string | null;
           /** The container's arguments, for the run record and the tests. */
           args: string[];
       };
@@ -110,6 +116,19 @@ function exec(command: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs
         child.on("error", (error) => { clearTimeout(timer); resolve({ code: null, stdout, stderr, error: error.message, timedOut }); });
         child.on("close", (code) => { clearTimeout(timer); resolve({ code, stdout, stderr, timedOut }); });
     });
+}
+
+/**
+ * Removes the container if it's there; true once Docker says it's gone. A removal --rm already began is waited for.
+ * At most five tries of 20 s, so an engine that went away costs under two minutes, not a hang.
+ */
+async function removeContainer(docker: string, dockerEnv: NodeJS.ProcessEnv, name: string): Promise<boolean> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const removed = await exec(docker, ["rm", "--force", name], dockerEnv, 20_000);
+        if (removed.code === 0 || /no such container/i.test(removed.stderr)) return true;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    return false;
 }
 
 function unavailable(detail: string): SandboxRunResult {
@@ -225,10 +244,15 @@ export async function runInSandbox(options: SandboxRunOptions): Promise<SandboxR
         const timeoutMs = options.timeoutMs ?? SANDBOX_DEFAULT_TIMEOUT_MS;
         const args = sandboxRunArgs(name, sandboxImageTag(root), specsDir, options.outputDir, options.storageState, options.env ?? {}, timeoutMs);
         // The host's limit is a little past the container's own, which should end it first.
+        let stopping: Promise<boolean> | undefined;
         const run = await exec(docker, args, dockerEnv, timeoutMs + 15_000, () => {
-            void exec(docker, ["rm", "--force", name], dockerEnv, 60_000);
+            stopping = removeContainer(docker, dockerEnv, name);
         });
-        const report = await readFile(join(options.outputDir, "report.json"), "utf8").catch(() => null);
+        // Nothing in the output folder is read unless the container is confirmed gone: the client can end with it
+        // still running (the engine's connection lost, the client signalled).
+        const gone = await (stopping ?? removeContainer(docker, dockerEnv, name));
+        const read = gone ? await readSandboxOutput(options.outputDir, "report.json") : { ok: false as const, reason: "report.json isn't read: the container couldn't be confirmed gone" };
+        const report = read.ok ? read.content.toString("utf8") : null;
         // 124: the container's own limit ended it (uutils' timeout, which Ubuntu 26.04 ships; GNU's gives 137 for KILL).
         const timedOut = run.timedOut || run.code === 124 || run.code === 137;
         // 125 and up, with no report and no time limit reached: Docker couldn't start the container (a bad mount, no
@@ -237,7 +261,7 @@ export async function runInSandbox(options: SandboxRunOptions): Promise<SandboxR
         if (run.error || (report === null && !timedOut && (run.code === null || run.code >= 125))) {
             return unavailable(`the container wouldn't run (${run.error ?? (run.stderr.trim().split("\n").slice(-2).join(" ") || `exit ${run.code}`)})`.slice(0, 500));
         }
-        return { status: "ran", exitCode: run.code, timedOut, report, args };
+        return { status: "ran", exitCode: run.code, timedOut, report, reportProblem: read.ok ? null : read.reason, args };
     } finally {
         // --rm removes it when it ends; this covers a stopped or timed-out run, and is quiet when it's already gone.
         await exec(docker, ["rm", "--force", name], dockerEnv, 60_000);

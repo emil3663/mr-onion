@@ -315,7 +315,7 @@ Items 1, 2, 4 and 7 were proposals; the owner confirmed all four on
 
 - **Phase:** 45 · **Priority:** P1 · **Labels:** `security`, `run`
 - **Status:** Built (2026-11-22). Stopped for verification. `src/lib/sandbox/`
-  and `sandbox/Dockerfile`; RUN-92 to RUN-97. Nothing routes a test to it yet
+  and `sandbox/Dockerfile`; RUN-92 to RUN-98. Nothing routes a test to it yet
   (TFP-230), and it has no network yet (TFP-229: `--network none` until the
   proxy). The container also enforces its own time limit, so it ends if Mr
   Onion's process dies or a test blocks Node.
@@ -326,6 +326,11 @@ Items 1, 2, 4 and 7 were proposals; the owner confirmed all four on
     says; TFP-230's tests include a failing signed-in test. And "no host
     path" is checked again against the routing code there: at this ticket
     it's a check of the sandbox module's source.
+  - **From the planning session's verification (2026-11-23):** the output
+    folder is the container's, so anything in it may be a link. The report
+    is read only as a regular file directly in it, never through a link, and
+    only once Docker confirms the container is gone (RUN-98). TFP-230 reads traces,
+    screenshots and video through the same reader, `readSandboxOutput`.
 - **Problem it solves:** model-written code runs on the host with the repo,
   data and home folder in reach.
 - **Scope:** Decisions 2 and 5. Acceptance Criteria 2 and 5.

@@ -344,6 +344,28 @@ test("TFP-228: a container whose client died, in a loop that blocks Node, ends b
     }
 });
 
+// --- The output folder is the container's: anything in it may be a link (planning session's verification,
+// 2026-11-23).
+
+test("TFP-228: a report.json the container made a link to a host file isn't read, and the result says why", { skip: needsDocker, timeout: 25 * 60_000 }, async () => {
+    // Outside the output folder, where the host would find it by following the link. The container can't see it.
+    const canary = join(emptyDir("linked"), `${CANARY}-linked.txt`);
+    writeFileSync(canary, `${CANARY}-linked`);
+    const outputDir = emptyDir("link-out");
+    const spec = `import { test } from '@playwright/test';
+import * as fs from 'node:fs';
+test('links the report', () => { fs.symlinkSync(process.env.LINK_TARGET!, '/sandbox/out/report.json'); });
+`;
+    const result = await runInSandbox({ specs: [{ name: "link.spec.ts", content: spec }], outputDir, env: { LINK_TARGET: canary } });
+    assert.equal(result.status, "ran", result.status === "unavailable" ? result.detail : "");
+    if (result.status !== "ran") return;
+    assert.equal(result.report, null, "the linked file's content doesn't come back as the report");
+    // A link the host sees as one (Linux), or one Docker Desktop leaves as a WSL link the host can't open (Windows);
+    // never "wasn't written", which would mean the spec made no link at all.
+    assert.match(result.reportProblem ?? "", /^report\.json (is a link|can't be read as a plain file \(\w+\); it may be a link)/, "and the result says why there's no report");
+    assert.equal(readFileSync(canary, "utf8"), `${CANARY}-linked`, "the host file is as it was");
+});
+
 test("TFP-228: the spec names and the output folder are checked before anything starts", async () => {
     await assert.rejects(runInSandbox({ specs: [{ name: "../x.spec.ts", content: "" }], outputDir: emptyDir("names"), docker: join(scratch, "no-such-docker") }), /not a spec file name/);
     const used = emptyDir("used");
