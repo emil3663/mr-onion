@@ -178,7 +178,7 @@ Recurring checks run on a schedule rather than when someone remembers.
 |---|---|---|---|
 | Unit suite, template check, advisory audit and dead-code check | Nightly 02:00 UTC, plus manual dispatch | `.github/workflows/nightly.yml` | Running |
 | Nightly summary email | After the nightly run | Quick-view summary with a link to results, on the run's page and by email (`.github/workflows/nightly.yml`, `notify`) | Running |
-| Living-docs check | Weekly (Monday 06:31 SA time) | Checks every doc in the table below against the code and the roadmap (`repo-claim-audit` skill) and posts what is false or stale as a comment on one open GitHub issue, "Living-docs check" (opened if none is open); posts nothing when all is true | Scheduled task, set up 2026-10-26; issue reporting and full doc list from 2026-11-21 |
+| Living-docs check | Weekly (Monday 06:31 SA time) | Checks every doc in the table below against the code and the roadmap (`repo-claim-audit` skill) and sends what is false or stale to the owner as the run's notification, with the commit it checked; nothing goes to GitHub (a scheduled run has no write access there), and findings about an unpublished security fix are marked as such | Scheduled task, set up 2026-10-26; full doc list from 2026-11-21; notification-only from 2026-11-23 |
 | Nightly-failure triage | After a red nightly | Reads the failing job and drafts an issue with the failing test, the first bad commit and a reproduction | Ticketed (see `docs/decisions/workflow-and-ci-backlog-2026-10-26.md`) |
 
 A routine only *reports* or *drafts*. Anything it finds goes through the

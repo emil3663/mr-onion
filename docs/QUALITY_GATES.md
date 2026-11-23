@@ -218,18 +218,24 @@ no automated browser shows. Three rules catch those earlier:
   Regression Policy requires.
 - **Status lines match git.** When a phase closes, its record's status line
   is reconciled with what git shows. Phase 36 reconciled ten records.
-- **Docs that must stay true, at every phase's last gate** (owner
-  decision, 2026-11-21, after a claim audit found Phases 43, 46, 47 and 48
-  completed without them). Before a phase's last gate is passed, each doc
+- **Docs that must stay true, at every phase's last gate and before every
+  version tag** (owner decision, 2026-11-21, after a claim audit found
+  Phases 43, 46, 47 and 48 completed without them; extended to version tags
+  2026-11-23, after 0.5.0 and 0.5.1 shipped between phases and left most of
+  that week's findings). Before a phase's last gate is passed, and before a
+  version is tagged, each doc
   in `WORKING_AGREEMENTS.md`'s "Docs that must stay true" table, plus
   `SECURITY.md` and `CHANGELOG.md`'s `[Unreleased]`, is read for claims the
-  phase made false ("not built", "not started", "in progress", a count or a
-  default it changed), and each is fixed or its last-reviewed date says it
+  phase or release made false ("not built", "not started", "in progress",
+  "not yet in a tagged release", a count or a default it changed), and each is fixed or its last-reviewed date says it
   was checked. Search the whole doc, not only the section the phase added
   to: a new section can leave an older line saying the opposite. The gate
   report lists the docs checked. A mechanical check for the status
   phrases, `npm run check:doc-status`, is planned (TFP-302, not built
-  yet); once it exists it won't replace the read.
+  yet); once it exists it won't replace the read. One exception: a
+  release that carries a security fix whose advisory isn't published yet
+  updates the public docs about that fix when the advisory is published,
+  not before; the tag's report says which docs wait for it.
 - **Commits** follow Conventional Commits and give the reason for the
   change, the alternatives that were rejected, and what the change does not
   do.
