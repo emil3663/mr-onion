@@ -66,7 +66,7 @@ test("TFP-228: the sandbox image is pinned to the lockfile's Playwright, by tag 
     const resolved = lock.packages["node_modules/@playwright/test"]?.version;
     assert.equal(SANDBOX_PLAYWRIGHT_VERSION, resolved, "the sandbox's Playwright is the lockfile's @playwright/test");
     assert.equal(lock.packages["node_modules/playwright"]?.version, resolved, "and the lockfile's playwright, which it runs");
-    assert.match(SANDBOX_BASE_IMAGE, new RegExp(`^mcr\\.microsoft\\.com/playwright:v${resolved!.replace(/\./g, "\\.")}-resolute@sha256:[0-9a-f]{64}$`));
+    assert.match(SANDBOX_BASE_IMAGE, new RegExp(`^mcr\\.microsoft\\.com/playwright:v${resolved!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-resolute@sha256:[0-9a-f]{64}$`));
     const args = sandboxBuildArgs();
     assert.ok(args.includes(`BASE_IMAGE=${SANDBOX_BASE_IMAGE}`) && args.includes(`PLAYWRIGHT_VERSION=${resolved}`), "the build is given both");
     const dockerfile = readFileSync("sandbox/Dockerfile", "utf8");
