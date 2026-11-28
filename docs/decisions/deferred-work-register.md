@@ -120,7 +120,7 @@ without renumbering the items below, which the tables' Order columns cite).
      TFP-292's two reviews; `child-env.ts` and the report paths are checked
      at Phase 45's Gate A.
 11. **Phase 45: the Docker sandbox.** **In progress** (moved up by the owner,
-    2026-11-21, above): TFP-228 built 2026-11-22.
+    2026-11-21, above): TFP-228 done 2026-11-23 (PR #68).
    - Every model-written test runs in a container: gap tests, candidates
      and scenario tests.
    - Read-only mounts, no secrets, a non-root user.

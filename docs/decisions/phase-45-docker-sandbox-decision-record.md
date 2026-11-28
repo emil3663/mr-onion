@@ -11,7 +11,7 @@ except the run's target hosts. Only the results leave it. The template's
 tests and promoted library entries, which are reviewed code, keep running
 as today.
 
-Status: **Locked (Emil, 2026-10-20). In progress: TFP-228 built (2026-11-22), stopped for verification.** Decisions, acceptance criteria and tickets approved.
+Status: **Locked (Emil, 2026-10-20). In progress: TFP-228 done (2026-11-23, PR #68); TFP-229 next.** Decisions, acceptance criteria and tickets approved.
 - Reviewed before building (planning session, 2026-11-21): see the next
   section. Its proposals are confirmed (owner, 2026-11-21).
 - **Moved up in the build order** (owner, 2026-11-21): next, ahead of D29.
@@ -314,7 +314,8 @@ Items 1, 2, 4 and 7 were proposals; the owner confirmed all four on
 ### TFP-228 — The sandbox container and its mounts
 
 - **Phase:** 45 · **Priority:** P1 · **Labels:** `security`, `run`
-- **Status:** Built (2026-11-22). Stopped for verification. `src/lib/sandbox/`
+- **Status:** **Done** (2026-11-23, PR #68). Verified by the planning
+  session (2026-11-23), after the output-folder fix. `src/lib/sandbox/`
   and `sandbox/Dockerfile`; RUN-92 to RUN-98. Nothing routes a test to it yet
   (TFP-230), and it has no network yet (TFP-229: `--network none` until the
   proxy). The container also enforces its own time limit, so it ends if Mr
