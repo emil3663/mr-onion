@@ -36,12 +36,22 @@ the report and the CI command are declared stable, after Phase 47.
   build. To keep comparing, give that one run the last good run's
   `run.json` (`--baseline <file>`); later runs find it by the new names.
 
+### Security
+
+- **This rule completes the fix for advisory
+  [GHSA-g6gp-hr78-pqqc](https://github.com/emil3663/mr-onion/security/advisories/GHSA-g6gp-hr78-pqqc)** (high). Its login-variable part
+  affects 0.2.0 to 0.5.0: a crafted login setting could type an
+  unrelated secret into a page. Upgrade to 0.5.1.
+
 ## [0.5.0] — 2026-11-21
 
 ### Model-written tests held back until the sandbox (TFP-292)
 
 Hardening of the model-written test check
-([TFP-292](docs/decisions/phase-46-gate-b-fixes-2026-11-17.md)).
+([TFP-292](docs/decisions/phase-46-gate-b-fixes-2026-11-17.md)), published
+as security advisory [GHSA-g6gp-hr78-pqqc](https://github.com/emil3663/mr-onion/security/advisories/GHSA-g6gp-hr78-pqqc) (high). Its
+model-written test part affects 0.2.0 to 0.4.0, and 0.5.1 completes the
+fix, so upgrade to 0.5.1.
 
 - **Model-written tests don't run until Phase 45's sandbox.** That covers
   the gap writer's tests, pool candidates, promoted library entries, and

@@ -23,6 +23,12 @@ Versions are numbered from `0.2.0` (see `docs/decisions/workflow-and-ci-backlog-
 TFP-257), but only the current `main` branch is supported. Fixes are not
 backported.
 
+## Published advisories
+
+| Advisory | Severity | Affected | Fixed in |
+|---|---|---|---|
+| [GHSA-g6gp-hr78-pqqc](https://github.com/emil3663/mr-onion/security/advisories/GHSA-g6gp-hr78-pqqc): model-written test code could read local files and send them to another site | High | 0.2.0 to 0.5.0 (the model-written test part to 0.4.0) | 0.5.1 (the model-written test part in 0.5.0) |
+
 ## Security model
 
 Mr Onion is a **local, single-user developer tool**. It is not designed to
