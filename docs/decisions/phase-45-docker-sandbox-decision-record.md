@@ -392,6 +392,11 @@ Items 1, 2, 4 and 7 were proposals; the owner confirmed all four on
 
 ## Suggested Milestone Gates
 
+Each gate's evidence includes a full local regression run
+(`npm run test:regression`), with its counts and every failure named
+(owner, 2026-11-28). No pull request check runs that suite: its workflow
+runs only on manual dispatch.
+
 ### Gate A — Contained
 - TFP-228 and TFP-229 landed and independently verified.
 - Acceptance Criteria 2 and 3 are shown.
